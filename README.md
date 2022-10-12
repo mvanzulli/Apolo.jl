@@ -7,8 +7,8 @@
 
 [dev-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [dev-url]: https://mvanzulli.github.io/Apolo.jl/
-[ci-img]: https://github.com/mvanzulli/Apolo.jl/actions/workflows/CI.yml/badge.svg?branch=main
-[ci-url]: https://github.com/mvanzulli/Apolo.jl/actions/workflows/CI.yml
+[ci-img]: https://codecov.io/gh/mvanzulli/Apolo.jl/branch/main/graph/badge.svg?token=6OSG89MH6U
+[ci-url]: https://codecov.io/gh/mvanzulli/Apolo.jl
 [cov-img]: http://codecov.io/github/JuliaReach/LazySets.jl/coverage.svg?branch=master
 [cov-url]: TODO
 [chat-img]: https://badges.gitter.im/JuliaReach/Lobby.svg
