@@ -1,8 +1,5 @@
 # Apolo.jl
-
-
-# LazySets.jl
-## *Scalable Symbolic-Numeric Set Computations*
+## *A material identification package*
 
 | **Documentation** |**Status** |**Community** |**Version-specific Citation** | **License** |
 |:-----------------:|:---------------:|:------------:|:----------------------------:|:-----------:|
@@ -10,8 +7,8 @@
 
 [dev-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [dev-url]: https://mvanzulli.github.io/Apolo.jl/
-[ci-img]: https://github.com/JuliaReach/LazySets.jl/actions/workflows/ci.yml/badge.svg?branch=master
-[ci-url]: https://github.com/JuliaReach/LazySets.jl/actions/workflows/ci.yml?query=branch%3Amaster
+[ci-img]: https://github.com/mvanzulli/Apolo.jl/actions/workflows/CI.yml/badge.svg?branch=main
+[ci-url]: https://github.com/mvanzulli/Apolo.jl/actions/workflows/CI.yml
 [cov-img]: http://codecov.io/github/JuliaReach/LazySets.jl/coverage.svg?branch=master
 [cov-url]: TODO
 [chat-img]: https://badges.gitter.im/JuliaReach/Lobby.svg
