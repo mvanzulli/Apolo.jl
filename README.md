@@ -13,7 +13,7 @@
 [cov-url]: TODO
 [chat-img]: https://badges.gitter.im/JuliaReach/Lobby.svg
 [chat-url]: https://gitter.im/onsas_/public
-[doi-img]: https://zenodo.org/badge/105701832.svg
+[doi-img]: TODO
 [doi-url]: TODO
 [lic-img]: https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000
 [lic-url]: https://github.com/mvanzulli/Apolo.jl/blob/main/LICENSE
