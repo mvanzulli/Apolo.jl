@@ -29,8 +29,8 @@ const DCM_TO_LOAD = "./DICOMImages/"
     @test dim == named_dims
 
     # get image intensity array
-    intensity_array = getintensity(dcm)
-    @test size(intensity_array) == dims
+    intensity = getintensity(dcm)
+    @test size(intensity) == dims
 
     # get the image spacing
     spacing = (0.78125, 0.78125, 0.500003) 
@@ -38,8 +38,6 @@ const DCM_TO_LOAD = "./DICOMImages/"
     spacing = getspacing(dcm)
     @test spacing == named_spacing
 
-    # get the image intensity array 
-    int_array = getintensity(dcm)
         
     # test image orientation
     image_orientation = getorientation(dcm)
@@ -50,11 +48,11 @@ const DCM_TO_LOAD = "./DICOMImages/"
     # get all the image attributes and hyper parameters
     hyp = gethyp(dcm)
     patient_name = "COMPRESION MAMOGRAFICA PACIENTE 1 "
-    @test hyp[tag"PatientName"] == patient_name
+    @test hyp[tag"PatientName"] == patient_name == get_patient_name(dcm)
     @test hyp[tag"PixelSpacing"] == [named_spacing.sagital, named_spacing.coronal] 
     @test hyp[tag"SliceThickness"] == named_spacing.axial
     # test first slide with the last slice of the image parameters
-    hyp[tag"PixelData"] == int_array[:,:,1]
+    hyp[tag"PixelData"] == intensity[:,:,1]
     hyp_image_orientation = hyp[tag"ImageOrientationPatient"]
     @test ≈(hyp_image_orientation,  image_orientation_vector, atol = 1e-2)
 
@@ -65,10 +63,10 @@ end
     # load dicom images
     dcm = load_dicom(DCM_TO_LOAD)
 
-    intensity_array = getintensity(dcm)
+    intensity = getintensity(dcm)
     # build histogram using HistogramThresholding pkg
     num_segments = 3
-    segments, num_pix_pkg = build_histogram(vec(intensity_array), num_segments)    
+    segments, num_pix_pkg = build_histogram(vec(intensity), num_segments)    
     # remove the first elements 
     # counts = counts[1:end]
     # compute segments 
@@ -82,7 +80,7 @@ end
     #TODO: fix num_pix_pkg == num_pixes
     @test num_pix_pkg[end] == num_pixes[end]
     # get segments intensity vector 
-    int_segments = getint.(segments)
+    intensity_segments = getintensity.(segments)
     # compute means for each segments  
     mean_segments = mean.(segments)
     # compute std for each segments  

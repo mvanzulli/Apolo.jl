@@ -63,6 +63,7 @@ using LinearAlgebra: norm
     Lᵢₛ = 2.0
     Lⱼₛ = 1.0
     # -- grid -- #
+    #TODO: Update create grid test 
     """ Creates a triangle grid inside a square domain of (Lᵢₛ, Lⱼₛ) """
     function create_solid_grid(nx, ny, Lᵢₛ=Lᵢₛ, Lⱼₛ=Lⱼₛ)
         corners = [

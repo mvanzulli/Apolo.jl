@@ -6,6 +6,7 @@ module Images
 
 # Import external dependencies to overload
 import Statistics: mean, std
+import Base: size, length
 # Import local dependencies to overload
 import ..ForwardProblem: getdim, getgrid
 
@@ -16,9 +17,9 @@ using SparseArrays: spzeros
 # Export interface functions and types
 export MedicalImage, MedicalSegment,
     load_dicom, getintensity, getdim,
-    getspacing, gethyp, getorientation,
-    getorigin, 
-    getindexes, getnumpix, getint, mean,
+    getspacing, gethyp, getorientation, 
+    get_patient_name, getorigin, build_coordinates,
+    getindexes, getnumpix, mean,
     std, getvarcoef, compute_histogram
 
 
@@ -48,22 +49,60 @@ end
 
 " Gets the image intensity array"
 getintensity(med_img::MedicalImage) = med_img.intensity
-" Gets the image dimensions"
+
+" Gets the image size"
+size(med_img::MedicalImage) = size(getintensity(med_img))
+
+" Gets the image dimensions in voxels"
 getdim(med_img::MedicalImage) = med_img.dimension
+
 " Gets the image spacing between pixels"
 getspacing(med_img::MedicalImage) = med_img.spacing
+
 " Gets the image orientation"
 getorientation(med_img::MedicalImage) = med_img.orientation
+
 " Gets the image origin"
 getorigin(med_img::MedicalImage) = med_img.origin
+
 " Gets the image hyper-paramters"
 gethyp(med_img::MedicalImage) = med_img.hyp_params
+
+" Gets the image metric dimensions"
+length(med_img::MedicalImage) = size(med_img) .* collect(getspacing(med_img)) 
+
+" Gets the image coordinates"
+function build_coordinates(med_img::MedicalImage)
+    
+    # get origin
+    (oₓ, oⱼ, oₖ)  = getorigin(med_img)
+    # get spacing
+    (Δₓ, Δⱼ, Δₖ)  = getspacing(med_img) |> collect
+    # get length 
+    (Lₓ, Lⱼ, Lₖ) = length(med_img)
+    # get length 
+    (nₓ, nⱼ, nₖ) = getdim(med_img) |> collect
+    
+    # build start and finish 
+    x_begin = oₓ + Δₓ/2; x_end =  Lₓ - Δₓ/2
+    y_begin = oⱼ + Δⱼ/2; y_end =  Lⱼ - Δⱼ/2
+    z_begin = oₖ + Δₖ/2; z_end =  Lₖ - Δₖ/2
+    
+    # build coordinates 
+    x_coords = LinRange(x_begin, x_end, nₓ)
+    y_coords = LinRange(y_begin, y_end, nⱼ)
+    z_coords = LinRange(z_begin, z_end, nₖ)
+
+    return x_coords, y_coords, z_coords
+end
+"Gets the patient name"
+get_patient_name(med_img::MedicalImage) = gethyp(med_img)[tag"PatientName"]
 
 "Extracts the pixel by its index"#TODO
 # Base.getindex(m_img::MedicalImage, i1::Int, i2::Int, i3::Int) = m_img.intensity[i1, i2, i3]
 
 
-" Extract the pixel data form a DICOM  array"
+" Extract the pixel data form a DICOM array"
 function getpixeldata(dcm_array)
     if length(dcm_array) == 1
         return only(dcm_array).PixelData
@@ -137,7 +176,7 @@ getindexes(med_seg::MedicalSegment) = med_seg.indexes
 " Gets the number of pixels inside an image segment"
 getnumpix(med_seg::MedicalSegment) = med_seg.num_pix
 " Gets the image segment intensity array"
-getint(med_seg::MedicalSegment) = med_seg.intensity_vec
+getintensity(med_seg::MedicalSegment) = med_seg.intensity_vec
 
 "Computes the histdogram given a vector of intensity edges"
 function compute_histogram(
@@ -152,8 +191,8 @@ function compute_histogram(
 
     # check edges are inside the image range 
     (edgeₘᵢₙ, edgeₘₐₓ) = extrema(edges) 
-    (int_imgₘᵢₙ, int_imgₘₐₓ) = extrema(intensity) 
-    inside_bool = edgeₘᵢₙ ≥ int_imgₘᵢₙ &&  edgeₘₐₓ ≤ int_imgₘₐₓ 
+    (intensityₘᵢₙ, intensityₘₐₓ) = extrema(intensity) 
+    inside_bool = edgeₘᵢₙ ≥ intensityₘᵢₙ &&  edgeₘₐₓ ≤ intensityₘₐₓ 
     !inside_bool && throw(BoundsError("intensity edges must be inside img_int"))
 
     # number of  edges
@@ -167,13 +206,13 @@ function compute_histogram(
         # segment borders
         # left
         borderₘᵢₙ = if segment_idx == 1
-            int_imgₘᵢₙ
+            intensityₘᵢₙ
         else      
             edges[segment_idx - 1]
         end 
         #right
         borderₘₐₓ = if segment_idx == num_segments
-            int_imgₘₐₓ
+            intensityₘₐₓ
         else
             edges[segment_idx]
         end
@@ -184,7 +223,7 @@ function compute_histogram(
         indexes_segment = findall(is_in_segment, intensity)
         
         # compute the intensity segment array 
-        int_segment = intensity[indexes_segment]
+        intensity_segment = intensity[indexes_segment]
 
         # number of pixels inside the segment
         counts_segment = length(indexes_segment)
@@ -194,7 +233,7 @@ function compute_histogram(
         MedicalSegment(
             indexes_segment,
             counts_segment,
-            int_segment,
+            intensity_segment,
             )
 
         # fill segments vector
@@ -206,9 +245,9 @@ end
 
 
 " Gets the image segment intensity mean"
-mean(med_seg::MedicalSegment) = mean(getint(med_seg))
+mean(med_seg::MedicalSegment) = mean(getintensity(med_seg))
 " Gets the intensity standard deviation of an image segment"
-std(med_seg::MedicalSegment) = std(getint(med_seg))
+std(med_seg::MedicalSegment) = std(getintensity(med_seg))
 " Gets the variation coefficient of an image segment"
 varcoef(med_seg::MedicalSegment) = getstd(med_seg) / getmean(med_seg)
 

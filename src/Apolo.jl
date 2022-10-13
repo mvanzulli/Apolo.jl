@@ -28,4 +28,9 @@ include("Interfaces/Images.jl")
 @reexport using .Images
 
 
+# ==============
+# VTK
+# ==============
+include("vtkIO.jl")
+
 end # module Apolo
