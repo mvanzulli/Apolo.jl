@@ -4,12 +4,12 @@
 ####################################
 
 # Import dependencies to overlead
-import IdenGPU.ForwardProblem: _solve, initialize!
+import Apolo.ForwardProblem: _solve, initialize!
 
 # Add libraries to use
 # Internal
-using IdenGPU.Materials: SVK
-using IdenGPU.ForwardProblem: ForwardProblemSolution, getfemdata, getmats, getdofsvals
+using Apolo.Materials: SVK
+using Apolo.ForwardProblem: ForwardProblemSolution, getfemdata, getmats, getdofsvals
 # External
 using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC

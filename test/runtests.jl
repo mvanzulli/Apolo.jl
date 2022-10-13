@@ -1,9 +1,9 @@
 using SafeTestsets,Test, Apolo 
 
-@safetestset "Materials" begin
-    include("interfaces/materials.jl")
+@safetestset "Apolo.Materials" begin
+    include("Interfaces/materials.jl")
 end
 
-@safetestset "IdenGPU.ForwardProblem" begin
+@safetestset "Apolo.ForwardProblem" begin
     include("Interfaces/fproblem.jl")
 end

@@ -2,7 +2,7 @@
 # Forward problem tests #
 ##########################
 # Using internal packages to test 
-using IdenGPU
+using Apolo
 
 # Using external packages to test 
 using Test: @test, @testset
@@ -10,7 +10,7 @@ using Test: @test, @testset
 using Ferrite: Grid, generate_grid, Triangle, Vec, PointEvalHandler, get_point_values
 using LinearAlgebra: norm
 
-@testset "Ferrite FProblem Interface" begin
+@testset "Ferrite ForwardProblem interface" begin
 
     # --- Dofs ---
     symbol = :u
