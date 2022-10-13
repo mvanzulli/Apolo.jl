@@ -17,8 +17,15 @@ include("Interfaces/Materials.jl")
 include("Interfaces/ForwardProblem.jl")
 @reexport using .ForwardProblem
 
-# files 
+# ferrite.jl interface 
 include("ferritesolver.jl")
+
+
+# ==============
+# Images
+# ==============
+include("Interfaces/Images.jl")
+@reexport using .Images
 
 
 end # module Apolo
