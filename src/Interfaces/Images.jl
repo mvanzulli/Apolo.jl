@@ -8,15 +8,15 @@ module Images
 import Statistics: mean, std
 import Base: size, length
 # Import local dependencies to overload
-import ..ForwardProblem: getdim, getgrid
+import ..ForwardProblem: getgrid, getdim
 
 # Add libraries to use
-using DICOM: dcmdir_parse, @tag_str
+using DICOM: DICOMData, dcmdir_parse, @tag_str
 using SparseArrays: spzeros
 
 # Export interface functions and types
-export MedicalImage, MedicalSegment,
-    load_dicom, getintensity, getdim,
+export AbstractImage, MedicalImage, MedicalSegment,
+    load_dicom, getintensity, getnumpix,
     getspacing, gethyp, getorientation, 
     get_patient_name, getorigin, build_coordinates,
     getindexes, getnumpix, mean,
@@ -25,6 +25,48 @@ export MedicalImage, MedicalSegment,
 
 # Scalar parameters for the interface
 const ORIENTATION_TOLERANCE = 1e-2 # this parameter is the tolerance to not consider RAS to IJK rotation
+
+#TODO: med_img(2,2,4) en pixeles
+# med_img[1,2,3] = 
+
+""" Abstract supertype for all images.
+
+The following methods are provided by the interface:
+
+- `getintensity(img)`      -- returns the intensity array of the image `img`. 
+- `get_intensity_type(img)`-- returns the intensity data type.
+- `getnumpix(img)`         -- returns the image resolution in pixels. 
+- `getspacing(img)`        -- returns the space between pixels. 
+- `getorigin(img)`         -- returns the image origin coordinates. 
+- `getlength(img)`         -- returns the image dimensions in metric units.
+"""
+abstract type AbstractImage{T,D} end 
+
+## Methods for abstract parameters:
+" Gets the image intensity array"
+getintensity(img::AbstractImage) = img.intensity
+
+" Gets the image dimension"
+getdim(::AbstractImage{T,D}) where {T,D} = D
+
+" Gets the image intensity array data type"
+get_intensity_type(::AbstractImage{T,D}) where {T,D} = T
+
+" Gets the image size"
+size(img::AbstractImage) = size(getintensity(img))
+
+" Gets the image dimensions in voxels"
+getnumpix(img::AbstractImage) = img.dimension
+
+" Gets the image spacing between pixels"
+getspacing(img::AbstractImage) = img.spacing
+
+" Gets the image origin"
+getorigin(img::AbstractImage) = img.origin
+
+" Gets the image metric dimensions"
+getlength(img::AbstractImage) = size(img) .* collect(getspacing(img)) 
+
 
 """ Medical image struct.
 
@@ -38,50 +80,38 @@ const ORIENTATION_TOLERANCE = 1e-2 # this parameter is the tolerance to not cons
 - `hyp_params`  -- last slice DICOM image with its corresponding hyper parameters 
 
 """
-struct MedicalImage{T}
-    intensity::Array{<:Number,3}
+struct MedicalImage{T,D,F} <:AbstractImage{T,D}
+    intensity::Array{T,D}
     dimension::NamedTuple
     spacing::NamedTuple
-    origin::NTuple{3,<:Real}
+    origin::NTuple{D,<:Real}
     orientation::Symbol
     hyp_params
 end
+#AbstractImage{D}
+#TODO: Fake Image 
+#TODO: VTKImage
+#TODO:Cashear al medical image PointEvalHandler  
+#TODO implement interpolation 
+# (med_img::MedicalImage)(x, y, z) = # llamada al eval handler 
 
-" Gets the image intensity array"
-getintensity(med_img::MedicalImage) = med_img.intensity
-
-" Gets the image size"
-size(med_img::MedicalImage) = size(getintensity(med_img))
-
-" Gets the image dimensions in voxels"
+" Gets the image hyper-parameters"
 getdim(med_img::MedicalImage) = med_img.dimension
-
-" Gets the image spacing between pixels"
-getspacing(med_img::MedicalImage) = med_img.spacing
-
-" Gets the image orientation"
-getorientation(med_img::MedicalImage) = med_img.orientation
-
-" Gets the image origin"
-getorigin(med_img::MedicalImage) = med_img.origin
-
-" Gets the image hyper-paramters"
+" Gets the image hyper-parameters"
 gethyp(med_img::MedicalImage) = med_img.hyp_params
 
-" Gets the image metric dimensions"
-length(med_img::MedicalImage) = size(med_img) .* collect(getspacing(med_img)) 
 
 " Gets the image coordinates"
-function build_coordinates(med_img::MedicalImage)
+function build_coordinates(med_img::MedicalImage{T,2}) where T
     
     # get origin
     (oₓ, oⱼ, oₖ)  = getorigin(med_img)
     # get spacing
     (Δₓ, Δⱼ, Δₖ)  = getspacing(med_img) |> collect
     # get length 
-    (Lₓ, Lⱼ, Lₖ) = length(med_img)
+    (Lₓ, Lⱼ, Lₖ) = getlength(med_img)
     # get length 
-    (nₓ, nⱼ, nₖ) = getdim(med_img) |> collect
+    (nₓ, nⱼ, nₖ) = getnumpix(med_img) |> collect
     
     # build start and finish 
     x_begin = oₓ + Δₓ/2; x_end =  Lₓ - Δₓ/2
@@ -111,8 +141,15 @@ function getpixeldata(dcm_array)
     end
 end
 
-"Extract the image orientation"
-function getorientation(dcm)
+function getorientation(dcm::MedicalImage{T,D,DICOMData}) where {T,D}
+    # extract DICOM hyper parameters
+    hyp = gethyp(dcm)
+    # run 
+    orient = getorientation(hyp)
+    return orient
+end
+"Extract the image orientation from a DICOMData"
+function getorientation(dcm::DICOMData)
     orientations = Dict(
         :coronal => [1, 0, 0, 0, 0, -1],
         :sagittal => [0, 1, 0, 0, 0, -1],
@@ -132,7 +169,7 @@ end
 getspacing(dcm) = (sagital=dcm[tag"PixelSpacing"][1], coronal=dcm[tag"PixelSpacing"][2], axial=dcm[tag"SliceThickness"])
 
 " Loads a DICOM directory and returns a named tuple array of different series "
-function load_dicom(dir)
+function load_dicom(dir::String)
     # load the dicom directory
     dcms = dcmdir_parse(dir)
     # 'dcms' only one type of serie is admitted so we have to check that 
@@ -141,17 +178,21 @@ function load_dicom(dir)
     dcm = dcms[1]
     #  Construct the named medical image
     # extract the image type
-    img_type = typeof(dcm)
+    format = typeof(dcm)
     # extract the intensity array
     intensity = getpixeldata(dcms)
+    # extract the intensity array data type
+    intensity_type = eltype(intensity)
     # extract the image spacing 
     spacing = getspacing(dcm)
     # extract the image dimension 
     dimension = (sagital=size(intensity, 1), coronal=size(intensity, 2), axial=size(intensity, 3))
+    dim_number = length(dimension)
     # extract the image orientation
     orientation = getorientation(dcm)
     # construct and build the image 
-    return MedicalImage{img_type}(intensity, dimension, spacing, (0, 0, 0), orientation, dcm)
+    med_img = MedicalImage{intensity_type, dim_number, format}(intensity, dimension, spacing, (0, 0, 0), orientation, dcm)
+    return med_img
 end
 
 
@@ -164,10 +205,10 @@ the histogram sorted by intensity values.
 - `num_pix`   -- number of pixels inside this segment.
 - `intensity` -- segment intensity array.
 """
-struct MedicalSegment
-    indexes::Vector{CartesianIndex}
+struct MedicalSegment{T,D}
+    indexes::Vector{CartesianIndex{D}}
     num_pix::Integer
-    intensity_vec::Array{<:Number}
+    intensity_vec::Array{T}
 end
 
 

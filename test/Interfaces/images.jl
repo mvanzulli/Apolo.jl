@@ -4,6 +4,8 @@
 
 # Using internal packages to test 
 using Apolo.Images
+using Apolo.ForwardProblem: getdim
+
 
 # Using external packages to test 
 using Test: @test, @testset
