@@ -27,6 +27,11 @@ include("ferritesolver.jl")
 include("Interfaces/Images.jl")
 @reexport using .Images
 
+# ==============
+# Geometry
+# ==============
+include("geometry.jl")
+
 
 # ==============
 # VTK
