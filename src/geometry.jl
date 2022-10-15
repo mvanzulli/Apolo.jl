@@ -8,7 +8,7 @@ import LazySets: Hyperrectangle
 import Base: extrema, ∈, ∩, ∪,abs
 # Add libraries to use
 # internal
-using IdenGPU.ForwardProblem: ForwardProblemSolution, getdofsvals
+using Apolo.ForwardProblem: ForwardProblemSolution, getdofsvals
 
 # External
 import LinearAlgebra: Adjoint
@@ -25,10 +25,11 @@ using Images: feature_transform, distance_transform
 
 
 # Export interface functions and types            
-export getsides, get_boundary_points_def, get_boundary_points_ref, binary_mat_zone,
-    create_solid_grid, get_elements, abs, jaccard, mesh_hyperrectangle, 
-    mean_hausdorff, geometric_simillarty,
-    SolutionBoundary
+export SolutionBoundary,
+getsides, get_boundary_points_def, get_boundary_points_ref, 
+binary_mat_zone,create_solid_grid, get_elements, abs, jaccard, 
+mesh_hyperrectangle, mean_hausdorff, geometric_simillarty
+
 
 
 #==================================================
