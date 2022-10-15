@@ -67,7 +67,7 @@ end
 
     intensity = getintensity(dcm)
     # build histogram using HistogramThresholding pkg
-    num_segments = rand(1:10)
+    num_segments = 3
     segments_pkg, num_pix_pkg = build_histogram(vec(intensity), num_segments)   
     # trasnform it into vectors
     segments_pkg = segments_pkg |> collect
@@ -79,7 +79,7 @@ end
     # get num pixels inside each segment
     num_pixes = getnumpix.(segments)
     # test results (offset array)
-    @test num_pix_pkg[1:end] == num_pixes
+    @test isapprox(num_pix_pkg[1:end], num_pixes, atol=2)
     # get segments intensity vector 
     intensity_segments = getintensity.(segments)
     # compute means for each segments  
