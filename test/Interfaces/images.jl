@@ -67,24 +67,24 @@ end
 
     intensity = getintensity(dcm)
     # build histogram using HistogramThresholding pkg
-    num_segments = 3
-    segments, num_pix_pkg = build_histogram(vec(intensity), num_segments)    
+    num_segments = rand(1:10)
+    segments_pkg, num_pix_pkg = build_histogram(vec(intensity), num_segments)   
+    # trasnform it into vectors
+    segments_pkg = segments_pkg |> collect
     # remove the first elements 
-    # counts = counts[1:end]
     # compute segments 
-    segments = compute_histogram(dcm, collect(segments)[2:end])
-
+    segments = compute_histogram(dcm, segments_pkg[2:end])
     # get segments indexes 
     seg_indexs = getindexes.(segments) 
     # get num pixels inside each segment
     num_pixes = getnumpix.(segments)
-    # test results
-    #TODO: fix num_pix_pkg == num_pixes
-    @test num_pix_pkg[end] == num_pixes[end]
+    # test results (offset array)
+    @test num_pix_pkg[1:end] == num_pixes
     # get segments intensity vector 
     intensity_segments = getintensity.(segments)
     # compute means for each segments  
     mean_segments = mean.(segments)
     # compute std for each segments  
     std_segments = std.(segments)
+
 end
