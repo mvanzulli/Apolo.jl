@@ -1,5 +1,5 @@
 # Apolo.jl
-## *An under-contruction package for material identification problems*
+## *An under-construction package for material identification problems*
 
 | **Documentation** |**Status** |**Community** |**Version-specific Citation** | **License** |
 |:-----------------:|:---------------:|:------------:|:----------------------------:|:-----------:|
