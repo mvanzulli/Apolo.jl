@@ -14,8 +14,10 @@ import ..ForwardProblem: dimension, getgrid
 # Add libraries to use
 using AutoHashEquals
 using DICOM: DICOMData, dcmdir_parse, @tag_str
-using Ferrite: Grid, Quadrilateral, DofHandler, get_point_values
-using Apolo: create_grid
+using Apolo: create_rectangular_grid, ⊂
+using Ferrite: Vec, Grid, Quadrilateral,
+    DofHandler, PointEvalHandler, Lagrange, RefCube,
+    get_point_values, close!
 
 # Export interface functions and types
 export AbstractImage, MedicalImage, MedicalSegment, GenericImage,
@@ -25,7 +27,7 @@ export AbstractImage, MedicalImage, MedicalSegment, GenericImage,
     # Features AbstractImage 
     create_img_grid,
     # Extractors MedicalImage
-    hyper_params, orientation, patient_name, indexes,
+    hyper_parameters, orientation, patient_name, indexes,
     # Medical image features
     mean, load_dicom, std, getvarcoef, compute_histogram
 
@@ -117,14 +119,14 @@ function create_img_grid(
     finish_img = start_img .+ length_img
 
     # Mesh parameters
-    num_elements = num_pixels .- Tuple(ones(Int,D))
+    num_elements = num_pixels .- Tuple(ones(Int, D))
     # compute start point
     start_mesh = start_img .+ spacing_img ./ 2
     # compte finish point
     finish_mesh = finish_img .- spacing_img ./ 2
 
     # generate grid
-    grid = create_grid(2, num_elements, start_mesh, finish_mesh, Quadrilateral)
+    grid = create_rectangular_grid(2, num_elements, start_mesh, finish_mesh, Quadrilateral)
 
     return grid
 end
@@ -152,28 +154,38 @@ struct GenericImage{T,D} <: AbstractImage{T,D}
         num_pixels::NTuple{D,<:Integer},
         spacing::NTuple{D,<:Real},
         start::NTuple{D,<:Real},
-        ) where {T,D}
-        
+    ) where {T,D}
+
         # compute end point
         finish = start .+ num_pixels .* spacing
         length_img = finish .- start
         # create grid
         grid = create_img_grid(start, spacing, length_img, num_pixels)
-        
+
         # instantiate generic grid 
         new{T,D}(intensity, num_pixels, spacing, start, grid)
     end
 end
 
-(img::AbstractImage{T,2})(x, y, z) = _eval_intenisty(img,(x, y)) 
-(img::AbstractImage{T,3})(x, y, z) = # llamada al eval handler 
+(img::AbstractImage{T,2} where {T})(x, y, z) = _eval_intensity(img, (x, y))
+(img::AbstractImage{T,3} where {T})(x, y, z) = # llamada al eval handler 
+    "Internal function to evaluate the image intensity at a generic point via Ferrite Grid"
+function _eval_intensity(img::AbstractImage{T,2}, p::NTuple{2,<:Real}) where {T}
 
-function _eval_intenisty(img::AbstractImage{T,2}, p::NTuple{2, <:Real}) where T 
+    #Check if p is inside the grid image 
+    _is_inside_img_grid(img, p) && return _eval_intensity_inside_grid(img, p)
 
-    #TODO: Increase performance of this operation
+end
+"Internal function to evaluate the image at a generic point (inside the image grid) "
+
+function _eval_intensity_inside_grid(
+    img::AbstractImage{T,2},
+    p::NTuple{2,<:Real}
+) where {T}
+    #TODO: Increase performance of this operation (cashear el Point Eval handler a la imagen ?)
     # get the image intensity and transform it into a vector
     int_ferrite_vec = Vector{Float64}()
-
+    # TODO: Fix Ferrite CCW nomenclature
     for intᵢ in vec(intensity(img))
         push!(int_ferrite_vec, intᵢ)
     end
@@ -188,18 +200,25 @@ function _eval_intenisty(img::AbstractImage{T,2}, p::NTuple{2, <:Real}) where T
 
     # create evaluation handlar
     eval_point = [Vec(p)]
-    ph_img = PointEvalHandler(grid_img, eval_point);
+    ph_img = PointEvalHandler(grid_img, eval_point)
 
-    # 
-    i_points = Ferrite.get_point_values(
-        ph_img, dh_img, 
+    # evaluate 
+    i_points = get_point_values(
+        ph_img, dh_img,
         int_ferrite_vec,
         :intensity
-        )
+    )
 
     return i_points
 end
 
+"Checks if p is inside the image grid. "
+function _is_inside_img_grid(img, p::NTuple{T,<:Real}) where {T}
+    # extract grid 
+    grid_img = getgrid(img)
+    # check and return
+    return p ⊂ grid_img
+end
 
 """ Medical image struct.
 
@@ -220,7 +239,6 @@ struct MedicalImage{T,D,F} <: AbstractImage{T,D}
     start::NTuple{D,<:Real}
     orientation::Symbol
     hyp_params
-    grid::Grid
     # Cash the Ferrite.Grid element of the MedicalImage
     # function MedicalImage{T,D,F}(
     #     intensity::Array{T,D}
@@ -242,11 +260,11 @@ end
 " Gets the image hyper-parameters"
 dimension(med_img::MedicalImage) = med_img.dimension
 " Gets the image hyper-parameters"
-hyper_parameter(med_img::MedicalImage) = med_img.hyp_params
+hyper_parameters(med_img::MedicalImage) = med_img.hyp_params
 
 
 "Gets the patient name"
-patient_name(med_img::MedicalImage) = hyper_parameter(med_img)[tag"PatientName"]
+patient_name(med_img::MedicalImage) = hyper_parameters(med_img)[tag"PatientName"]
 
 "Extracts the pixel by its index"#TODO
 # Base.getindex(m_img::MedicalImage, i1::Int, i2::Int, i3::Int) = m_img.intensity[i1, i2, i3]
@@ -263,7 +281,7 @@ end
 
 function orientation(dcm::MedicalImage{T,D,DICOMData}) where {T,D}
     # extract DICOM hyper parameters
-    hyp = hyper_parameter(dcm)
+    hyp = hyper_parameters(dcm)
     # run 
     orient = orientation(hyp)
     return orient
@@ -286,7 +304,7 @@ function orientation(dcm::DICOMData)
 end
 
 "Returns a named tuple with image spacing in axial, sagital and coronal direction "
-spacing(dcm) = (sagital=dcm[tag"PixelSpacing"][1], coronal=dcm[tag"PixelSpacing"][2], axial=dcm[tag"SliceThickness"])
+spacing(dcm::DICOMData) = (sagital=dcm[tag"PixelSpacing"][1], coronal=dcm[tag"PixelSpacing"][2], axial=dcm[tag"SliceThickness"])
 
 " Loads a DICOM directory and returns a named tuple array of different series "
 function load_dicom(dir::String)
@@ -300,18 +318,29 @@ function load_dicom(dir::String)
     # extract the image type
     format = typeof(dcm)
     # extract the intensity array
-    intensity = pixeldata(dcms)
+    intensity_dcm = pixeldata(dcms)
     # extract the intensity array data type
-    intensity_type = eltype(intensity)
+    intensity_type_dcm = eltype(intensity_dcm)
     # extract the image spacing 
-    spacing = spacing(dcm)
+    spacing_dcm = spacing(dcm)
     # extract the image dimension 
-    dimension = (sagital=size(intensity, 1), coronal=size(intensity, 2), axial=size(intensity, 3))
-    dim_number = length(dimension)
+    dimension_dcm = (
+        sagital=size(intensity_dcm, 1),
+        coronal=size(intensity_dcm, 2),
+        axial=size(intensity_dcm, 3)
+    )
+
+    dim_number = length(dimension_dcm)
     # extract the image orientation
-    orientation = orientation(dcm)
+    orientation_dcm = orientation(dcm)
     # construct and build the image 
-    med_img = MedicalImage{intensity_type,dim_number,format}(intensity, dimension, spacing, (0, 0, 0), orientation, dcm)
+    med_img = MedicalImage{intensity_type_dcm,dim_number,format}(
+        intensity_dcm,
+        dimension_dcm,
+        spacing_dcm,
+        (0, 0, 0),
+        orientation_dcm,
+        dcm)
     return med_img
 end
 
@@ -345,14 +374,14 @@ function compute_histogram(
     edges::Vector{<:Number},
 )
     # get the intensity array
-    intensity = intensity(med_img)
+    intensity_med = intensity(med_img)
 
     # sort edges min to max value
     edges = sort(edges)
 
     # check edges are inside the image range 
     (edgeₘᵢₙ, edgeₘₐₓ) = extrema(edges)
-    (intensityₘᵢₙ, intensityₘₐₓ) = extrema(intensity)
+    (intensityₘᵢₙ, intensityₘₐₓ) = extrema(intensity_med)
     inside_bool = edgeₘᵢₙ ≥ intensityₘᵢₙ && edgeₘₐₓ ≤ intensityₘₐₓ
     !inside_bool && throw(BoundsError("intensity edges must be inside img_int"))
 
@@ -381,10 +410,10 @@ function compute_histogram(
         is_in_segment(x) = borderₘᵢₙ ≤ x ≤ borderₘₐₓ
 
         # compute the cartesian indexes of pixels that satisfy is_in_segment condition  
-        indexes_segment = findall(is_in_segment, intensity)
+        indexes_segment = findall(is_in_segment, intensity_med)
 
         # compute the intensity segment array 
-        intensity_segment = intensity[indexes_segment]
+        intensity_segment = intensity_med[indexes_segment]
 
         # number of pixels inside the segment
         counts_segment = length(indexes_segment)

@@ -2,32 +2,43 @@
 # Images tests #
 ################
 
-# Using internal packages to test 
-using Apolo:create_grid,dimension
+# External module functions 
+using Apolo:
+    create_rectangular_grid,
+    dimension,
+    getgrid,
+    ⊂
+# Internal exported module functions 
 using Apolo.Images
+# Internal non-exported module functions 
+using Apolo.Images:
+    _eval_intensity_inside_grid,
+    _is_inside_img_grid
+
+
 
 
 # Using external packages to test 
 using Test: @test, @testset
 using AutoHashEquals
 using HistogramThresholding: build_histogram
-using Statistics:  var, mean
+using Statistics: var, mean
 using DICOM: @tag_str
 
 
-@testset "Generic images" begin
-    
+@testset "Generic images unitary tests" begin
+
     # 2D image 
     # image dimensions 
-    spacing_img = (.5, .25)
+    spacing_img = (0.5, 0.25)
     num_pixels = (4, 3)
-    start_img = (1.,1.)
+    start_img = (1.0, 1.0)
     image_dimension = length(spacing_img)
     finish_img = start_img .+ num_pixels .* spacing_img
     length_img = finish_img .- start_img
     # image intensity
-    intensity_vec = collect(1:12)
-    intensity_mat = reshape(intensity_vec, num_pixels )
+    intensity_vec = collect(1.0:12.0)
+    intensity_mat = reshape(intensity_vec, num_pixels)
     # create the image grid
     grid_img = create_img_grid(start_img, spacing_img, length_img, num_pixels)
 
@@ -46,17 +57,37 @@ using DICOM: @tag_str
 
     # test coordinates generator
     coords = coordinates(generic_img)
-    @test spacing_img[1] ==  coords[1][2] - coords[1][1] 
-    @test spacing_img[2] ==  coords[2][2] - coords[2][1] 
+    @test spacing_img[1] == coords[1][2] - coords[1][1]
+    @test spacing_img[2] == coords[2][2] - coords[2][1]
     extremaᵢ, extremaⱼ = extrema.(coords)
-    @test extremaᵢ == (start_img[1] + spacing_img[1]/2, finish_img[1] -  spacing_img[1]/2)
-    @test extremaⱼ == (start_img[2] + spacing_img[2]/2, finish_img[2] -  spacing_img[2]/2)
+    @test extremaᵢ == (start_img[1] + spacing_img[1] / 2, finish_img[1] - spacing_img[1] / 2)
+    @test extremaⱼ == (start_img[2] + spacing_img[2] / 2, finish_img[2] - spacing_img[2] / 2)
 
     # test mesh generator
     grid_img_extracted = getgrid(generic_img)
     @test grid_img.cells == grid_img_extracted.cells
     @test grid_img.nodes == grid_img_extracted.nodes
     @test grid_img.facesets == grid_img_extracted.facesets
+
+    # check grid image methods
+    inside_grid_img_point = (1.5, 1.5)
+    # evaluate intensity via an image functor 
+    @test inside_grid_img_point ⊂ grid_img && _is_inside_img_grid(generic_img, inside_grid_img_point)
+    img_grid_origin = start_img .+ spacing_img ./ 2
+    # test origin intensity
+    @test (coords[1][1], coords[2][1]) == img_grid_origin
+    @test _eval_intensity_inside_grid(generic_img, img_grid_origin)[1] == intensity_vec[1]
+    # test second point (origin + (Δₓ/2, 0)) intensity
+    consecutive_x = img_grid_origin .+ (spacing_img[1], 0) ./ 2
+    @test _eval_intensity_inside_grid(generic_img, consecutive_x) == [(intensity_vec[1] + intensity_vec[2]) / 2]
+    # test second point (origin + (0, Δⱼ/2)) intensity
+    consecutive_y = img_grid_origin .+ (0, spacing_img[2])
+    # @test consecutive_y == _eval_intensity_inside_grid(generic_img, consecutive_y) == [(intensity_vec[1] + intensity_vec[5])/2]
+    # @test (coords[1][1], coords[2][1]) == img_grid_origin
+    # test end intensity
+    # @test (coords[1][end], coords[2][end]) == img_grid_finish
+    # @test  _eval_intensity_inside_grid(generic_img, img_grid_finish) == intensity_vec[end]
+
 
 end
 
@@ -70,66 +101,70 @@ const DCM_TO_LOAD = "./DICOMImages/"
 # this tests is also validated with 3D slicer results
 @testset "Reading DICOM" begin
     # load dicom images
-    dcm = load_dicom(DCM_TO_LOAD)
+    med_img = load_dicom(DCM_TO_LOAD)
 
     # get image dimensions
-    dim = getdim(dcm);
+    dim = dimension(med_img)
     num_pix = (256, 256, 400)
-    named_num_pix = (sagital = num_pix[1], coronal = num_pix[2], axial = num_pix[3])
+    named_num_pix = (sagital=num_pix[1], coronal=num_pix[2], axial=num_pix[3])
     @test dim == named_num_pix
 
     # get image intensity array
-    intensity = getintensity(dcm)
-    @test size(intensity) == num_pix
+    intensity_med = intensity(med_img)
+    @test size(intensity_med) == num_pix
 
     # get the image spacing
-    spacing = (0.78125, 0.78125, 0.500003) 
-    named_spacing = (sagital = spacing[1], coronal = spacing[2], axial = spacing[3])
-    spacing = getspacing(dcm)
-    @test spacing == named_spacing
+    spacing_test = (0.78125, 0.78125, 0.500003)
+    named_spacing = (
+        sagital=spacing_test[1],
+        coronal=spacing_test[2],
+        axial=spacing_test[3]
+    )
+    spacing_med = spacing(med_img)
+    @test spacing_med == named_spacing
 
-        
+
     # test image orientation
-    image_orientation = getorientation(dcm)
-    image_orientation_vector = if image_orientation == :axial 
-         image_orient = [1, 0, 0, 0, 1, 0]
+    image_orientation = orientation(med_img)
+    image_orientation_vector = if image_orientation == :axial
+        image_orient = [1, 0, 0, 0, 1, 0]
     end
 
     # get all the image attributes and hyper parameters
-    hyp = gethyp(dcm)
-    patient_name = "COMPRESION MAMOGRAFICA PACIENTE 1 "
-    @test hyp[tag"PatientName"] == patient_name == get_patient_name(dcm)
-    @test hyp[tag"PixelSpacing"] == [named_spacing.sagital, named_spacing.coronal] 
+    hyp = hyper_parameters(med_img)
+    patient_name_test = "COMPRESION MAMOGRAFICA PACIENTE 1 "
+    @test hyp[tag"PatientName"] == patient_name_test == patient_name(med_img)
+    @test hyp[tag"PixelSpacing"] == [named_spacing.sagital, named_spacing.coronal]
     @test hyp[tag"SliceThickness"] == named_spacing.axial
     # test first slide with the last slice of the image parameters
-    hyp[tag"PixelData"] == intensity[:,:,1]
+    hyp[tag"PixelData"] == intensity_med[:, :, 1]
     hyp_image_orientation = hyp[tag"ImageOrientationPatient"]
-    @test ≈(hyp_image_orientation,  image_orientation_vector, atol = 1e-2)
+    @test ≈(hyp_image_orientation, image_orientation_vector, atol=1e-2)
 
 end
 
 @testset "Processing DICOM" begin
 
     # load dicom images
-    dcm = load_dicom(DCM_TO_LOAD)
+    med_img = load_dicom(DCM_TO_LOAD)
 
-    intensity = getintensity(dcm)
+    intensity_med = intensity(med_img)
     # build histogram using HistogramThresholding pkg
     num_segments = 3
-    segments_pkg, num_pix_pkg = build_histogram(vec(intensity), num_segments)   
-    # trasnform it into vectors
+    segments_pkg, num_pix_pkg = build_histogram(vec(intensity_med), num_segments)
+    # transform it into vectors
     segments_pkg = segments_pkg |> collect
     # remove the first elements 
     # compute segments 
-    segments = compute_histogram(dcm, segments_pkg[2:end])
+    segments = compute_histogram(med_img, segments_pkg[2:end])
     # get segments indexes 
-    seg_indexs = getindexes.(segments) 
+    seg_indexs = getindexes.(segments)
     # get num pixels inside each segment
-    num_pixes = getnumpix.(segments)
+    num_pixes = numpix.(segments)
     # test results (offset array)
     @test isapprox(num_pix_pkg[1:end], num_pixes, atol=2)
     # get segments intensity vector 
-    intensity_segments = getintensity.(segments)
+    intensity_segments = intensity.(segments)
     # compute means for each segments  
     mean_segments = mean.(segments)
     # compute std for each segments  

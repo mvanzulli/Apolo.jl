@@ -14,16 +14,16 @@ using Ferrite: Grid, addfaceset!, addcellset!
 # Export interface functions and types
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
 AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProbSolver, ForwardProblemSolution,
-getsym, getdofs, getgrid, getbcs, getdofsvals, getdim, vals_func, solve, _solve, component
+getsym, getdofs, getgrid, getbcs, getdofsvals, dimension, vals_func, solve, _solve, component
 
 " Return the dimenssion of a grid. "
-getdim(::Grid{Dim}) where {Dim} = Dim
+dimension(::Grid{Dim}) where {Dim} = Dim
 
 """ Abstract supertype that includes degrees of freedom  information.
 
 The following methods are provided by the interface
 - `getsym(dof)` -- return the symbol of the degree of freedom `dof`. 
-- `getdim(dof)` -- return the dimension of the degree of freedom `dof`. 
+- `dimension(dof)` -- return the dimension of the degree of freedom `dof`. 
 """
 abstract type AbstractDof{dim} end
 
@@ -31,7 +31,7 @@ abstract type AbstractDof{dim} end
 getsym(dof::AbstractDof{Dim}) where {Dim} = dof.symbol
 
 " Return the dof dimension. "
-getdim(::AbstractDof{Dim}) where {Dim} = Dim
+dimension(::AbstractDof{Dim}) where {Dim} = Dim
 
 
 """ Degree of freedom struct.

@@ -22,15 +22,17 @@ include("ferritesolver.jl")
 
 
 # ==============
+# Geometry
+# ==============
+include("geometry.jl")
+
+
+# ==============
 # Images
 # ==============
 include("Interfaces/Images.jl")
 @reexport using .Images
 
-# ==============
-# Geometry
-# ==============
-include("geometry.jl")
 
 
 # ==============

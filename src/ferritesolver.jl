@@ -21,7 +21,8 @@ export InterStressDisp, getuinter, getσinter,
     QuadratureRulesStressDisp, getcellqr, getfaceqr,
     CellFaceValsStressDisp, getucellval, getufaceval, getσcellval,
     FerriteForwardSolv, getdh, getintgeo, getintdofs, create_dirichlet_bc,
-    create_values, get_dof_point_values
+    create_values, get_dof_point_values,
+    Grid
 
 " Struct with the interpolations for stress and displacements."
 Base.@kwdef struct InterStressDisp
@@ -110,9 +111,9 @@ function default_elements(fproblem)
 
 
     # Exract u, σ and grid dimensions
-    dimu = getdim(fproblem.data.dofs.u)
-    dimσ = getdim(fproblem.data.dofs.σ)
-    dimgrid = getdim(fproblem.data.grid)
+    dimu = dimension(fproblem.data.dofs.u)
+    dimσ = dimension(fproblem.data.dofs.σ)
+    dimgrid = dimension(fproblem.data.grid)
 
     # elements to use 
     tetra = RefTetrahedron
@@ -167,9 +168,9 @@ function create_dofhandler(
     # create a dof handle
     dh = DofHandler(grid)
     # Push displacement into dof handler
-    push!(dh, getsym(dofs.u), getdim(dofs.u), inter_dofs.u)
+    push!(dh, getsym(dofs.u), dimension(dofs.u), inter_dofs.u)
     # Push pressure into dof handler
-    push!(dh, getsym(dofs.σ), getdim(dofs.σ), inter_dofs.σ) # check why is 1 
+    push!(dh, getsym(dofs.σ), dimension(dofs.σ), inter_dofs.σ) # check why is 1 
     # Close dofhandler and return it
     close!(dh)
     return dh
@@ -188,7 +189,7 @@ function create_values(
     facevalues_u = FaceVectorValues(qrs.faceu, inter_dofs.u, inter_geo)
 
     # Cell values for p
-    @assert getdim(dofs.σ) == 1 "TODO: Gerealize for vectorial σ dof"
+    @assert dimension(dofs.σ) == 1 "TODO: Gerealize for vectorial σ dof"
     cellvalues_p = CellScalarValues(qrs.cellσ, inter_dofs.σ, inter_geo)
 
     # Create struct

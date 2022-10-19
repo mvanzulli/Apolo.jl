@@ -25,10 +25,10 @@ using Images: feature_transform, distance_transform
 
 
 # Export interface functions and types            
-export SolutionBoundary,
-getsides, get_boundary_points_def, get_boundary_points_ref, 
-binary_mat_zone,create_solid_grid, get_elements, abs, jaccard, 
-mesh_hyperrectangle, mean_hausdorff, geometric_simillarty
+export SolutionBoundary, create_rectangular_grid,
+getsides, get_boundary_points_def, get_boundary_ref, 
+binary_mat_zone, get_elements, abs, jaccard, 
+mesh_hyperrectangle, mean_hausdorff, geometric_simillarty, ⊂	
 
 
 
@@ -44,16 +44,17 @@ const DEFAULT_BOUNDARY_POINTS = 30
 
 """
 
-Creates a triangle grid inside a square domain of (Lᵢₛ, Lⱼₛ)
+Creates a rectangular grid.
 
 ## Fields
-- `nx` -- number of triangles in x
-- `ny` -- number of triangles in y
-- `Lᵢₛ` -- length in x
-- `Lⱼₛ` -- length in y
+- `dimgrid`  -- grid dimension (max 3)
+- `nelem`    -- Tuple with number of elements on each direction
+- `start`    -- Start point
+- `finish`   -- End point
+- `elemType` -- Ferrite element type
 
 """
-function create_solid_grid(
+function create_rectangular_grid(
     dimgrid::Int,
     nelem::D,
     start::T,
@@ -62,7 +63,10 @@ function create_solid_grid(
 ) where
 {D<:VecOrTuple,T<:VecOrTuple,ET<:AbstractCell}
     # check dimensions match
-    check_grid_dims(dimgrid, nelem, start, finish)
+    dimgrid = check_grid_dims(dimgrid, nelem, start, finish)
+    dimgrid !==2 && throw(DimensionMismatch("By the moment is only dim = 2")) 
+    #TODO: extend the  implementation to generic dim grids 
+    
 
     corners = [
         Vec{dimgrid}(Tuple(start)),
@@ -79,7 +83,7 @@ function check_grid_dims(dimgrid::Int, nelem::D, start::T, finish::T) where
 {D<:VecOrTuple,T<:VecOrTuple}
     !(length(nelem) == length(start) == length(finish) == dimgrid) &&
         throw(DimensionMismatch("Check grid dimensions"))
-    return nothing
+    return length(start)
 end
 
 " Get border facesets"
@@ -121,6 +125,17 @@ function extrema(grid::Grid)
     # compute extrema
     return (xₘᵢₙ, yₘᵢₙ, xₘₐₓ, yₘₐₓ)
 end
+
+# TODO: Generalize this function 
+"Check if a point is inside a grid"
+function ⊂(p::NTuple{D}, grid::Grid{D}) where D
+    # compute grid maximum and minimum
+    (xₘᵢₙ, yₘᵢₙ, xₘₐₓ, yₘₐₓ) = extrema(grid)
+
+
+    return xₘᵢₙ ≤ p[1] ≤ xₘₐₓ && yₘᵢₙ ≤ p[2] ≤ yₘₐₓ 
+end
+
 
 
 "Computes the grid border points"
@@ -364,32 +379,6 @@ function binary_mat_zone(
     return bin_mat, Δx, Δy
 end
 
-# " Compute the intersection between two solution boundaries"
-function ∩(
-    solution_boundary₁::SolutionBoundary,
-    solution_boundary₂::SolutionBoundary,
-    num_inter_per_axis::Int=DEFAULT_INTEGRATION_POINTS,
-)
-
-    # build the hyperrectangle containing both solutions
-    hyperbox = Hyperrectangle(solution_boundary₁, solution_boundary₂)
-    ((xₘᵢₙ, yₘᵢₙ), (xₘₐₓ, yₘₐₓ)) = extrema(hyperbox)
-
-
-    # create the grid where both solutions are integrated 
-    xᵥ = range(xₘᵢₙ, xₘₐₓ, length=num_inter_per_axis)
-    yᵥ = range(yₘᵢₙ, yₘₐₓ, length=num_inter_per_axis)
-    Δy = yᵥ[2] - yᵥ[1]
-    Δx = xᵥ[2] - xᵥ[1]
-
-    # compute intersection matrix
-    intersection_mat = binary_mat_zone(xᵥ, yᵥ, solution_boundary₁) .* binary_mat_zone(xᵥ, yᵥ, solution_boundary₂)
-
-    area = sum(intersection_mat) * Δx * Δy
-
-    return intersection_mat, area
-end
-
 "Create a structured two x and y vector to integrate inside a box "
 function mesh_hyperrectangle(
     hyperrect::Hyperrectangle,
@@ -541,7 +530,6 @@ function dice(
     num_points_per_border::Int=DEFAULT_BOUNDARY_POINTS,
     num_inter_per_axis::Int=DEFAULT_INTEGRATION_POINTS,
 )
-\
     # computes intersection area 
     _,intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
