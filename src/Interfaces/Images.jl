@@ -364,7 +364,7 @@ end
 " Gets medical image indexes"
 indexes(med_seg::MedicalSegment) = med_seg.indexes
 " Gets the number of pixels inside an image segment"
-num_pixels(med_seg::MedicalSegment) = med_seg.num_pix
+numpix(med_seg::MedicalSegment) = med_seg.num_pix
 " Gets the image segment intensity array"
 intensity(med_seg::MedicalSegment) = med_seg.intensity_vec
 

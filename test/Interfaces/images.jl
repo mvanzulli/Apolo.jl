@@ -158,7 +158,7 @@ end
     # compute segments 
     segments = compute_histogram(med_img, segments_pkg[2:end])
     # get segments indexes 
-    seg_indexs = getindexes.(segments)
+    seg_indexs = indexes.(segments)
     # get num pixels inside each segment
     num_pixes = numpix.(segments)
     # test results (offset array)
