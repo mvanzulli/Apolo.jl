@@ -16,8 +16,6 @@ using Apolo.Images:
     _is_inside_img_grid
 
 
-
-
 # Using external packages to test 
 using Test: @test, @testset
 using AutoHashEquals
