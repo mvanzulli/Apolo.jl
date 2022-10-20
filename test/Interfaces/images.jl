@@ -12,8 +12,13 @@ using Apolo:
 using Apolo.Images
 # Internal non-exported module functions 
 using Apolo.Images:
+    _eval_intensity,
     _eval_intensity_inside_grid,
-    _is_inside_img_grid
+    _is_inside_img_grid,
+    _index_is_inbounds,
+    _node_cartesian_index,
+    _build_ferrite_img_intensity,
+    _point_is_inbounds
 
 
 # Using external packages to test 
@@ -48,10 +53,27 @@ using DICOM: @tag_str
     @test intensity_type(generic_img) == eltype(intensity_mat)
     @test dimension(generic_img) == image_dimension
     @test numpix(generic_img) == num_pixels
+    @test total_numpix(generic_img) == prod(num_pixels)
     @test spacing(generic_img) == spacing_img
     @test start(generic_img) == start_img
     @test finish(generic_img) == finish_img
     @test length(generic_img) == length_img
+
+    # test Checks
+    # indexes 
+    # is inside function
+    @test !(_index_is_inbounds(-1, generic_img))
+    @test !(_index_is_inbounds(total_numpix(generic_img) + 1, generic_img))
+    # normal case 
+    @test _node_cartesian_index(10, generic_img) == CartesianIndex(2, 3)
+    # edge cases
+    @test _node_cartesian_index(2, generic_img) == CartesianIndex(2, 1)
+    @test _node_cartesian_index(12, generic_img) == CartesianIndex(4, 3)
+    # points
+    @test _point_is_inbounds(start_img, generic_img)
+    @test _point_is_inbounds(finish_img, generic_img)
+    @test _point_is_inbounds((start_img .+ finish_img) ./ 2, generic_img)
+    @test !(_point_is_inbounds((start_img .+ (1.0, 1.0)), generic_img))
 
     # test coordinates generator
     coords = coordinates(generic_img)
@@ -69,26 +91,45 @@ using DICOM: @tag_str
 
     # check grid image methods
     inside_grid_img_point = (1.5, 1.5)
-    # evaluate intensity via an image functor 
+
+    # build ferrite vector to evaluate via PointEvalHandler
+    _build_ferrite_img_intensity(generic_img, grid_img)
+
+    # Evaluate intensity via an image functor 
+    # p is inside the grid (interpolate)
     @test inside_grid_img_point ⊂ grid_img && _is_inside_img_grid(generic_img, inside_grid_img_point)
     img_grid_origin = start_img .+ spacing_img ./ 2
+    img_grid_finish = finish_img .- spacing_img ./ 2
+
     # test origin intensity
     @test (coords[1][1], coords[2][1]) == img_grid_origin
-    @test _eval_intensity_inside_grid(generic_img, img_grid_origin)[1] == intensity_vec[1]
+    @test _eval_intensity(generic_img, img_grid_origin)[1] ==
+          generic_img(img_grid_origin[1], img_grid_origin[2])[1] ==
+          _eval_intensity_inside_grid(generic_img, img_grid_origin)[1] == intensity_vec[1]
+
     # test second point (origin + (Δₓ/2, 0)) intensity
     consecutive_x = img_grid_origin .+ (spacing_img[1], 0) ./ 2
-    @test _eval_intensity_inside_grid(generic_img, consecutive_x) == [(intensity_vec[1] + intensity_vec[2]) / 2]
+    @test _eval_intensity(generic_img, consecutive_x) ==
+          generic_img(consecutive_x[1], consecutive_x[2]) ==
+          _eval_intensity_inside_grid(generic_img, consecutive_x) ==
+          [(intensity_vec[1] + intensity_vec[2]) / 2]
+
     # test second point (origin + (0, Δⱼ/2)) intensity
     consecutive_y = img_grid_origin .+ (0, spacing_img[2])
-    # @test consecutive_y == _eval_intensity_inside_grid(generic_img, consecutive_y) == [(intensity_vec[1] + intensity_vec[5])/2]
-    # @test (coords[1][1], coords[2][1]) == img_grid_origin
-    # test end intensity
-    # @test (coords[1][end], coords[2][end]) == img_grid_finish
-    # @test  _eval_intensity_inside_grid(generic_img, img_grid_finish) == intensity_vec[end]
+    @test _eval_intensity(generic_img, consecutive_y) ==
+          generic_img(consecutive_y[1], consecutive_y[2]) ==
+          _eval_intensity_inside_grid(generic_img, consecutive_y) == [intensity_vec[5]]
 
+    # at the middle of the end cell (finish - (Δᵢ, Δⱼ)/2)
+    mid_final_cell = img_grid_finish .- spacing_img ./ 2
+    intensity_mid_end_cell = (intensity_vec[7] + intensity_vec[8] + intensity_vec[11] + intensity_vec[12]) / 4
+    @test _eval_intensity(generic_img, mid_final_cell) ==
+          generic_img(mid_final_cell[1], mid_final_cell[2]) ==
+          _eval_intensity_inside_grid(generic_img, mid_final_cell) ==
+          [intensity_mid_end_cell]
 
+    # TODO: p is not in the grid (extrapolate)
 end
-
 
 
 # Constant variables and tpyes

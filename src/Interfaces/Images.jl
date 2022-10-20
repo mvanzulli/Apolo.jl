@@ -15,14 +15,14 @@ import ..ForwardProblem: dimension, getgrid
 using AutoHashEquals
 using DICOM: DICOMData, dcmdir_parse, @tag_str
 using Apolo: create_rectangular_grid, ⊂
-using Ferrite: Vec, Grid, Quadrilateral,
+using Ferrite: Vec, Grid, Quadrilateral, CellIterator,
     DofHandler, PointEvalHandler, Lagrange, RefCube,
-    get_point_values, close!
+    get_point_values, close!, getnodes
 
 # Export interface functions and types
 export AbstractImage, MedicalImage, MedicalSegment, GenericImage,
     # Extractors AbstractImage
-    intensity, intensity_type, numpix,
+    intensity, intensity_type, numpix, total_numpix,
     spacing, start, finish, length, coordinates,
     # Features AbstractImage 
     create_img_grid,
@@ -67,6 +67,9 @@ size(img::AbstractImage) = size(intensity(img))
 " Gets the image dimensions in voxels"
 numpix(img::AbstractImage) = img.num_pixels
 
+" Gets the total number of pixels"
+total_numpix(img::AbstractImage) = prod(numpix(img))
+
 " Gets the image spacing between pixels"
 spacing(img::AbstractImage) = img.spacing
 
@@ -81,6 +84,42 @@ finish(img::AbstractImage) = start(img) .+ length(img)
 
 " Gets the image grid"
 getgrid(img::AbstractImage) = img.grid
+
+
+"Checks if a index is inbounds the image dimensions"
+_index_is_inbounds(onedim_index::Int, img::AbstractImage) = 1 ≤ onedim_index ≤ total_numpix(img)
+
+"Checks if a index is inbounds the image dimensions"
+function _index_is_inbounds(ndim_index::CartesianIndex{D}, img::AbstractImage{T,D}) where {T,D} 
+    
+    num_pixels = numpix(img)
+    
+    # Check all the indexes are inbounds
+    index_is_in = true 
+    for direction in 1:D 
+        index_is_in = index_is_in && 1 ≤ ndim_index[direction] ≤ num_pixels[direction]
+    end
+
+    return index_is_in
+
+end
+
+"Checks if a point is inbounds the image "
+function _point_is_inbounds(p::NTuple{D}, img::AbstractImage{T,D}) where {T,D} 
+    
+    # Extract borders
+    start_point = start(img)
+    finish_point = finish(img)
+
+    p_is_in = true
+
+    for axis in 1:D
+        p_is_in = p_is_in &&  start_point[axis] ≤ p[axis] ≤ finish_point[axis]
+    end
+
+    return p_is_in
+end
+
 
 " Gets the image coordinates"
 function coordinates(img::AbstractImage)
@@ -126,7 +165,7 @@ function create_img_grid(
     finish_mesh = finish_img .- spacing_img ./ 2
 
     # generate grid
-    grid = create_rectangular_grid(2, num_elements, start_mesh, finish_mesh, Quadrilateral)
+    grid = create_rectangular_grid(D, num_elements, start_mesh, finish_mesh, Quadrilateral)
 
     return grid
 end
@@ -167,29 +206,26 @@ struct GenericImage{T,D} <: AbstractImage{T,D}
     end
 end
 
-(img::AbstractImage{T,2} where {T})(x, y, z) = _eval_intensity(img, (x, y))
+(img::AbstractImage{T,2} where {T})(x, y) = _eval_intensity(img, (x, y))
 (img::AbstractImage{T,3} where {T})(x, y, z) = # llamada al eval handler 
-    "Internal function to evaluate the image intensity at a generic point via Ferrite Grid"
+
+"Internal function to evaluate the image intensity at a generic point via Ferrite Grid"
 function _eval_intensity(img::AbstractImage{T,2}, p::NTuple{2,<:Real}) where {T}
 
-    #Check if p is inside the grid image 
-    _is_inside_img_grid(img, p) && return _eval_intensity_inside_grid(img, p)
-
-end
-"Internal function to evaluate the image at a generic point (inside the image grid) "
-
-function _eval_intensity_inside_grid(
-    img::AbstractImage{T,2},
-    p::NTuple{2,<:Real}
-) where {T}
-    #TODO: Increase performance of this operation (cashear el Point Eval handler a la imagen ?)
-    # get the image intensity and transform it into a vector
-    int_ferrite_vec = Vector{Float64}()
-    # TODO: Fix Ferrite CCW nomenclature
-    for intᵢ in vec(intensity(img))
-        push!(int_ferrite_vec, intᵢ)
+    # Check p is inisde the image
+    _point_is_inbounds(p, img)
+    # Check if p is inside the grid image 
+    if _is_inside_img_grid(img, p) 
+        intensity_p = _eval_intensity_inside_grid(img, p)
+    else
+        # Extrapolate if is not inside the grid 
     end
+    return intensity_p
+end
 
+"Dof Handler constructor given an image "
+function DofHandler(img::AbstractImage)
+    
     # create dof handler
     grid_img = getgrid(img)
     dh_img = DofHandler(grid_img)
@@ -198,6 +234,25 @@ function _eval_intensity_inside_grid(
     push!(dh_img, :intensity, 1, Lagrange{2,RefCube,1}())
     close!(dh_img)
 
+    return dh_img
+
+end
+
+
+"Internal function to evaluate the image at a generic point (inside the image grid) "
+function _eval_intensity_inside_grid(
+    img::AbstractImage{T,2},
+    p::NTuple{2,<:Real}
+) where {T}
+    #TODO: Compute the ferrite intensity array only one time not every time this function is called
+    
+    # get the image intensity and transform it into a vector with ferrite.jl nomenclature
+    grid_img = getgrid(img)
+    intensity_ferrite_vec = _build_ferrite_img_intensity(img, grid_img)    # create dof handler
+
+    # dof handler
+    dh_img = DofHandler(img)
+
     # create evaluation handlar
     eval_point = [Vec(p)]
     ph_img = PointEvalHandler(grid_img, eval_point)
@@ -205,11 +260,96 @@ function _eval_intensity_inside_grid(
     # evaluate 
     i_points = get_point_values(
         ph_img, dh_img,
-        int_ferrite_vec,
+        intensity_ferrite_vec,
         :intensity
     )
 
     return i_points
+end
+
+" Build intensity vector according to ferrite nomenclature (cell by cell CCW)"
+function _build_ferrite_img_intensity(img::AbstractImage, grid::Grid)
+    
+    # ferrite intensity vector 
+    intensity_ferrite_vec = Vector{Float64}()
+
+    # extract image intensity array
+    intensity_img = intensity(img)
+
+    # since cells share nodes (nodes that has been added are redundant)
+    added_nodes_index = Vector{Int}() 
+
+    # iterate over each grid cell
+    for cell in CellIterator(grid)
+        
+        # get cell nodes
+        nodes_cell = getnodes(cell)
+
+        # add intensity if the node is not been added yet
+        for node_cell in nodes_cell
+
+            # check if is already been added
+            if node_cell ∉ added_nodes_index  
+                push!(added_nodes_index, node_cell)
+                push!(intensity_ferrite_vec, intensity_img[_node_cartesian_index(node_cell, img)])
+            end
+        
+        end
+
+    end
+
+    return intensity_ferrite_vec
+end
+
+"Computes the Cartesian index given a 1D index node. "
+function _node_cartesian_index(onedim_index::Int, img::AbstractImage)
+    # Node indexes in each direction respectively
+    num_pixels = collect(numpix(img))
+
+    # Check index_nodes is inbounds 
+    !(_index_is_inbounds(onedim_index, img)) &&
+     throw(ArgumentError(BoundsError("index_node is not inside the image size $(size(img))")))
+
+    # Compute indexes depending on the image dimension 
+    if length(num_pixels) == 2 # 2D image
+    
+        # if rem(onedim_index, num_pix_x) == 0 then index_x = num_pix_x
+        (index_x, index_y) = _my_div_rem(onedim_index, num_pixels[1], num_pixels[1])
+
+        return CartesianIndex(index_x, index_y)
+        
+    elseif length(num_pixels) == 3 # 3D image
+
+        # if rem(onedim_index,num_pix_x * num_pix_y) == 0 then index_z = num_pixels[3]
+        (index_z, rem_xy) = _my_div_rem(onedim_index,  num_pixels[1] * num_pixels[2], num_pixels[3])
+
+        # if rem(onedim_index, rem_xy) == 0 then index_x = num_pix_x
+        (index_x, index_y) = _my_div_rem(rem_xy, num_pixels[1], num_pixels[1])
+
+        # return the index
+        return CartesianIndex(index_x, index_y, index_z)
+    
+    end
+
+end
+
+function _my_div_rem(onedim_index::Int, batch::Int, edge_val::Int)
+    # div rem
+    index, rem = divrem(onedim_index, batch)
+    
+    # case onedim_index ≤ batch
+    if index == 0
+        return (onedim_index, 1)
+    end
+    # fix edge case 
+    if rem == 0
+        index = index 
+        rem = edge_val 
+        return rem, index
+    else
+        return rem, index + 1
+    end
+
 end
 
 "Checks if p is inside the image grid. "

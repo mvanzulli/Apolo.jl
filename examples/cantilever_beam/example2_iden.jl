@@ -8,7 +8,7 @@
 # using Revise, Infiltrator
 #
 # processing libraries
-using IdenGPU, Ferrite, LazySets
+using Apolo, Ferrite, LazySets
 #
 # post processing libraries
 using Plots, LaTeXStrings
@@ -32,12 +32,12 @@ Lᵢₛ = 2.0;
 Lⱼₛ = 1.0;
 start = (.0,.0); finish = (Lᵢₛ, Lⱼₛ)
 # grid dimension (x,y) = 2
-dimgrid = getdim(dofu)
+dimgrid = dimension(dofu)
 # define number and element types 
 (nx, ny) = (20,20)
 elemType = Triangle
 # build rectangular grid
-grid = create_solid_grid(dimgrid, (nx, ny), start, finish, elemType)
+grid = create_rectangular_grid(dimgrid, (nx, ny), start, finish, elemType)
 # Define boundary conditions  
 # ----------------------------
 # dof name 
