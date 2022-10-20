@@ -22,14 +22,30 @@ using Ferrite: Vec, Grid, Quadrilateral, CellIterator,
 # Export interface functions and types
 export AbstractImage, MedicalImage, MedicalSegment, GenericImage,
     # Extractors AbstractImage
-    intensity, intensity_type, numpix, total_numpix,
-    spacing, start, finish, length, coordinates,
+    intensity,
+    intensity_type,
+    numpix,
+    total_numpix,
+    spacing, 
+    start,
+    start_grid,
+    finish,
+    finish_grid,
+    length,
+    coordinates,
     # Features AbstractImage 
     create_img_grid,
     # Extractors MedicalImage
-    hyper_parameters, orientation, patient_name, indexes,
+    hyper_parameters,
+    orientation,
+    patient_name,
+    indexes,
     # Medical image features
-    mean, load_dicom, std, getvarcoef, compute_histogram
+    mean,
+    load_dicom,
+    std,
+    getvarcoef,
+    compute_histogram
 
 
 # Scalar parameters for the interface
@@ -84,6 +100,12 @@ finish(img::AbstractImage) = start(img) .+ length(img)
 
 " Gets the image grid"
 getgrid(img::AbstractImage) = img.grid
+
+" Gets the image grid origin"
+start_grid(img::AbstractImage) = start(img) .+ spacing(img) ./ 2
+
+" Gets the image grid finish"
+finish_grid(img::AbstractImage) = finish(img) .- spacing(img) ./ 2
 
 
 "Checks if a index is inbounds the image dimensions"
@@ -213,7 +235,7 @@ end
 function _eval_intensity(img::AbstractImage{T,2}, p::NTuple{2,<:Real}) where {T}
 
     # Check p is inisde the image
-    _point_is_inbounds(p, img)
+    _point_is_inbounds(p, img) ? nothing : throw(BoundsError("p $p is not in img dimensions"))
     # Check if p is inside the grid image 
     if _is_inside_img_grid(img, p) 
         intensity_p = _eval_intensity_inside_grid(img, p)
@@ -238,13 +260,139 @@ function DofHandler(img::AbstractImage)
 
 end
 
+"Evaluate the image intensity at a generic point (outside the image grid) "
+function _eval_intensity_outside_grid(
+    img::AbstractImage{T,2},
+    p::NTuple{2,<:Real} 
+) where {T}
+    #TODO: testme is f p is negative
 
-"Internal function to evaluate the image at a generic point (inside the image grid) "
+    intensity_img = intensity(img)
+    spacing_image = spacing(img)
+    numpix_img = numpix(img)
+
+    # compte point position 
+    position = _which_border(img, p)
+
+    # edge cases
+    position == :bottom_bottom && return intensity_img[1,1]
+    position == :left_top && return intensity_img[1,end]
+    position == :right_bottom && return intensity_img[end,1]
+    position == :top_right && return intensity_img[end,end]
+
+    # non edge cases
+    index_x_float, index_y_float = _float_indexes(img, p)
+
+    # bottom and top border
+    is_in_bottom_broder = index_y_float < 1
+    if position == :top || position == :bottom
+        
+        # compute indexes
+        index_x₋₁ = floor(Int, p[1] / spacing_image[1])
+        index_x₊₁ = index_x₋₁ + 1
+        index_y = if position == :bottom 
+                    1
+                elseif position == :top 
+                    spacing[2]
+                end
+
+        # interpolate
+        return _interpolate_order_1(
+            index_x_float,
+            index_x₊₁,
+            index_x₋₁,
+            intensity_img[index_x₊₁, index_y],
+            intensity_img[index_x₋₁, index_y],
+            )
+
+    elseif position == :right || position == :left
+        # compute indexes
+        index_y₋₁ = floor(Int, p[2] / spacing_image[2])
+        index_y₊₁ = index_y₋₁ + 1
+        index_x = if position == :left 
+            1
+        elseif position == :right 
+            spacing[1]
+        end
+
+        #interpolate
+        return _interpolate_order_1(
+            index_y_float,
+            index_x₊₁,
+            index_x₋₁,
+            intensity_img[index_x, index_y₋₁],
+            intensity_img[index_x, index_y₊₁],
+            )
+    end
+
+end
+
+"Compute the border where p is inside"
+function _which_border(
+    img::AbstractImage{T,2},
+    p::NTuple{2,<:Real}
+) where T
+    start_grid = start_grid_img(img)
+    finish_grid = finish_grid_img(img)
+    spacing_image = spacing(img)
+
+    # if the point is inside the border pixels (1,1), (end,1)
+    #(1,1) 
+    p[1] < start_grid[1] && p[2] < start_grid[2] && return :bottom_bottom
+    #(end,1) 
+    p[1] > finish_grid[1] && p[2] < start_grid[2] && return :right_bottom
+    #(1,end) 
+    p[1] < start_grid[1] && p[2] > finish_grid[2] && return :left_top
+    #(end,end) 
+    p[1] > finish_grid[1] && p[2] > finish_grid[2] && return :top_right
+
+    # float indexes
+    index_x_float = p[1] / spacing_image[1]
+    index_y_float = p[2] / spacing_image[2]
+
+    index_y_float < 1 && return :bottom
+    index_x_float < 1 && return :left
+    index_y_float > spacing_image[2] && return :top
+    index_x_float > spacing_image[1] && return :right
+
+
+end
+
+" Evaluate float indexes"
+function _float_indexes(    
+    img::AbstractImage{T,2},
+    p::NTuple{2,<:Real}
+) where T
+
+    spacing_image = spacing(img)
+    index_x_float = p[1] / spacing_image[1]
+    index_y_float = p[2] / spacing_image[2]
+
+    return index_x_float, index_y_float
+end
+
+
+"Evaluate order 1 linear interpolation"
+function _interpolate_order_1(
+    index_float::Int,
+    index_x₊₁::Int,
+    index_x₋₁::Int,
+    intensity_x₊₁::T,
+    intensity_x₋₁::T
+    ) where T<:Real
+
+    intensity_x = abs(index_x₊₁ - index_float) * intensity_x₋₁ + abs(index_float - index_x₋₁) * intensity_x₊₁
+    
+    return intensity_x
+end
+
+
+"Evaluate the image intensity at a generic point (inside the image grid) "
 function _eval_intensity_inside_grid(
     img::AbstractImage{T,2},
     p::NTuple{2,<:Real}
 ) where {T}
-    #TODO: Compute the ferrite intensity array only one time not every time this function is called
+    #TODO (Performance): Compute the ferrite intensity array only one time not every time this function is called
     
     # get the image intensity and transform it into a vector with ferrite.jl nomenclature
     grid_img = getgrid(img)
@@ -308,7 +456,7 @@ function _node_cartesian_index(onedim_index::Int, img::AbstractImage)
 
     # Check index_nodes is inbounds 
     !(_index_is_inbounds(onedim_index, img)) &&
-     throw(ArgumentError(BoundsError("index_node is not inside the image size $(size(img))")))
+     throw(BoundsError("index_node is not inside the image size $(size(img))"))
 
     # Compute indexes depending on the image dimension 
     if length(num_pixels) == 2 # 2D image

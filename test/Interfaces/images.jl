@@ -99,7 +99,9 @@ using DICOM: @tag_str
     # p is inside the grid (interpolate)
     @test inside_grid_img_point ⊂ grid_img && _is_inside_img_grid(generic_img, inside_grid_img_point)
     img_grid_origin = start_img .+ spacing_img ./ 2
+    @test start_grid(generic_img) == img_grid_origin
     img_grid_finish = finish_img .- spacing_img ./ 2
+    @test finish_grid(generic_img) == img_grid_finish
 
     # test origin intensity
     @test (coords[1][1], coords[2][1]) == img_grid_origin

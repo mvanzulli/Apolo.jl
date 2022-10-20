@@ -27,3 +27,6 @@ Manifest.toml
 *.vtk
 *.vti
 *.vtu
+
+# VSCode files
+*.vscode
