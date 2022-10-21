@@ -269,7 +269,6 @@ function _eval_intensity_outside_grid(
     #TODO: testme is f p is negative
 
     intensity_img = intensity(img)
-    spacing_image = spacing(img)
     num_pix_img = numpix(img)
 
     # compte point position 
@@ -296,14 +295,17 @@ function _eval_intensity_outside_grid(
                     num_pix_img[2]
                 end
 
-        # interpolate
-        return _interpolate_order_1(
-            index_x_float,
-            index_x₊₁,
-            index_x₋₁,
-            intensity_img[index_x₊₁, index_y],
-            intensity_img[index_x₋₁, index_y],
-            )
+        if index_x₋₁ == num_pix_img[1]
+            return intensity_img[index_x₋₁, index_y]
+        else
+            return _interpolate_order_1(
+                index_x_float,
+                index_x₊₁,
+                index_x₋₁,
+                intensity_img[index_x₊₁, index_y],
+                intensity_img[index_x₋₁, index_y],
+                )    
+        end
 
     elseif position == :right || position == :left
         # compute indexes
@@ -318,7 +320,6 @@ function _eval_intensity_outside_grid(
         elseif position == :right 
             num_pix_img[1]
         end
-        # Main.@infiltrate
         #interpolate
         return _interpolate_order_1(
             index_y_float,
@@ -346,13 +347,13 @@ function _which_border(
 
     # if the point is inside the border pixels (1,1), (end,1)
     #(1,1) 
-    p[1] < start_grid_img[1] && p[2] < start_grid_img[2] && return :left_bottom
+    p[1] ≤ start_grid_img[1] && p[2] ≤ start_grid_img[2] && return :left_bottom
     #(end,1) 
-    p[1] > finish_grid_img[1] && p[2] < start_grid_img[2] && return :right_bottom
+    p[1] ≥ finish_grid_img[1] && p[2] ≤ start_grid_img[2] && return :right_bottom
     #(1,end) 
-    p[1] < start_grid_img[1] && p[2] > finish_grid_img[2] && return :left_top
+    p[1] ≤ start_grid_img[1] && p[2] ≥ finish_grid_img[2] && return :left_top
     #(end,end) 
-    p[1] > finish_grid_img[1] && p[2] > finish_grid_img[2] && return :right_top
+    p[1] ≥ finish_grid_img[1] && p[2] ≥ finish_grid_img[2] && return :right_top
 
 
     p[2] < start_grid_img[2] && return :bottom

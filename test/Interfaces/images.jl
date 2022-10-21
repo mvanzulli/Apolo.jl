@@ -142,7 +142,7 @@ const TOLERANCE = 1e-3
     p_right_top = finish(generic_img)
     p_left_top = (start(generic_img)[1], finish(generic_img)[2])
     p_right_bottom = (finish(generic_img)[1], start(generic_img)[2])
-    
+
     @test _which_border(generic_img, p_left_bottom) == :left_bottom
     @test _which_border(generic_img, p_right_top) == :right_top
     @test _which_border(generic_img, p_left_top) == :left_top
@@ -150,7 +150,7 @@ const TOLERANCE = 1e-3
     div = rand(2:10)
     xₚ = start(generic_img)[1] + ((start(generic_img)[1] + finish(generic_img)[1]) ./ div)
     yₚ = start(generic_img)[2] + ((start(generic_img)[2] + finish(generic_img)[2]) ./ div)
-    
+
     # Test borders detection 
     p_bottom = (xₚ, start(generic_img)[2])
     p_top = (xₚ, finish(generic_img)[2])
@@ -168,80 +168,98 @@ const TOLERANCE = 1e-3
 
     # Test bottom outside interpolation
     # test point (point_bottom_x + n(Δᵢ, 0)) intensity
-    batch_x = rand(1:num_pixels[1] -2)
+    batch_x = rand(1:num_pixels[1]-2)
 
     # point that matches with a node
     point_bottom_x = (p_left_bottom .+ batch_x .* (spacing_img[1], 0))
     @test position = _which_border(generic_img, point_bottom_x) == :bottom
     @test _eval_intensity_outside_grid(generic_img, point_bottom_x) ==
-    generic_img(point_bottom_x...)[1] ==
-    intensity(generic_img)[batch_x + 1, 1]
+          generic_img(point_bottom_x...)[1] ==
+          intensity(generic_img)[batch_x+1, 1]
 
     # point that doesn't matches with a node
-    fraction = 2/3
-    point_bottom_x_inter = (point_bottom_x .+ batch_x .* (spacing_img[1], 0) .* fraction)
+    fraction = 2 / 3
+    point_bottom_x_inter = (point_bottom_x .+ (spacing_img[1], 0) .* fraction)
     @test position = _which_border(generic_img, point_bottom_x_inter) == :bottom
     @test _eval_intensity_outside_grid(generic_img, point_bottom_x_inter) ==
-    generic_img(point_bottom_x_inter...)[1]
-    hand_interpolation = intensity(generic_img)[batch_x + 2, 1] * fraction + intensity(generic_img)[batch_x + 1, 1] *(1-fraction)
-    @test isapprox(hand_interpolation, generic_img(point_bottom_x_inter...)[1], atol = TOLERANCE )
-    
+          generic_img(point_bottom_x_inter...)[1]
+    hand_interpolation = intensity(generic_img)[batch_x+2, 1] * fraction + intensity(generic_img)[batch_x+1, 1] * (1 - fraction)
+    @test isapprox(hand_interpolation, generic_img(point_bottom_x_inter...)[1], atol=TOLERANCE)
+
     # Test top outside interpolation
-    # test point (p_top_x + n(Δᵢ, end)) intensity
-    batch_x = rand(1:num_pixels[1] -2)
+    # test point (p_top + n(Δᵢ, end)) intensity
+    batch_x = rand(1:num_pixels[1]-2)
 
     # point that matches with a node
-    point_top_x = (p_top_x .+ batch_x .* (spacing_img[1], 0))
+    point_top_x = (p_left_top .+ batch_x .* (spacing_img[1], 0))
     @test position = _which_border(generic_img, point_top_x) == :top
     @test _eval_intensity_outside_grid(generic_img, point_top_x) ==
-    generic_img(point_top_x...)[1] ==
-    intensity(generic_img)[batch_x + 1, end]
+          generic_img(point_top_x...)[1] ==
+          intensity(generic_img)[batch_x+1, end]
 
     # point that doesn't matches with a node
-    point_top_x_inter = (point_top_x .+ batch_x .* (spacing_img[1], 0) .* fraction)
+    point_top_x_inter = (point_top_x .+ (spacing_img[1], 0) .* fraction)
     @test position = _which_border(generic_img, point_top_x_inter) == :top
     @test _eval_intensity_outside_grid(generic_img, point_top_x_inter) ==
-    generic_img(point_top_x_inter...)[1]
-    hand_interpolation = intensity(generic_img)[batch_x + 2, end] * fraction + intensity(generic_img)[batch_x + 1, end] *(1-fraction)
-    @test isapprox(hand_interpolation, generic_img(point_top_x_inter...)[1], atol = TOLERANCE )
+          generic_img(point_top_x_inter...)[1]
+    hand_interpolation = intensity(generic_img)[batch_x+2, end] * fraction + intensity(generic_img)[batch_x+1, end] * (1 - fraction)
+    @test isapprox(hand_interpolation, generic_img(point_top_x_inter...)[1], atol=TOLERANCE)
 
 
     # Test left outside interpolation
     # test point (p_left_bottom + n(0, Δⱼ)) intensity
-    batch_y = rand(1:num_pixels[2] -2)
+    batch_y = rand(1:num_pixels[2]-2)
 
     # point that matches with a node
     point_left_y = (p_left_bottom .+ batch_y .* (0, spacing_img[2]))
     position = _which_border(generic_img, point_left_y) == :left
     @test _eval_intensity_outside_grid(generic_img, point_left_y) ==
-    generic_img(point_left_y...)[1] ==
-    intensity(generic_img)[1, batch_y + 1]
-    
+          generic_img(point_left_y...)[1] ==
+          intensity(generic_img)[1, batch_y+1]
+
     # point that doesn't matches with a node
-    point_left_y_inter = (point_left_y .+ batch_y .* (0, spacing_img[2]) .* fraction)
+    point_left_y_inter = (point_left_y .+ (0, spacing_img[2]) .* fraction)
     @test position = _which_border(generic_img, point_left_y_inter) == :left
     @test _eval_intensity_outside_grid(generic_img, point_left_y_inter) ==
-    generic_img(point_left_y_inter...)[1]
-    hand_interpolation = intensity(generic_img)[1, batch_y + 2] * fraction + intensity(generic_img)[1, batch_y + 1] *(1-fraction)
-    @test isapprox(hand_interpolation, generic_img(point_left_y_inter...)[1], atol = TOLERANCE )
-    
+          generic_img(point_left_y_inter...)[1]
+    hand_interpolation = intensity(generic_img)[1, batch_y+2] * fraction + intensity(generic_img)[1, batch_y+1] * (1 - fraction)
+    @test isapprox(hand_interpolation, generic_img(point_left_y_inter...)[1], atol=TOLERANCE)
+
     # Test right outside interpolation
     # test point (p_right_bottom + n(0, Δⱼ)) intensity
-    batch_y = rand(1:num_pixels[2] -1)
+    batch_y = rand(1:num_pixels[2]-2)
     # point that matches with a node
     point_right_y = (p_right_bottom .+ batch_y .* (0, spacing_img[2]))
     position = _which_border(generic_img, point_right_y) == :right
     @test _eval_intensity_outside_grid(generic_img, point_right_y) ==
-    generic_img(point_right_y...)[1] ==
-    intensity(generic_img)[end, batch_y + 1]
-    
+          generic_img(point_right_y...)[1] ==
+          intensity(generic_img)[end, batch_y+1]
+
     # point that doesn't matches with a node
-    point_right_y_inter = (point_right_y .+ batch_y .* (0, spacing_img[2]).* fraction)
-    position = _which_border(generic_img, point_right_y_inter) == :right
-    hand_interpolation = intensity(generic_img)[end, batch_y + 2] * fraction + intensity(generic_img)[end, batch_y + 1] *(1-fraction)
+    point_right_y_inter = (point_right_y .+ (0, spacing_img[2]) .* fraction)
+    position = _which_border(generic_img, point_right_y) == :right
     @test _eval_intensity_outside_grid(generic_img, point_right_y_inter) ==
-    generic_img(point_right_y_inter...)[1]
-    @test isapprox(hand_interpolation, generic_img(point_right_y_inter...)[1], atol = TOLERANCE )
+          generic_img(point_right_y_inter...)[1]
+    hand_interpolation = intensity(generic_img)[end, batch_y+2] * fraction + intensity(generic_img)[end, batch_y+1] * (1 - fraction)
+    @test isapprox(hand_interpolation, generic_img(point_right_y_inter...)[1], atol=TOLERANCE)
+
+    # Test left outside interpolation
+    # test point (p_left_bottom + n(0, Δⱼ)) intensity
+    batch_y = rand(1:num_pixels[2]-2)
+    # point that matches with a node
+    point_left_y = (p_left_bottom .+ batch_y .* (0, spacing_img[2]))
+    position = _which_border(generic_img, point_left_y) == :left
+    @test _eval_intensity_outside_grid(generic_img, point_left_y) ==
+          generic_img(point_left_y...)[1] ==
+          intensity(generic_img)[1, batch_y + 1]
+
+    # point that doesn't matches with a node
+    point_left_y_inter = (point_left_y .+ (0, spacing_img[2]) .* fraction)
+    position = _which_border(generic_img, point_left_y) == :left
+    @test _eval_intensity_outside_grid(generic_img, point_left_y_inter) ==
+          generic_img(point_left_y_inter...)[1]
+    hand_interpolation = intensity(generic_img)[1, batch_y + 2] * fraction + intensity(generic_img)[1, batch_y + 1] * (1 - fraction)
+    @test isapprox(hand_interpolation, generic_img(point_left_y_inter...)[1], atol=TOLERANCE)
 
 end
 
