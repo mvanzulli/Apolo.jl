@@ -148,18 +148,18 @@ const TOLERANCE = 1e-3
     @test _which_border(generic_img, p_left_top) == :left_top
     @test _which_border(generic_img, p_right_bottom) == :right_bottom
     div = rand(2:10)
-    xₚ = start(generic_img)[1] + ((start(generic_img)[1] + finish(generic_img)[1]) ./ div)
-    yₚ = start(generic_img)[2] + ((start(generic_img)[2] + finish(generic_img)[2]) ./ div)
+    xₚ = start(generic_img)[1] + ((finish(generic_img)[1] - start(generic_img)[1]) ./ div)
+    yₚ = start(generic_img)[2] + ((finish(generic_img)[2] - start(generic_img)[2]) ./ div)
 
     # Test borders detection 
     p_bottom = (xₚ, start(generic_img)[2])
     p_top = (xₚ, finish(generic_img)[2])
     p_left = (start(generic_img)[1], yₚ)
     p_right = (finish(generic_img)[1], yₚ)
-    @test _which_border(generic_img, p_bottom) == :bottom
-    @test _which_border(generic_img, p_top) == :top
-    @test _which_border(generic_img, p_left) == :left
-    @test _which_border(generic_img, p_right) == :right
+    @test _which_border(generic_img, p_bottom) == :bottom || _which_border(generic_img, p_bottom) == :left_bottom
+    @test _which_border(generic_img, p_top) == :top || _which_border(generic_img, p_top) == :left_top
+    @test _which_border(generic_img, p_left) == :left || _which_border(generic_img, p_left) == :left_bottom
+    @test _which_border(generic_img, p_right) == :right || _which_border(generic_img, p_right) == :right_bottom
 
     @test _eval_intensity_outside_grid(generic_img, p_left_bottom) == intensity(generic_img)[1, 1]
     @test _eval_intensity_outside_grid(generic_img, p_right_top) == intensity(generic_img)[end, end]
