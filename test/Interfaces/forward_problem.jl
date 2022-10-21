@@ -17,7 +17,7 @@ using LinearAlgebra: norm
     dim = 2
     dofu = Dof{dim}(symbol)
     @test getsym(dofu) == symbol
-    @test getdim(dofu) == dim
+    @test dimension(dofu) == dim
     dofu = Dof{2}(:u)
     dofσ = Dof{1}(:p)
     dofs = StressDispDofs(σ=dofσ, u=dofu)

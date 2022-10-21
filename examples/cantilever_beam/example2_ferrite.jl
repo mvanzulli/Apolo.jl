@@ -2,7 +2,7 @@
 # This is the Ferrite script of a one dimensional identification problem of Zerpa 2019 
 # -------------------------------------------------------------------------------------
 using Ferrite, Infiltrator
-using BlockArrays, SparseArrays, LinearAlgebra
+using BlockArrays, SparseArrays, LinearAlgebra  
 # 
 import Plots
 using LaTeXStrings
