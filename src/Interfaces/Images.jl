@@ -209,6 +209,7 @@ struct GenericImage{T,D} <: AbstractImage{T,D}
     spacing::NTuple{D,<:Real}
     start::NTuple{D,<:Real}
     grid::Grid
+    
     # Cash the Ferrite.Grid into grid field of MedicalImage
     function GenericImage(
         intensity::Array{T,D},
@@ -240,7 +241,7 @@ function _eval_intensity(img::AbstractImage{T,2}, p::NTuple{2,<:Real}) where {T}
     if _is_inside_img_grid(img, p) 
         intensity_p = _eval_intensity_inside_grid(img, p)
     else
-        # Extrapolate if is not inside the grid 
+        intensity_p = _eval_intensity_outside_grid(img,p)
     end
     return intensity_p
 end
@@ -269,31 +270,30 @@ function _eval_intensity_outside_grid(
 
     intensity_img = intensity(img)
     spacing_image = spacing(img)
-    numpix_img = numpix(img)
+    num_pix_img = numpix(img)
 
     # compte point position 
     position = _which_border(img, p)
 
     # edge cases
-    position == :bottom_bottom && return intensity_img[1,1]
+    position == :left_bottom && return intensity_img[1,1]
     position == :left_top && return intensity_img[1,end]
     position == :right_bottom && return intensity_img[end,1]
-    position == :top_right && return intensity_img[end,end]
+    position == :right_top && return intensity_img[end,end]
 
     # non edge cases
     index_x_float, index_y_float = _float_indexes(img, p)
 
     # bottom and top border
-    is_in_bottom_broder = index_y_float < 1
     if position == :top || position == :bottom
         
         # compute indexes
-        index_x₋₁ = floor(Int, p[1] / spacing_image[1])
+        index_x₋₁ = floor(Int,index_x_float)
         index_x₊₁ = index_x₋₁ + 1
         index_y = if position == :bottom 
                     1
                 elseif position == :top 
-                    spacing[2]
+                    num_pix_img[2]
                 end
 
         # interpolate
@@ -307,23 +307,29 @@ function _eval_intensity_outside_grid(
 
     elseif position == :right || position == :left
         # compute indexes
-        index_y₋₁ = floor(Int, p[2] / spacing_image[2])
+        index_y₋₁ = if floor(Int, index_y_float) == index_y_float 
+                        floor(Int, index_y_float) - 1
+                    else 
+                        floor(Int, index_y_float)
+                    end 
         index_y₊₁ = index_y₋₁ + 1
         index_x = if position == :left 
             1
         elseif position == :right 
-            spacing[1]
+            num_pix_img[1]
         end
-
+        # Main.@infiltrate
         #interpolate
         return _interpolate_order_1(
             index_y_float,
-            index_x₊₁,
-            index_x₋₁,
-            intensity_img[index_x, index_y₋₁],
+            index_y₊₁,
+            index_y₋₁,
             intensity_img[index_x, index_y₊₁],
+            intensity_img[index_x, index_y₋₁],
             )
     end
+
+    throw(BoundsError("p is not inside the image grid and outside the borders "))
 
 end
 
@@ -332,28 +338,27 @@ function _which_border(
     img::AbstractImage{T,2},
     p::NTuple{2,<:Real}
 ) where T
-    start_grid = start_grid_img(img)
-    finish_grid = finish_grid_img(img)
-    spacing_image = spacing(img)
+
+    !(_point_is_inbounds(p, img)) && throw(ArgumentError("p = $p is not inside img domain"))
+
+    start_grid_img = start_grid(img)
+    finish_grid_img = finish_grid(img)
 
     # if the point is inside the border pixels (1,1), (end,1)
     #(1,1) 
-    p[1] < start_grid[1] && p[2] < start_grid[2] && return :bottom_bottom
+    p[1] < start_grid_img[1] && p[2] < start_grid_img[2] && return :left_bottom
     #(end,1) 
-    p[1] > finish_grid[1] && p[2] < start_grid[2] && return :right_bottom
+    p[1] > finish_grid_img[1] && p[2] < start_grid_img[2] && return :right_bottom
     #(1,end) 
-    p[1] < start_grid[1] && p[2] > finish_grid[2] && return :left_top
+    p[1] < start_grid_img[1] && p[2] > finish_grid_img[2] && return :left_top
     #(end,end) 
-    p[1] > finish_grid[1] && p[2] > finish_grid[2] && return :top_right
+    p[1] > finish_grid_img[1] && p[2] > finish_grid_img[2] && return :right_top
 
-    # float indexes
-    index_x_float = p[1] / spacing_image[1]
-    index_y_float = p[2] / spacing_image[2]
 
-    index_y_float < 1 && return :bottom
-    index_x_float < 1 && return :left
-    index_y_float > spacing_image[2] && return :top
-    index_x_float > spacing_image[1] && return :right
+    p[2] < start_grid_img[2] && return :bottom
+    p[1] < start_grid_img[1] && return :left
+    p[2] > finish_grid_img[2] && return :top
+    p[1] > finish_grid_img[1] && return :right
 
 
 end
@@ -364,23 +369,26 @@ function _float_indexes(
     p::NTuple{2,<:Real}
 ) where T
 
+    start_img = start(img)
     spacing_image = spacing(img)
-    index_x_float = p[1] / spacing_image[1]
-    index_y_float = p[2] / spacing_image[2]
+    index_x_float = abs(p[1] - start_img[1])  / abs(spacing_image[1]) + 1
+    index_y_float = abs(p[2] - start_img[2])  / abs(spacing_image[2]) + 1
 
+    # Main.@infiltrate
     return index_x_float, index_y_float
 end
 
 
 "Evaluate order 1 linear interpolation"
 function _interpolate_order_1(
-    index_float::Int,
+    index_float::Q,
     index_x₊₁::Int,
     index_x₋₁::Int,
     intensity_x₊₁::T,
     intensity_x₋₁::T
-    ) where T<:Real
+    ) where {T<:Real, Q<:Real}
 
+    # Main.@infiltrate
     intensity_x = abs(index_x₊₁ - index_float) * intensity_x₋₁ + abs(index_float - index_x₋₁) * intensity_x₊₁
     
     return intensity_x
