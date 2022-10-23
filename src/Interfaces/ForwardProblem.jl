@@ -5,6 +5,7 @@ module ForwardProblem
 
 # Import dependencies to overlead
 import ..Materials: getlabel
+import ..Geometry: dimension
 
 # Add libraries to use
 using ..Materials: AbstractMaterial
@@ -14,7 +15,7 @@ using Ferrite: Grid, addfaceset!, addcellset!
 # Export interface functions and types
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
 AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProbSolver, ForwardProblemSolution,
-getsym, getdofs, getgrid, getbcs, getdofsvals, dimension, vals_func, solve, _solve, component
+getsym, getdofs, getgrid, getbcs, getdofsvals, vals_func, solve, _solve, component
 
 " Return the dimenssion of a grid. "
 dimension(::Grid{Dim}) where {Dim} = Dim
@@ -22,8 +23,8 @@ dimension(::Grid{Dim}) where {Dim} = Dim
 """ Abstract supertype that includes degrees of freedom  information.
 
 The following methods are provided by the interface
-- `getsym(dof)` -- return the symbol of the degree of freedom `dof`. 
-- `dimension(dof)` -- return the dimension of the degree of freedom `dof`. 
+- `getsym(dof)` -- return the symbol of the degree of freedom `dof`.
+- `dimension(dof)` -- return the dimension of the degree of freedom `dof`.
 """
 abstract type AbstractDof{dim} end
 
@@ -36,7 +37,7 @@ dimension(::AbstractDof{Dim}) where {Dim} = Dim
 
 """ Degree of freedom struct.
 
-### Fields: 
+### Fields:
 - `sym` -- dof symbol
 
 """
@@ -47,7 +48,7 @@ end
 
 ### Fields:
 
-- `σ` -- stress dof 
+- `σ` -- stress dof
 - `u` -- displacement dof
 
 "
@@ -60,9 +61,9 @@ end
 
 The following methods are provided by the interface:
 
-- `getdofs(bc)`       -- return the degree of freedom symbol where the bc is prescribed. 
-- `vals_func(bc)` -- return the value of the bc function. 
-- `getlabel(bc)`  -- return the value the bc label. 
+- `getdofs(bc)`       -- return the degree of freedom symbol where the bc is prescribed.
+- `vals_func(bc)` -- return the value of the bc function.
+- `getlabel(bc)`  -- return the value the bc label.
 
 """
 abstract type AbstractBoundaryCondition end
@@ -78,8 +79,8 @@ getlabel(bc::AbstractBoundaryCondition) = bc.label
 """ Struct that contains the info of a Dirichlet boundary condition
 
 ### Fields:
-`dof`       -- name or symbol of the field  
-`vals_func` -- function submitted    
+`dof`       -- name or symbol of the field
+`vals_func` -- function submitted
 `components`-- vector of components (global or local) to prescribe the BC
 `label`     -- BC name
 
@@ -100,8 +101,8 @@ component(bc::DirichletBC) = bc.components
 """ Struct that contains the info of a load boundary condition
 
 ### Fields:
-`vals_func` -- function submitted    
-`dir`       -- vector of direction in global coords    
+`vals_func` -- function submitted
+`dir`       -- vector of direction in global coords
 `label`     -- BC name
 
 """
@@ -117,9 +118,9 @@ end
 """ FEM Data (except materials of the Forward problem via the FEM).
 
 ### Fields:
-`grid` -- solid grid  
-`dofs` -- degrees of freedom   
-`bcs`  -- boundary conditions    
+`grid` -- solid grid
+`dofs` -- degrees of freedom
+`bcs`  -- boundary conditions
 
 """
 struct FEMData{G,D,BC}
@@ -140,8 +141,8 @@ getbcs(data::FEMData) = data.bcs
 
 The following methods are provided by the interface:
 
-- `getfemdata(fproblem)` -- return FEM data struct. 
-- `getmats(fproblem)`    -- return materials dict info. 
+- `getfemdata(fproblem)` -- return FEM data struct.
+- `getmats(fproblem)`    -- return materials dict info.
 
 """
 abstract type AbstractForwardProblem end
@@ -189,7 +190,7 @@ function label_solid_grid!(grid::Grid, bcs::Dict{AbstractBoundaryCondition,Funct
 end
 
 " Add materials labels to the grid. "
-function label_solid_grid!(grid::Grid, materials::Dict{AbstractMaterial,Function}) #  interfaces should not  be related? 
+function label_solid_grid!(grid::Grid, materials::Dict{AbstractMaterial,Function}) #  interfaces should not  be related?
     for (mat, region) in materials
         addcellset!(grid, getlabel(mat), region)
     end
@@ -208,7 +209,7 @@ abstract type AbstractForwardProblemSolution end
 """ Forward Problem solution struct
 ### Fields:
 - `solver` -- solver of the Forward problem
-- `dat_fem`   -- FEM information where the solution is given 
+- `dat_fem`   -- FEM information where the solution is given
 - `data_mats′` -- material parameters
 - `dofs`-- fields solved
 - `valdofs`   -- value of solved fields
@@ -219,7 +220,7 @@ struct ForwardProblemSolution{FSOLVER<:AbstractForwardProbSolver,FEMData,M,D,VD,
     data_mats::M
     dofs::D
     valdofs::VD
-    extra::Dict{Symbol,T} # Extra Dict to add specific solver structs 
+    extra::Dict{Symbol,T} # Extra Dict to add specific solver structs
 end
 
 getmats(fpsol::ForwardProblemSolution) = fpsol.data_mats
@@ -233,8 +234,8 @@ getdofsvals(fpsol::ForwardProblemSolution) = fpsol.valdofs
 getbcs(fpsol::ForwardProblemSolution) = getbcs(getfemdata(fpsol))
 
 
-""" Solve a generic problem. 
-Each solver implemented should overlead this function. 
+""" Solve a generic problem.
+Each solver implemented should overlead this function.
 """
 function _solve(fp::FP, solv::SOL, args...; kwargs...) where
 {FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
