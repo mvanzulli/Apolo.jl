@@ -3,10 +3,11 @@ module Apolo
 using Reexport
 
 # ==============
-# Materials
+# Geometry
 # ==============
 include("Interfaces/Geometry.jl")
 @reexport using .Geometry
+include("Geometry/ferrite_grids.jl")
 
 # ==============
 # Materials
@@ -44,6 +45,6 @@ include("Interfaces/Images.jl")
 # ==============
 # VTK
 # ==============
-include("vtkIO.jl")
+# include("vtkIO.jl")
 
 end # module Apolo
