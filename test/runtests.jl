@@ -1,5 +1,9 @@
 using SafeTestsets
 
+@safetestset "Apolo.Geometry" begin
+    include("Interfaces/grids.jl")
+end
+
 @safetestset "Apolo.Materials" begin
     include("Interfaces/materials.jl")
 end
