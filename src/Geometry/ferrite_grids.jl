@@ -231,41 +231,6 @@ function border_points(
     return Ωgrid_points
 end
 
-#TODO: extend for vectorial magnitudes
-"Interpolates a scalar magnitude with a ferrite grid"
-function _interpolate(
-    vec_points::Vector{NTuple{DG,T}},
-    mag::Array{T,DM},
-    fgrid::FerriteStructuredGrid{DG}
-) where {DG,T,DM}
-
-    [!(p ⊂ fgrid) && throw(ArgumentError("p = $p is not inside the grid domain")) for p in vec_points]
-    DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
-
-    # make the magnitude compatible with ferrite grids
-    fmag = _convert_to_ferrite_nomenclature(mag, fgrid)
-
-    dh = DofHandler(fgrid)
-    push!(dh, :magnitude, 1, Lagrange{DG,RefCube,1}())
-    close!(dh)
-
-    # create a point evaluation handler
-    eval_points = Vector{Vec{DG, T}}()
-    [push!(eval_points, Vec(p)) for p in vec_points ]
-    ph = PointEvalHandler(fgrid, eval_points)
-
-    # evaluate magnitude at point p
-    m_points = get_point_values(
-        ph,
-        dh,
-        fmag,
-        :magnitude
-    )
-
-    return m_points
-
-end
-
 " Build magnitude vector according to Ferrite's nomenclature (cell by cell CCW)"
 function _convert_to_ferrite_nomenclature(
     mag::Array{T,D},
@@ -299,4 +264,128 @@ function _convert_to_ferrite_nomenclature(
     end
 
     return ferrite_magnitude
+end
+
+#TODO: extend for vectorial magnitudes
+"Interpolates a scalar magnitude with a ferrite grid"
+function _interpolate(
+    vec_points::Vector{NTuple{DG,T}},
+    mag::Array{T,DM},
+    fgrid::FerriteStructuredGrid{DG}
+) where {DG,T,DM}
+
+    [p ⊄ fgrid && throw(ArgumentError("p = $p ⊄ the grid domain")) for p in vec_points]
+    DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
+
+    # make the magnitude compatible with ferrite grids
+    fmag = _convert_to_ferrite_nomenclature(mag, fgrid)
+
+    dh = DofHandler(fgrid)
+    push!(dh, :magnitude, 1, Lagrange{DG,RefCube,1}())
+    close!(dh)
+
+    # create a point evaluation handler
+    eval_points = Vector{Vec{DG, T}}()
+    [push!(eval_points, Vec(p)) for p in vec_points ]
+    ph = PointEvalHandler(fgrid, eval_points)
+
+    # evaluate magnitude at point p
+    m_points = get_point_values(
+        ph,
+        dh,
+        fmag,
+        :magnitude
+    )
+
+    return m_points
+
+end
+
+"Computes which grid border should be used to extrapolate"
+function _which_border(
+    p::NTuple{DG},
+    fgrid::FerriteStructuredGrid{DG}
+) where {DG}
+
+    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
+
+    start_point = start(fgrid)
+    finish_point = finish(fgrid)
+
+    # if the point is inside the border pixels (1,1), (end,1)
+    #(1,1)
+    p[1] ≤ start_point[1] && p[2] ≤ start_point[2] && return :left_bottom
+    #(end,1)
+    p[1] ≥ finish_point[1] && p[2] ≤ start_point[2] && return :right_bottom
+    #(1,end)
+    p[1] ≤ start_point[1] && p[2] ≥ finish_point[2] && return :left_top
+    #(end,end)
+    p[1] ≥ finish_point[1] && p[2] ≥ finish_point[2] && return :right_top
+
+
+    p[2] < start_point[2] && return :bottom
+    p[1] < start_point[1] && return :left
+    p[2] > finish_point[2] && return :top
+    p[1] > finish_point[1] && return :right
+
+end
+
+
+"Computes the closest point at the grid wi"
+function _closest_point(
+    p::NTuple,
+    fgrid::FerriteStructuredGrid
+)
+
+    border = _which_border(p, fgrid)
+
+    start_point = start(fgrid)
+    finish_point = finish(fgrid)
+
+
+    border == :left_bottom && return start_point
+    border == :left_top && return (start_point[1], finish_point[2])
+    border == :right_top && return finish_point
+    border == :right_bottom && return (finish_point[1], start_point[2])
+    border == :bottom && return (p[1], start_point[2])
+    border == :top && return (p[1], finish_point[2])
+    border == :right && return (finish_point[1], p[2])
+    border == :left && return (start_point[1], p[2])
+
+end
+
+"Interpolates a scalar magnitude with a ferrite grid"
+function _extrapolate(
+    vec_points::Vector{NTuple{DG,T}},
+    mag::Array{T,DM},
+    fgrid::FerriteStructuredGrid{DG}
+) where {DG,T,DM}
+
+    [p ⊂ fgrid &&
+    throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
+    for p in vec_points]
+    DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
+
+    # make the magnitude compatible with ferrite grids
+    fmag = _convert_to_ferrite_nomenclature(mag, fgrid)
+
+    dh = DofHandler(fgrid)
+    push!(dh, :magnitude, 1, Lagrange{DG,RefCube,1}())
+    close!(dh)
+
+    # create a point evaluation handler
+    eval_points = Vector{Vec{DG, T}}()
+    [push!(eval_points, Vec(_closest_point(p, fgrid))) for p in vec_points ]
+    ph = PointEvalHandler(fgrid, eval_points)
+
+    # evaluate magnitude at point p
+    m_points = get_point_values(
+        ph,
+        dh,
+        fmag,
+        :magnitude
+    )
+
+    return m_points
+
 end

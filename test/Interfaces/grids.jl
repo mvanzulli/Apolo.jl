@@ -5,21 +5,20 @@
 using Test: @test, @testset
 using Apolo.Geometry
 using Apolo: FerriteStructuredGrid, border_points, coordinates,
-_convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid,
-_corners, _boundary_indexes, _interpolate
+_convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid, _which_border,
+_corners, _boundary_indexes, _interpolate, _closest_point, _extrapolate
 
 using Ferrite: Quadrilateral, Grid, Set, FaceIndex, Vec
 
 const INTERVAL_START = LinRange(-10.0, 10.0, 20)
+const TOLERANCE = 1e-3
 
 @testset "Ferrite grids unitary tests" begin
 
     # Define a random grid
     start_point = (rand(INTERVAL_START), rand(INTERVAL_START))
-    start_point = (1., 1.)
     finish_point = start_point .+ (rand(0.1:10.0), rand(0.1:10.0))
-    finish_point = (2., 2.)
-    num_elements_grid = (2, 2)
+    num_elements_grid = (3, 2)
     elemtype = Quadrilateral
     fgrid = FerriteStructuredGrid(start_point, finish_point, num_elements_grid, elemtype)
 
@@ -56,8 +55,10 @@ const INTERVAL_START = LinRange(-10.0, 10.0, 20)
             getproperty(grid_test_bench, field) == getproperty(grid_to_test, field)
     end
 
+
     @test start_point ⊂ fgrid && finish_point ⊂ fgrid &&
           (finish_point .+ start_point) ./ 2 ⊂ fgrid
+    @test finish_point .+ (1., 1.) ⊄ fgrid
 
 
     # test more specific ferrite functions
@@ -90,7 +91,10 @@ const INTERVAL_START = LinRange(-10.0, 10.0, 20)
 
     # points that matches the grid nodes: start and final point value
     points_to_test = [start_point, finish_point]
-    @test _interpolate(points_to_test, magnitude, fgrid) == [magnitude[1], magnitude[end]]
+    interpol_to_test = _interpolate(points_to_test, magnitude, fgrid)
+    interpol_bench  = [magnitude[1], magnitude[end]]
+    @test isapprox(interpol_to_test, interpol_bench, atol=TOLERANCE)
+
     # points that not matches the grid nodes:
     # consecutive in x + Δₓ / 2
     consecutive_x = start_point .+ (element_size(fgrid)[1], 0) ./ 2
@@ -105,9 +109,31 @@ const INTERVAL_START = LinRange(-10.0, 10.0, 20)
     points_to_test = [consecutive_x, consecutive_y, final_cell_middle]
     inter_to_test = _interpolate(points_to_test, magnitude, fgrid)
     inter_bench = [consecutive_x_hand, consecutive_y_hand, final_cell_middle_hand ]
-    @test  inter_to_test == inter_bench
+    @test isapprox(inter_to_test, inter_bench, atol=TOLERANCE)
 
+    # test magnitude extrapolation via ferrite grid
 
+    out_start = start_point .-(1., 1.)
+    out_finish = finish_point .+(1., 1.)
+    out_consecutive_x = consecutive_x .- (0., 1.)
+    out_consecutive_y = consecutive_y .- (1., 0.)
+    @test out_start ⊄ fgrid
+    @test out_finish ⊄ fgrid
+    @test out_consecutive_x ⊄ fgrid
+    @test out_consecutive_y ⊄ fgrid
 
+    points_to_test = [out_start, out_finish, out_consecutive_x, out_consecutive_y]
 
+    # test border closest points
+    @test _closest_point(out_start, fgrid) == start_point
+    @test _closest_point(out_finish, fgrid) == finish_point
+    @test _which_border(out_consecutive_y, fgrid) == :left
+    @test _which_border(out_consecutive_x, fgrid) == :bottom
+    @test _closest_point(out_consecutive_x, fgrid) == (out_consecutive_x[1], start_point[2])
+    @test _closest_point(out_consecutive_y, fgrid) == (start_point[1], out_consecutive_y[2])
+
+    # test extrapolate
+    extrapolation_to_test = _extrapolate(points_to_test, magnitude, fgrid)
+    extrapolation_hand = [magnitude[1], magnitude[end], consecutive_x_hand, consecutive_y_hand]
+    @test isapprox(extrapolation_to_test, extrapolation_hand, atol=TOLERANCE)
 end

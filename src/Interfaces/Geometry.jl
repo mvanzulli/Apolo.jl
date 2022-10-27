@@ -7,7 +7,7 @@ import .Base: extrema, maximum, minimum
 
 # Structured grid methods
 export AbstractStructuredGrid
-export ⊂, corners, coordinates, cartesian_index, dimension, extrema, element_type,
+export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, element_type,
 element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes, start
 
 # ==============
@@ -16,7 +16,8 @@ element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes
 """ Abstract supertype for grids.
 
 The following methods are provided by the interface:
-- `⊂ (p,grid)`        -- returns true if a point is inside a grid
+- `⊂ (p,grid)`        -- returns true if a point is inside a grid.
+- `⊄ (p,grid)`        -- returns true if a point is outside a grid.
 - `boundary(grid)`    -- returns the grid boundaries.
 - `corners(grid)`     -- returns the grid corners.
 - `coordinates(grid)` -- returns the grid coordinates.
@@ -92,22 +93,22 @@ function grid(obj::Any)
     end
 end
 
-"Check if a point is inside a grid"
+"Checks if a point is inside a grid"
 function ⊂(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
 
     ex = extrema(grid)
 
-    is_inside = true
-
     for axis in 1:D
-        if is_inside == false
-            return false
-        else
-            is_inside && ex[axis][D] ≤ p[D] ≤ ex[axis][D]
-        end
+
+        is_in = ex[axis][1] ≤ p[axis] ≤ ex[axis][D]
+        !is_in && return false
+
     end
-    return is_inside
+    return true
 end
+
+"Checks if a point is outside a grid"
+⊄(p::NTuple, grid::AbstractStructuredGrid) = !(⊂(p,grid))
 
 "Interpolates a generic function inside a grid "
 function _interpolate(
