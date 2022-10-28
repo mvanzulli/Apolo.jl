@@ -11,9 +11,9 @@ export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, elem
 element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes, start
 
 # ==============
-# Grids
+# Abstract Grid
 # ==============
-""" Abstract supertype for grids.
+""" Abstract supertype for structured grids.
 
 The following methods are provided by the interface:
 - `⊂ (p,grid)`        -- returns true if a point is inside a grid.
@@ -112,7 +112,7 @@ end
 
 "Interpolates a generic function inside a grid "
 function _interpolate(
-    p::NTuple{D},
+    vec_points::Vector{NTuple{D,T}},
     magnitude::M,
     grid::AbstractStructuredGrid{D}
 ) where {D,T,M}
@@ -167,5 +167,11 @@ function _my_div_rem(onedim_index::Int, batch::Int, edge_val::Int)
     end
 
 end
+
+# ====================
+# Grids implementations
+# ====================
+
+include("../Geometry/ferrite_grids.jl")
 
 end

@@ -7,7 +7,7 @@ using Reexport
 # ==============
 include("Interfaces/Geometry.jl")
 @reexport using .Geometry
-include("Geometry/ferrite_grids.jl")
+
 
 # ==============
 # Materials
@@ -28,10 +28,10 @@ include("Interfaces/ForwardProblem.jl")
 include("ferritesolver.jl")
 
 
-# ==============
-# Geometry
-# ==============
-include("geometry.jl")
+# # ==============
+# # Geometry
+# # ==============
+# include("geometry.jl")
 
 
 # ==============

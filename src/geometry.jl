@@ -24,11 +24,11 @@ using Ferrite: AbstractCell, Grid, Vec,
 using Images: feature_transform, distance_transform
 
 
-# Export interface functions and types            
+# Export interface functions and types
 export SolutionBoundary, create_rectangular_grid,
-getsides, get_boundary_points_def, get_boundary_ref, 
-binary_mat_zone, get_elements, abs, jaccard, 
-mesh_hyperrectangle, mean_hausdorff, geometric_simillarty, ⊂	
+getsides, get_boundary_points_def, get_boundary_ref,
+binary_mat_zone, get_elements, abs, jaccard,
+mesh_hyperrectangle, mean_hausdorff, geometric_simillarty, ⊂
 
 
 
@@ -64,9 +64,9 @@ function create_rectangular_grid(
 {D<:VecOrTuple,T<:VecOrTuple,ET<:AbstractCell}
     # check dimensions match
     dimgrid = check_grid_dims(dimgrid, nelem, start, finish)
-    dimgrid !==2 && throw(DimensionMismatch("By the moment is only dim = 2")) 
-    #TODO: extend the  implementation to generic dim grids 
-    
+    dimgrid !==2 && throw(DimensionMismatch("By the moment is only dim = 2"))
+    #TODO: extend the  implementation to generic dim grids
+
 
     corners = [
         Vec{dimgrid}(Tuple(start)),
@@ -74,7 +74,7 @@ function create_rectangular_grid(
         Vec{dimgrid}(Tuple(finish)),
         Vec{dimgrid}((start[1], finish[2])),
     ]
-    # create grid using a generic ferrite element type 
+    # create grid using a generic ferrite element type
     return generate_grid(elemType, nelem, corners)
 end
 
@@ -89,9 +89,9 @@ end
 " Get border facesets"
 function get_boundary_indexes(grid::Grid)
     Ωgrid_indexes = Set{FaceIndex}()
-    # get faces indexes 
+    # get faces indexes
     for border in ["top", "bottom", "left", "right"]
-        # get faces index 
+        # get faces index
         faces_index = getfaceset(grid, border)
         [push!(Ωgrid_indexes, face) for face in faces_index]
     end
@@ -125,18 +125,6 @@ function extrema(grid::Grid)
     # compute extrema
     return (xₘᵢₙ, yₘᵢₙ, xₘₐₓ, yₘₐₓ)
 end
-
-# TODO: Generalize this function 
-"Check if a point is inside a grid"
-function ⊂(p::NTuple{D}, grid::Grid{D}) where D
-    # compute grid maximum and minimum
-    (xₘᵢₙ, yₘᵢₙ, xₘₐₓ, yₘₐₓ) = extrema(grid)
-
-
-    return xₘᵢₙ ≤ p[1] ≤ xₘₐₓ && yₘᵢₙ ≤ p[2] ≤ yₘₐₓ 
-end
-
-
 
 "Computes the grid border points"
 function get_boundary_points_ref(grid::Grid, num_points_border::Int)
@@ -173,7 +161,7 @@ function get_boundary_points_def(
     grid = getgrid(sol)
     # extract boundary points of the grid in the reference configuration
     Ω_grid_ref = get_boundary_points_ref(grid, num_points_border)
-    # extract u at the grid boundary 
+    # extract u at the grid boundary
     dofs = getdofs(sol)
     dofu = dofs.u
     Ω_grid_u = get_dof_point_values(sol, Ω_grid_ref, dofu)
@@ -185,8 +173,8 @@ end
 struct SolutionBoundary{dim,T<:Real} # es un polygon de LazySets
     elements::Vector{Vec{dim,T}}
 end
-# TODO: Para laburar con lazysets 
-#convert(::Type{Polygon}, ::SolutionBoundary) 
+# TODO: Para laburar con lazysets
+#convert(::Type{Polygon}, ::SolutionBoundary)
 #TODO: Add dispatch with 2D and 3D methods with solution boundary types
 #
 "Get solution set elements "
@@ -211,7 +199,7 @@ NOTE: elements of the solset must be in order
 function getsides(sol_boundary::SolutionBoundary)
     # get elements
     elems = get_elements(sol_boundary)
-    # initialize vector of sides 
+    # initialize vector of sides
     allsides = Vector{Vector{typeof(get_elements(sol_boundary)[1])}}()
 
     for s in 1:nsides(sol_boundary)
@@ -229,11 +217,11 @@ end
 #==================================================
 Geometric interface with LazySets.jl
 ==================================================#
-#TODO: Si genero Vector de LineSegment 
-#= 
+#TODO: Si genero Vector de LineSegment
+#=
 box_approximation
 box_approximation(::VPolygon)
-Hyperrectangle  
+Hyperrectangle
 =#
 
 "Lazy Sets Hyperrectangle constructor with a solution boundary "
@@ -250,7 +238,7 @@ function Hyperrectangle(solution_boundary₁::SolutionBoundary, solution_boundar
     (x1ₘᵢₙ, x1ₘₐₓ, y1ₘᵢₙ, y1ₘₐₓ) = get_maxmin(solution_boundary₁)
     (x2ₘᵢₙ, x2ₘₐₓ, y2ₘᵢₙ, y2ₘₐₓ) = get_maxmin(solution_boundary₂)
 
-    # get the max min of each box 
+    # get the max min of each box
     (xₘᵢₙ, xₘₐₓ) = extrema([x1ₘᵢₙ, x1ₘₐₓ, x2ₘᵢₙ, x2ₘₐₓ])
     (yₘᵢₙ, yₘₐₓ) = extrema([y1ₘᵢₙ, y1ₘₐₓ, y2ₘᵢₙ, y2ₘₐₓ])
 
@@ -268,15 +256,15 @@ end
 
 "Builds a Lazy Set Hyperrectangle that envelopes both solutions "
 function Hyperrectangle(
-    sol₁::ForwardProblemSolution, 
+    sol₁::ForwardProblemSolution,
     sol₂::ForwardProblemSolution,
     num_points_per_border::Int=DEFAULT_BOUNDARY_POINTS,
 )
     # build solution boundaries
     solution_boundary₁ = SolutionBoundary(sol₁, num_points_per_border)
-    solution_boundary₂ = SolutionBoundary(sol₂, num_points_per_border)    
-    
-    # build and return hyperrectangle containing both  
+    solution_boundary₂ = SolutionBoundary(sol₂, num_points_per_border)
+
+    # build and return hyperrectangle containing both
     return Hyperrectangle(solution_boundary₁, solution_boundary₂)
 end
 
@@ -301,10 +289,10 @@ end
 
 "Get borders of a solution boundary set"
 function get_maxmin(solution_boundary::SolutionBoundary)
-    # get x, y points 
+    # get x, y points
     x_points = getindex.(get_elements(solution_boundary), 1)
     y_points = getindex.(get_elements(solution_boundary), 2)
-    # get max min in x and y 
+    # get max min in x and y
     (xₘᵢₙ, xₘₐₓ) = extrema(x_points)
     (yₘᵢₙ, yₘₐₓ) = extrema(y_points)
     # return a named Tuple with vertex
@@ -315,7 +303,7 @@ end
 function ray_casting(p, solution_boundary::SolutionBoundary)
     # Sketch:
     # --------
-    # |  x(p)|       
+    # |  x(p)|
     # |      |       x(pout)
     # -------
 
@@ -325,13 +313,13 @@ function ray_casting(p, solution_boundary::SolutionBoundary)
     # create a segment between p and pout
     segment_p_pout = LineSegment(collect(p), collect(pout))
 
-    # compute sides of a solution set 
+    # compute sides of a solution set
     solset_sides = getsides(solution_boundary)
 
     intersections = 0
-    # check for all sides  
+    # check for all sides
     for side in solset_sides
-        # build segment  
+        # build segment
         side_segment = LineSegment(collect(side[1]), collect(side[2]))
         # intersections
         if (!isdisjoint(side_segment, segment_p_pout))
@@ -344,7 +332,7 @@ end
 
 "Checks if a point is inside a SolutionBoundary"
 function ∈(p, solution_boundary::SolutionBoundary)
-    # check if it inside the box and if not break 
+    # check if it inside the box and if not break
     !isinbox(p, solution_boundary) && return false
     # if is in the box then check using ray tracing
     ray_casting(p, solution_boundary::SolutionBoundary)
@@ -352,9 +340,9 @@ end
 
 "Given two vectors xᵥ, yᵥ builds an image with 1 and 0 where a solution_boundary is contained"
 function binary_mat_zone(xᵥ, yᵥ, solution_boundary::SolutionBoundary)
-    # get xvec and yvec sizes 
+    # get xvec and yvec sizes
     (m, n) = (length(xᵥ), length(yᵥ))
-    # initialize the matrix    
+    # initialize the matrix
     mat = Matrix{Bool}(undef, (m, n))
     for (index_y, y) in enumerate(yᵥ)
         for (index_x, x) in enumerate(xᵥ)
@@ -374,7 +362,7 @@ function binary_mat_zone(
     # mesh the hyper rectangle with `num_inter_per_axis` per axis
     (xᵥ, yᵥ, Δx, Δy) = mesh_hyperrectangle(hyper_rectangle, num_inter_per_axis)
 
-    # build the binary matrix 
+    # build the binary matrix
     bin_mat = binary_mat_zone(xᵥ, yᵥ, solution_boundary)
     return bin_mat, Δx, Δy
 end
@@ -387,25 +375,25 @@ function mesh_hyperrectangle(
     # computes the hyper extrema
     ((xₘᵢₙ, yₘᵢₙ), (xₘₐₓ, yₘₐₓ)) = extrema(hyperrect)
 
-    # create the grid where both solutions are integrated 
-    # in order to use EDV function the envelope box must comply Δx/Δy = 1 
-    
-    # Build x vector 
+    # create the grid where both solutions are integrated
+    # in order to use EDV function the envelope box must comply Δx/Δy = 1
+
+    # Build x vector
     num_inter_per_axis_x = num_inter_per_axis
     Δx = (xₘₐₓ - xₘᵢₙ) / num_inter_per_axis
     xᵥ = range(xₘᵢₙ + Δx/2 , xₘₐₓ - Δx/2 , length = num_inter_per_axis_x)
-    
-    # Build y vector 
-    # TODO: mesh with different number of pixels in x and y 
+
+    # Build y vector
+    # TODO: mesh with different number of pixels in x and y
     # select Δy
-    Δy = Δx 
+    Δy = Δx
     # compute the number of point to cover yₘᵢₙ
     num_inter_per_axis_y = cld( (yₘₐₓ - Δy/2) - (yₘᵢₙ + Δy/2), Δy)
     # compute the number of point to cover yₘᵢₙ
     yₘₐₓ_mesh = (yₘᵢₙ + Δy/2) + num_inter_per_axis_y * Δy
-    # build the 
+    # build the
     yᵥ =  (yₘᵢₙ + Δy/2) : Δy : yₘₐₓ_mesh
-    
+
     return (xᵥ, yᵥ, Δx, Δy)
 end
 
@@ -425,7 +413,7 @@ function ∩(
     # compute the intersection matrix
     intersection_mat = binary_mat_zone(xᵥ, yᵥ, solution_boundary₁) .* binary_mat_zone(xᵥ, yᵥ, solution_boundary₂)
 
-    # compute the ∩ area integrating the intersection_mat boolean matrix inside 
+    # compute the ∩ area integrating the intersection_mat boolean matrix inside
     # the box
     intersection_area = ∫(intersection_mat, Δx, Δy)
 
@@ -497,7 +485,7 @@ function ∪(
     abs_sol₁ = abs(sol₁, num_points_per_border, num_inter_per_axis)
     abs_sol₂ = abs(sol₂, num_points_per_border, num_inter_per_axis)
 
-    # computes intersection area 
+    # computes intersection area
     _,intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
     # return the union result
@@ -512,7 +500,7 @@ function jaccard(
     num_inter_per_axis::Int=DEFAULT_INTEGRATION_POINTS,
 )
 
-    # computes intersection area 
+    # computes intersection area
     _,intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
     # abs of each solution
@@ -530,7 +518,7 @@ function dice(
     num_points_per_border::Int=DEFAULT_BOUNDARY_POINTS,
     num_inter_per_axis::Int=DEFAULT_INTEGRATION_POINTS,
 )
-    # computes intersection area 
+    # computes intersection area
     _,intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
     # abs of each solution
@@ -572,7 +560,7 @@ function mean_hausdorff(
         )
 
     @assert Δx₁ == Δy₁ == Δx₂ == Δy₂
-        
+
     # Build cartesian index matrix and EDV
     # solution 1:
     cart_index_matrix₁ = feature_transform(intersection_mat₁)
@@ -582,8 +570,8 @@ function mean_hausdorff(
     cart_index_matrix₂ = feature_transform(intersection_mat₂)
     # euclidean distance variation (EDV)
     EDV₂ = Δx₂ * distance_transform(cart_index_matrix₂)
-    
-    
+
+
     # Find indexes of each solution in the image ([i,j] such that EDV[i,j] == 0)
     # solution 1:
     sol₁_cart_index = findall(EDV₁ .== 0)
@@ -593,19 +581,19 @@ function mean_hausdorff(
     sol₂_cart_index = findall(EDV₂ .== 0)
     # number of pixels inside solution 2
     N₂ = length(sol₂_cart_index)
-    
+
     # hausdorff distances
     hsol₂ =  1/N₂ * sum(EDV₂[sol₁_cart_index])
     hsol₁ =  1/N₁ * sum(EDV₁[sol₂_cart_index])
-        
 
-    
+
+
     return 1/2 * (hsol₁ + hsol₂)
 
 end
 ""
 
-"Computes geometric similarity based on S.Martinez and M. J. Rpuerez 2018 
+"Computes geometric similarity based on S.Martinez and M. J. Rpuerez 2018
 between two forward problems"
 function geometric_simillarty(
     sol₁::ForwardProblemSolution,

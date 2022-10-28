@@ -4,9 +4,8 @@
 
 using Test: @test, @testset
 using Apolo.Geometry
-using Apolo: FerriteStructuredGrid, border_points, coordinates,
-_convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid, _which_border,
-_corners, _boundary_indexes, _interpolate, _closest_point, _extrapolate
+using Apolo.Geometry: _convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid,
+ _which_border,_corners, _boundary_indexes, _interpolate, _closest_point, _extrapolate
 
 using Ferrite: Quadrilateral, Grid, Set, FaceIndex, Vec
 
@@ -85,9 +84,11 @@ const TOLERANCE = 1e-3
 
     # test magnitude interpolation via ferrite grid
     magnitude = reshape(collect(1.0:prod(num_nodes(fgrid))), num_nodes(fgrid))
-    fmagnitude_to_test = _convert_to_ferrite_nomenclature(magnitude, fgrid)
+    fmagnitude_to_test, cartesian_to_test = _convert_to_ferrite_nomenclature(magnitude, fgrid)
     fmagnitude_hand = [1, 2, 6, 5, 3, 7, 4, 8, 10, 9, 11, 12]
+    cartesian_indexes_hand = cartesian_index.(fmagnitude_hand, Ref(fgrid))
     @test fmagnitude_to_test == fmagnitude_hand
+    @test cartesian_to_test  == cartesian_indexes_hand
 
     # points that matches the grid nodes: start and final point value
     points_to_test = [start_point, finish_point]

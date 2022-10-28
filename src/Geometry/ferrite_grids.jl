@@ -4,15 +4,15 @@
 ##########################################################
 
 # TODO: Fix coordinates function overlead
-import Apolo.Geometry: corners, coordinates, _node_cartesian_index, dimension, extrema,
+import Apolo.Geometry: corners, coordinates, cartesian_index, dimension, extrema,
 element_type, element_size, finish, maximum, minimum, node_type, num_nodes, num_elements,
 start
 import Apolo.Geometry: _interpolate
 
 using Apolo.Geometry: AbstractStructuredGrid
-using Ferrite: Grid, generate_grid, getcoordinates, getfaceset
-using Ferrite: AbstractCell, CellIterator, DofHandler, PointEvalHandler, FaceIndex, Set,
-    RefCube , Vec
+using Ferrite: generate_grid, getcoordinates, getfaceset, getnodes, get_point_values, close!
+using Ferrite: AbstractCell, CellIterator, DofHandler, FaceIndex, Grid, Lagrange,
+    PointEvalHandler, Set, RefCube , Vec
 
 export FerriteStructuredGrid, border_points, set_coordinates
 
@@ -241,6 +241,7 @@ function _convert_to_ferrite_nomenclature(
 
     # since cells share nodes (nodes that has been added are redundant)
     added_nodes_index = Vector{Int}()
+    cartesian_index_nodes = Vector{CartesianIndex}()
 
     # iterate over each grid cell
     for cell in CellIterator(grid(fgrid))
@@ -249,13 +250,13 @@ function _convert_to_ferrite_nomenclature(
         nodes_cell = getnodes(cell)
 
         # add magnitude if the node has not been added yet
-        for node_cell in nodes_cell
+        for num_node_cell in nodes_cell
 
-            if node_cell ∉ added_nodes_index
-                push!(added_nodes_index, node_cell)
+            if num_node_cell ∉ added_nodes_index
+                push!(added_nodes_index, num_node_cell)
                 push!(
                     ferrite_magnitude,
-                    mag[cartesian_index(node_cell, fgrid)]
+                    mag[cartesian_index(num_node_cell, fgrid)]
                 )
             end
 
@@ -263,7 +264,10 @@ function _convert_to_ferrite_nomenclature(
 
     end
 
-    return ferrite_magnitude
+    # cartesian indexes of each point
+    cartesian_indexes = cartesian_index.(added_nodes_index, Ref(fgrid))
+
+    return ferrite_magnitude, cartesian_indexes
 end
 
 #TODO: extend for vectorial magnitudes
@@ -278,7 +282,7 @@ function _interpolate(
     DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
 
     # make the magnitude compatible with ferrite grids
-    fmag = _convert_to_ferrite_nomenclature(mag, fgrid)
+    fmag, _ = _convert_to_ferrite_nomenclature(mag, fgrid)
 
     dh = DofHandler(fgrid)
     push!(dh, :magnitude, 1, Lagrange{DG,RefCube,1}())
@@ -367,7 +371,7 @@ function _extrapolate(
     DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
 
     # make the magnitude compatible with ferrite grids
-    fmag = _convert_to_ferrite_nomenclature(mag, fgrid)
+    fmag, _ = _convert_to_ferrite_nomenclature(mag, fgrid)
 
     dh = DofHandler(fgrid)
     push!(dh, :magnitude, 1, Lagrange{DG,RefCube,1}())

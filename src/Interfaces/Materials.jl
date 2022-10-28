@@ -13,7 +13,7 @@ module Materials
 import Base: ismissing, getindex, replace!
 
 # Add libraries to use
-using AutoHashEquals
+using AutoHashEquals: @auto_hash_equals
 
 # Export interface functions and types
 export AbstractMaterial, Parameter, name, isname, getlabel, getval, getrange, setval!, setrange!, parameter_index, set!, setval!, model, parameters, SVK
@@ -22,8 +22,8 @@ export AbstractMaterial, Parameter, name, isname, getlabel, getval, getrange, se
 
 The following methods are provided by the interface:
 
-- `name(p)`                 -- return the name of the parameter `p`. 
-- `isname(p, pname)`        -- return `true` if name of the parameter `p` and `pname` match. 
+- `name(p)`                 -- return the name of the parameter `p`.
+- `isname(p, pname)`        -- return `true` if name of the parameter `p` and `pname` match.
 - `ismissing(p)`            -- return `true` if the value of parameter `p` is missing.
 - `getval(p)`               -- return the parameter `p` value.
 - `getrange(p)`             -- return the parameter `p` range.
@@ -40,7 +40,7 @@ const DEFAULT_NUMBER_OF_PARAMS_RANGE = 10 # Default number of parameters when a 
 
 - `name`     -- name
 - `val`      -- value
-- `range`    -- parameter guess range 
+- `range`    -- parameter guess range
 
 """
 @auto_hash_equals mutable struct Parameter <: AbstractParameter
@@ -90,9 +90,9 @@ The following methods are provided by the interface:
 - `model(m)`              -- return a string with the material model (defaults to the materials' type name)
 - `parameters(m)`         -- return a tuple with the material parameters (defaults to the materials' fields which are of type `Parameter`)
 - `getlabel(m)`           -- return material label
-- `getindex(m, pname)`    -- return the index of the parameter with name `pname` into the list of material `m` parameters. 
-- `get(m, p)` or `m[:p]`  -- return the parameter `p` of the material `m`. 
-- `getval(m, pname)`      -- return the value of the material parameter with name `pname`. 
+- `getindex(m, pname)`    -- return the index of the parameter with name `pname` into the list of material `m` parameters.
+- `get(m, p)` or `m[:p]`  -- return the parameter `p` of the material `m`.
+- `getval(m, pname)`      -- return the value of the material parameter with name `pname`.
 - `getrange(m, pname)`    -- return the range of the material parameter with name `pname`.
 - `set!(m, p)`            -- set parameter `p` into material `m`.
 - `setval!(m, p, pval)`   -- set value `pval` to parameter named `pname` into material `m`.
@@ -156,7 +156,7 @@ end
 # Concrete implementations
 # ==============================
 
-""" SVK material struct. 
+""" SVK material struct.
 
 ### Fields:
 
