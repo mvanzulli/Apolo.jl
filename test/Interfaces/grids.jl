@@ -11,6 +11,7 @@ using Test: @test, @testset
 
 const INTERVAL_START = LinRange(-10.0, 10.0, 20)
 const INTERVAL_LENGTH = LinRange(1.0, 10.0, 20)
+const INTERVAL_ELEMLENGTH = LinRange(0.1, 10.0, 20)
 const TOLERANCE = 1e-3
 
 @testset "Quadrilateral 2D Ferrite grids unitary tests" begin
@@ -155,13 +156,10 @@ end
 @testset "Hexahedron 3D Ferrite grids unitary tests" begin
 
     start_point = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
-    start_point = (0.0, 0.0, 0.0)
-    spacing_grid = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
-    elements_size_grid = (1.0, 1.0, 1.0)
-    spacing_grid = elements_size_grid
+    elements_size_grid = (rand(INTERVAL_ELEMLENGTH), rand(INTERVAL_ELEMLENGTH), rand(INTERVAL_ELEMLENGTH))
     num_elements_grid = (1, 3, 2)
-    finish_point = start_point .+ spacing_grid .* elements_size_grid
-    grid_dimension = length(spacing_grid)
+    finish_point = start_point .+ num_elements_grid .* elements_size_grid
+    grid_dimension = length(num_elements_grid)
     length_grid = finish_point .- start_point
     elemtype = Hexahedron
 
@@ -285,12 +283,16 @@ end
     out_consecutive_x = consecutive_x .- (0.0, 1.0, 0.0)
     out_consecutive_y = consecutive_y .- (1.0, 0.0, 0.0)
     out_consecutive_z = consecutive_z .- (1.0, 0.0, 0.0)
-    out_top = (start_point[1] + (start_point[1] + finish_point[1]) / 2,
+    out_top = (
+        start_point[1] + (finish_point[1] - start_point[1]) / 2,
         finish_point[2] + 1.0,
-        start_point[3] + (start_point[3] + finish_point[3]) / 2)
-    out_bottom = (start_point[1] + (start_point[1] + finish_point[1]) / 2,
+        start_point[3] + (finish_point[3] - start_point[3]) / 2,
+     )
+    out_bottom = (
+        start_point[1] + (finish_point[1] - start_point[1]) / 2,
         start_point[2] - 1.0,
-        start_point[3] + (start_point[3] + finish_point[3]) / 2)
+        start_point[3] + (finish_point[3] - start_point[3]) / 2,
+    )
 
     @test out_start ⊄ fgrid
     @test out_finish ⊄ fgrid
@@ -327,9 +329,5 @@ end
         consecutive_x_hand, consecutive_y_hand, consecutive_z_hand
     ]
     @test extrapolation_to_test ≈ extrapolation_hand atol = TOLERANCE
-
-
-
-
 
 end

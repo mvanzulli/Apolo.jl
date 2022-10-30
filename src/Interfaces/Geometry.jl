@@ -8,7 +8,7 @@ import .Base: extrema, maximum, minimum
 # Structured grid methods
 export AbstractStructuredGrid
 export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, element_type,
-element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes, start
+    element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes, start
 
 # ==============
 # Abstract Grid
@@ -108,7 +108,7 @@ function ⊂(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
 end
 
 "Checks if a point is outside a grid"
-⊄(p::NTuple, grid::AbstractStructuredGrid) = !(⊂(p,grid))
+⊄(p::NTuple, grid::AbstractStructuredGrid) = !(⊂(p, grid))
 
 "Interpolates a generic function inside a grid "
 function _interpolate(
@@ -129,10 +129,10 @@ function cartesian_index(onedim_index::Int, grid::AbstractStructuredGrid{2})
     num_nodes_grid = num_nodes(grid)
 
     (index_y, rem_x) = divrem(onedim_index, num_nodes_grid[1])
-        if rem_x == 0
-            index_x = num_nodes_grid[1]
-            return CartesianIndex(index_x, index_y)
-        end
+    if rem_x == 0
+        index_x = num_nodes_grid[1]
+        return CartesianIndex(index_x, index_y)
+    end
     return CartesianIndex(rem_x, index_y + 1)
 end
 
@@ -194,7 +194,11 @@ function _which_border(
 )
 
     # 2D classification of the point
-    twodim_border = _which_border((p[1],p[2]), (start_point[1], start_point[2]), (finish_point[1], finish_point[2]))
+    twodim_border = _which_border(
+        (p[1], p[2]),
+        (start_point[1], start_point[2]),
+        (finish_point[1], finish_point[2]),
+    )
 
     if p[3] ≤ start_point[3] # Front cases
 
