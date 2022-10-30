@@ -234,7 +234,7 @@ function _which_border(
         # If is in the previous regions then just back
         return :back
 
-    elseif start_point[3] > p[3] > finish_point[3] # 2D case with zₘᵢₙ <  z < zₘₐₓ
+    elseif start_point[3] < p[3] < finish_point[3] # 2D case with zₘᵢₙ <  z < zₘₐₓ
 
         return twodim_border
 
@@ -269,8 +269,8 @@ end
 
 "Computes the border closest point to extrapolate considering 3D grids"
 function _closest_point(
-    p::NTuple{2},
-    fgrid::AbstractStructuredGrid{2}
+    p::NTuple{3},
+    fgrid::AbstractStructuredGrid{3},
 )
 
     p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
@@ -283,27 +283,36 @@ function _closest_point(
     # Front borders
     border == :left_bottom_front && return start_point
     border == :right_bottom_front && return (finish_point[1], start_point[2], start_point[3])
-    border == :left_top_front && return (start_point[1], start_point[2], finish_point[3])
-    border == :right_top_front && return (finish_point[1], start_point[2], finish_point[3])
-
+    border == :left_top_front && return (start_point[1], finish_point[2], start_point[3])
+    border == :right_top_front && return (finish_point[1], finish_point[2], start_point[3])
+    border == :bottom_front && return (p[1], start_point[2], start_point[3])
+    border == :top_front && return (p[1], finish_point[2], start_point[3])
+    border == :left_front && return (start_point[1], p[2], start_point[3])
+    border == :right_front && return (finish_point[1], p[2], start_point[3])
+    border == :front && return (p[1], p[2], start_point[3])
 
     # Back borders
     border == :left_bottom_back && return (start_point[1], start_point[2], finish_point[3])
-     border == :right_bottom_back && return (finish_point[1], start_point[2], finish_point[3])
-    border == :left_top_back && return (start_point[1], start_point[2], finish_point[3])
-    border == :right_top_back && return (finish_point[1], start_point[2], finish_point[3])
+    border == :right_bottom_back && return (finish_point[1], start_point[2], finish_point[3])
+    border == :left_top_back && return (start_point[1], finish_point[2], finish_point[3])
+    border == :right_top_back && return finish_point
+    border == :bottom_back && return (p[1], start_point[2], finish_point[3])
+    border == :top_back && return (p[1], finish_point[2], finish_point[3])
+    border == :left_back && return (start_point[1], p[2], finish_point[3])
+    border == :right_back && return (finish_point[1], p[2], finish_point[3])
+    border == :back && return (p[1], p[2], finish_point[3])
 
-    border == :right_top_front && return (finish_point[1], start_point[2], finish_point[3])
+    # zₘᵢₙ <  z < zₘₐₓ borders
+    border == :bottom && return (p[1], start_point[2], p[3])
+    border == :top && return (p[1], finish_point[2], p[3])
+    border == :right && return (finish_point[1], p[2], p[3])
+    border == :left && return (start_point[1], p[2], p[3])
 
 
-    border == :right_bottom_front && return (finish_point[1], start_point[2], start_point[3])
-    border == :left_top && return (start_point[1], finish_point[2])
-    border == :right_top && return finish_point
-    border == :right_bottom && return (finish_point[1], start_point[2])
-    border == :bottom && return (p[1], start_point[2])
-    border == :top && return (p[1], finish_point[2])
-    border == :right && return (finish_point[1], p[2])
-    border == :left && return (start_point[1], p[2])
+    border == :left_bottom && return (start_point[1], start_point[2], p[3])
+    border == :left_top && return (start_point[1], finish_point[2], p[3])
+    border == :right_top && return (finish_point[1], finish_point[2], p[3])
+    border == :right_bottom && return (finish_point[1], start_point[2], p[3])
 
 end
 

@@ -72,7 +72,7 @@ const TOLERANCE = 1e-3
     borders_bench = ["top", "bottom", "left", "right"]
     borders_to_test = _borders(fgrid)
     borders_are_the_same = true
-    [borders_are_the_same && b in borders_bench for b in borders_to_test ]
+    [borders_are_the_same && b in borders_bench for b in borders_to_test]
     @test borders_are_the_same
 
     # all sets must be unique
@@ -137,11 +137,12 @@ const TOLERANCE = 1e-3
 
     points_to_test = [out_start, out_finish, out_consecutive_x, out_consecutive_y]
 
+    # test borders labels
+    @test _which_border(out_consecutive_y, start_point, finish_point) == :left
+    @test _which_border(out_consecutive_x, start_point, finish_point) == :bottom
     # test border closest points
     @test _closest_point(out_start, fgrid) == start_point
     @test _closest_point(out_finish, fgrid) == finish_point
-    @test _which_border(out_consecutive_y, start_point, finish_point) == :left
-    @test _which_border(out_consecutive_x, start_point, finish_point) == :bottom
     @test _closest_point(out_consecutive_x, fgrid) == (out_consecutive_x[1], start_point[2])
     @test _closest_point(out_consecutive_y, fgrid) == (start_point[1], out_consecutive_y[2])
 
@@ -214,14 +215,14 @@ end
 
     # test ∈
     @test start_point ⊂ fgrid && finish_point ⊂ fgrid &&
-    (finish_point .+ start_point) ./ 2 ⊂ fgrid
+          (finish_point .+ start_point) ./ 2 ⊂ fgrid
     @test (finish_point .+ (1.0, 1.0, 1.0)) ⊄ fgrid
 
     # test border functions with ferrite
     borders_bench = ["top", "bottom", "left", "right", "back", "front"]
     borders_to_test = _borders(fgrid)
     borders_are_the_same = true
-    [borders_are_the_same && b in borders_bench for b in borders_to_test ]
+    [borders_are_the_same && b in borders_bench for b in borders_to_test]
     @test borders_are_the_same
 
     # all sets must be unique
@@ -235,7 +236,7 @@ end
     # Ωfgrid_points = border_points(fgrid, points_per_segment)
     # bool_corners_in_borders = true
     # for point in corners(fgrid)
-        # bool_corners_in_borders && point ∈ Ωfgrid_points
+    # bool_corners_in_borders && point ∈ Ωfgrid_points
     # end
     # @test bool_corners_in_borders
 
@@ -263,16 +264,69 @@ end
     consecutive_x_hand = sum(magnitude[1, 1, 1] + magnitude[2, 1, 1]) / 2
     # consecutive in y + Δⱼ / 2
     consecutive_y = start_point .+ (0, element_size(fgrid)[2], 0) ./ 2
-    consecutive_y_hand = sum(magnitude[1,1,1] + magnitude[1, 2, 1]) / 2
+    consecutive_y_hand = sum(magnitude[1, 1, 1] + magnitude[1, 2, 1]) / 2
+    # consecutive in y + Δₖ / 2
+    consecutive_z = start_point .+ (0, 0, element_size(fgrid)[3]) ./ 2
+    consecutive_z_hand = sum(magnitude[1, 1, 1] + magnitude[1, 1, 2]) / 2
     # final point - (Δₓ, Δⱼ)/2
     final_cell_middle = finish_point .- element_size(fgrid) ./ 2
     final_cell_middle_hand = sum(magnitude[end-1:end, end-1:end, end-1:end]) / 8
 
     # test magnitude values
-    points_to_test = [consecutive_x, consecutive_y, final_cell_middle]
+    points_to_test = [consecutive_x, consecutive_y, consecutive_z, final_cell_middle]
     inter_to_test = _interpolate(points_to_test, magnitude, :magnitude, fgrid)
-    inter_bench = [consecutive_x_hand, consecutive_y_hand, final_cell_middle_hand]
+    inter_bench = [consecutive_x_hand, consecutive_y_hand, consecutive_z_hand, final_cell_middle_hand]
     @test inter_to_test ≈ inter_bench atol = TOLERANCE
+
+
+    # test magnitude extrapolation via ferrite grid
+    out_start = start_point .- (1.0, 1.0, 1.0)
+    out_finish = finish_point .+ (1.0, 1.0, 1.0)
+    out_consecutive_x = consecutive_x .- (0.0, 1.0, 0.0)
+    out_consecutive_y = consecutive_y .- (1.0, 0.0, 0.0)
+    out_consecutive_z = consecutive_z .- (1.0, 0.0, 0.0)
+    out_top = (start_point[1] + (start_point[1] + finish_point[1]) / 2,
+        finish_point[2] + 1.0,
+        start_point[3] + (start_point[3] + finish_point[3]) / 2)
+    out_bottom = (start_point[1] + (start_point[1] + finish_point[1]) / 2,
+        start_point[2] - 1.0,
+        start_point[3] + (start_point[3] + finish_point[3]) / 2)
+
+    @test out_start ⊄ fgrid
+    @test out_finish ⊄ fgrid
+    @test out_top ⊄ fgrid
+    @test out_bottom ⊄ fgrid
+    @test out_consecutive_x ⊄ fgrid
+    @test out_consecutive_y ⊄ fgrid
+    @test out_consecutive_z ⊄ fgrid
+
+    # test borders labels
+    @test _which_border(out_consecutive_x, start_point, finish_point) == :bottom_front
+    @test _which_border(out_consecutive_y, start_point, finish_point) == :left_front
+    @test _which_border(out_consecutive_z, start_point, finish_point) == :left_bottom
+    @test _which_border(out_top, start_point, finish_point) == :top
+    @test _which_border(out_bottom, start_point, finish_point) == :bottom
+
+    # test border closest points
+    @test _closest_point(out_finish, fgrid) == finish_point
+    @test _closest_point(out_start, fgrid) == start_point
+    @test _closest_point(out_consecutive_x, fgrid) == (out_consecutive_x[1], start_point[2], start_point[3])
+    @test _closest_point(out_consecutive_y, fgrid) == (start_point[1], out_consecutive_y[2], start_point[3])
+    @test _closest_point(out_consecutive_z, fgrid) == (start_point[1], start_point[2], out_consecutive_z[3])
+    @test _closest_point(out_top, fgrid) == (out_top[1], finish_point[2], out_top[3])
+    @test _closest_point(out_bottom, fgrid) == (out_bottom[1], start_point[2], out_bottom[3])
+
+    # test extrapolate
+    points_to_test = [
+        out_start, out_finish,
+        out_consecutive_x, out_consecutive_y, out_consecutive_z
+    ]
+    extrapolation_to_test = _extrapolate(points_to_test, magnitude, fgrid)
+    extrapolation_hand = [
+        magnitude[1, 1, 1], magnitude[end, end, end],
+        consecutive_x_hand, consecutive_y_hand, consecutive_z_hand
+    ]
+    @test extrapolation_to_test ≈ extrapolation_hand atol = TOLERANCE
 
 
 

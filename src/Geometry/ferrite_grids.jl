@@ -168,7 +168,6 @@ end
 # ==============
 # Features
 # ==============
-
 "DofHandler constructor using a FerriteStructuredGrid "
 DofHandler(fgrid::FerriteStructuredGrid) = DofHandler(grid(fgrid))
 
@@ -332,91 +331,6 @@ function _interpolate(
 
 end
 
-"Computes which grid border should be used to extrapolate for a 2D grid"
-function _which_border(
-    p::NTuple{2},
-    start_point::NTuple{2},
-    finish_point::NTuple{2},
-)
-
-    # Bottom borders
-    #(1,1)
-    p[1] ≤ start_point[1] && p[2] ≤ start_point[2] && return :left_bottom
-    #(end,1)
-    p[1] ≥ finish_point[1] && p[2] ≤ start_point[2] && return :right_bottom
-
-    # Top borders
-    #(1,end)
-    p[1] ≤ start_point[1] && p[2] ≥ finish_point[2] && return :left_top
-    #(end,end)
-    p[1] ≥ finish_point[1] && p[2] ≥ finish_point[2] && return :right_top
-
-    # Other cases
-    p[2] < start_point[2] && return :bottom
-    p[1] < start_point[1] && return :left
-    p[2] > finish_point[2] && return :top
-    p[1] > finish_point[1] && return :right
-
-end
-
-
-"Computes which grid border should be used to extrapolate for 3D grids"
-function _which_border(
-    p::NTuple{3},
-    start_point::NTuple{3},
-    finish_point::NTuple{3},
-)
-
-    # Front borders
-    #(1,1,1)
-    p[1] ≤ start_point[1] && p[2] ≤ start_point[2] && p[3] ≤ start_point[3] && return :left_bottom_front
-    #(end,1,1)
-    p[1] ≥ finish_point[1] && p[2] ≤ start_point[2] && p[3] ≤ start_point[3] && return :right_bottom_front
-    #(1,1,end)
-    p[1] ≤ start_point[1] && p[2] ≤ start_point[2] && p[3] ≥ finish_point[3] && return :left_top_front
-    #(end,1,end)
-    p[1] ≥ finish_point[1] && p[2] ≤ start_point[2] && p[3] ≥ finish_point[3] && return :right_top_front
-
-
-    # Back borders
-    #(1,end,1)
-    p[1] ≤ start_point[1] && p[2] ≥ finish_point[2] && p[3] ≤ start_point[3] && return :left_bottom_back
-    #(end,end,1)
-    p[1] ≥ finish_point[1] && p[2] ≥ finish_point[2] && p[3] ≤ start_point[3] && return :right_bottom_back
-    #(1,end,end)
-    p[1] ≤ start_point[1] && p[2] ≥ finish_point[2] && p[3] ≥ finish_point[3] && return :left_top_back
-    #(end,end,end)
-    p[1] ≥ finish_point[1] && p[2] ≥ finish_point[2] && p[3] ≥ finish_point[3] && return :right_top_back
-
-    # Other cases are 2D
-    return _which_border((p[1],p[2]), (start_point[1], start_point[2]), (finish_point[1], finish_point[2]))
-
-end
-
-
-"Computes the border closes point to extrapolate in 2D grid cases"
-function _closest_point(
-    p::NTuple{2},
-    fgrid::AbstractStructuredGrid{2}
-)
-
-    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
-
-    start_point = start(fgrid)
-    finish_point = finish(fgrid)
-
-    border = _which_border(p, start_point, finish_point)
-
-    border == :left_bottom && return start_point
-    border == :left_top && return (start_point[1], finish_point[2])
-    border == :right_top && return finish_point
-    border == :right_bottom && return (finish_point[1], start_point[2])
-    border == :bottom && return (p[1], start_point[2])
-    border == :top && return (p[1], finish_point[2])
-    border == :right && return (finish_point[1], p[2])
-    border == :left && return (start_point[1], p[2])
-
-end
 
 "Interpolates a scalar magnitude with a ferrite grid"
 function _extrapolate(
@@ -439,6 +353,7 @@ function _extrapolate(
 
     # create a point evaluation handler
     eval_points = Vector{Vec{DG, T}}()
+
     [push!(eval_points, Vec(_closest_point(p, fgrid))) for p in vec_points ]
     ph = PointEvalHandler(fgrid, eval_points)
 
