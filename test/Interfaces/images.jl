@@ -2,7 +2,6 @@
 # Images tests #
 ################
 using Apolo.Images
-using Apolo.Geometry
 
 using Apolo.Geometry: _convert_to_ferrite_nomenclature
 using Apolo.Images:_total_num_pixels, _index_is_inbounds, _eval_intensity, _interpolate, _extrapolate
@@ -10,7 +9,6 @@ using Apolo.Images:_total_num_pixels, _index_is_inbounds, _eval_intensity, _inte
 
 # Using external packages to test
 using Test: @test, @testset
-
 
 
 # using AutoHashEquals
@@ -21,30 +19,31 @@ using Test: @test, @testset
 
 # Define tolerances
 
-const INTERVAL_START = LinRange(-10.0, 10.0, 20)
+const INTERVAL_START = LinRange(-10., 10., 20)
+const INTERVAL_LENGTH = LinRange(1., 10., 20)
+const INTERVAL_OFFSET = LinRange(-10.,-1., 20)
 const TOLERANCE = 1e-3
 
-@testset "Ferrite images unitary tests" begin
+@testset "Ferrit 2D image unitary tests" begin
 
-    ################
-    # 2D image test
-    ##################
-    # image dimensions
     start_img = (rand(INTERVAL_START), rand(INTERVAL_START))
-    spacing_img = (0.5, 0.25)
+    spacing_img = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
     num_pixels_img = (4, 3)
     start_img_grid = start_img .+ spacing_img./2
     image_dimension = length(spacing_img)
     finish_img = start_img .+ num_pixels_img .* spacing_img
     finish_img_grid = finish_img .- spacing_img./2
-    @test finish(start_img, num_pixels_img, spacing_img) == finish_img
     length_img = finish_img .- start_img
+
+
+    @test finish(start_img, num_pixels_img, spacing_img) == finish_img
     @test length(start_img, finish_img) == length_img
     # image intensity
-    intensity_vec = collect(1.0:Float64(prod(num_pixels_img)))
+    intensity_vec = collect(1.:Float64(prod(num_pixels_img)))
     intensity_array = reshape(intensity_vec, num_pixels_img)
     # create the image ferrite grid
     fgrid_img = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels_img)
+
     intensity_ferrite_nomenclature = _convert_to_ferrite_nomenclature(intensity_array, fgrid_img)
 
     # generate image
@@ -56,7 +55,7 @@ const TOLERANCE = 1e-3
     @test start_grid(f_img) == start(grid(f_img)) == start_img_grid
     @test finish(f_img) == finish_img
     @test finish_grid(f_img) == finish(grid(f_img)) == finish_img_grid
-    @test length(f_img) == length_img
+    @test collect(length(f_img)) ≈ collect(length_img) atol = TOLERANCE
     coords = coordinates(f_img)
     @test coords == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)
     @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol = TOLERANCE )
@@ -87,21 +86,78 @@ const TOLERANCE = 1e-3
     @test cartesian_index(2, f_img) == CartesianIndex(2, 1)
     @test cartesian_index(12, f_img) == CartesianIndex(4, 3)
 
-
     # test interpolation functions
-    @test isapprox(_interpolate([start_img_grid], f_img), [intensity_array[1,1]], atol = TOLERANCE )
-    @test isapprox([f_img(start_img_grid...)], [intensity_array[1,1]], atol = TOLERANCE )
+    @test _interpolate([start_img_grid], f_img) ≈ [intensity_array[1,1]] atol = TOLERANCE
+    @test [f_img(start_img_grid...)] ≈ [intensity_array[1,1]] atol = TOLERANCE
 
     # final poit the image grid
-    @test _extrapolate([finish_img], f_img) == [intensity_array[end,end]] == [f_img(finish_img...)]
+    @test _extrapolate([finish_img], f_img) ≈ [intensity_array[end,end]] atol = TOLERANCE
+    @test [intensity_array[end,end]] ≈ [f_img(finish_img...)] atol = TOLERANCE
 
     # test point at the final cell middle point
     final_mid_cell_point = finish_img_grid .- spacing_img ./2
     hand_intensity = sum(intensity_array[end-1: end, end-1: end])/4
-    @test _interpolate([final_mid_cell_point], f_img) == [hand_intensity] ==
-    [f_img(final_mid_cell_point...)]
+    @test _interpolate([final_mid_cell_point], f_img) ≈ [hand_intensity] atol = TOLERANCE
+    @test [hand_intensity] ≈ [f_img(final_mid_cell_point...)] atol = TOLERANCE
+
+    # test functor with a vector of points
+    vec_points = [start_img_grid, finish_img, final_mid_cell_point]
+    vec_intensities_hand = [intensity_array[1,1], intensity_array[end,end], hand_intensity]
+    @test _eval_intensity(vec_points, f_img) ≈ f_img(vec_points) atol = TOLERANCE
+    @test f_img(vec_points) ≈ vec_intensities_hand atol = TOLERANCE
 
 end
+
+@testset "Ferrit 3D image unitary tests" begin
+
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
+    start_img = (0., 0., 0.)
+    spacing_img = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
+    spacing_img = (1., 1., 1.)
+    num_pixels_img = (2, 4, 3)
+    start_img_grid = start_img .+ spacing_img./2
+    image_dimension = length(spacing_img)
+    finish_img = start_img .+ num_pixels_img .* spacing_img
+    finish_img_grid = finish_img .- spacing_img./2
+    length_img = finish_img .- start_img
+
+    @test finish(start_img, num_pixels_img, spacing_img) == finish_img
+    @test length(start_img, finish_img) == length_img
+
+    # image intensity
+    intensity_vec = collect(1.:Float64(prod(num_pixels_img)))
+    intensity_array = reshape(intensity_vec, num_pixels_img)
+    # create the image ferrite grid
+    fgrid_img = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels_img)
+
+
+
+end
+
+@testset "Analytic 3D image unitary tests" begin
+
+    analytic_intensity(x,y,z) = sin(y) * cos(x) * exp(z)
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
+    length_img = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
+    offset_img = (rand(INTERVAL_OFFSET), rand(INTERVAL_OFFSET), rand(INTERVAL_OFFSET))
+
+    finish_img = start_img .+ length_img
+
+    a_img = AnalyticImage(analytic_intensity, start_img, finish_img)
+
+    @test start(a_img) == start_img
+    @test finish(a_img) == finish_img
+    @test length(a_img) == finish_img .- start_img
+    @test dimension(a_img) == length(start_img) == length(finish_img)
+    @test intensity(a_img) == analytic_intensity
+
+    @test a_img((start_img .- offset_img)..., offset = offset_img) == analytic_intensity(start_img...)
+    @test a_img((finish_img .- offset_img)..., offset = offset_img) == analytic_intensity(finish_img...)
+    vec_points = [start_img, finish_img]
+    @test a_img(vec_points) == [analytic_intensity(start_img...), analytic_intensity(finish_img...)]
+
+end
+
 
 
 #=

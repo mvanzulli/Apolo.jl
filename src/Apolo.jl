@@ -8,24 +8,23 @@ using Reexport
 include("Interfaces/Geometry.jl")
 @reexport using .Geometry
 
-
 # ==============
 # Materials
 # ==============
 # module
-include("Interfaces/Materials.jl")
-@reexport using .Materials
+# include("Interfaces/Materials.jl")
+# @reexport using .Materials
 
 
 # ==============
 # Forward Problem
 # ==============
 # module
-include("Interfaces/ForwardProblem.jl")
-@reexport using .ForwardProblem
+# include("Interfaces/ForwardProblem.jl")
+# @reexport using .ForwardProblem
 
 # ferrite.jl interface
-include("ferritesolver.jl")
+# include("ferritesolver.jl")
 
 
 # # ==============

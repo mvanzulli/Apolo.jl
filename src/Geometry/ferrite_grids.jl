@@ -12,7 +12,7 @@ import Apolo.Geometry: _interpolate
 using Apolo.Geometry: AbstractStructuredGrid
 using Ferrite: generate_grid, getcoordinates, getfaceset, getnodes, get_point_values, close!
 using Ferrite: AbstractCell, CellIterator, DofHandler, FaceIndex, Grid, Lagrange,
-    PointEvalHandler, Set, RefCube , Vec
+    PointEvalHandler, Set, RefCube , Vec, Quadrilateral, Hexahedron
 
 export FerriteStructuredGrid, border_points, set_coordinates
 
@@ -43,7 +43,7 @@ function extrema(fgrid::FerriteStructuredGrid{D,E,T}) where {D,E,T}
 
     gird_corners = corners(fgrid)
 
-    ext = Vector{NTuple{D,T}}()
+    ext = Vector{NTuple{2,T}}()
 
     for axis in 1:D
         extrema_axis = extrema(getindex.(gird_corners, axis))
@@ -69,7 +69,7 @@ minimum(fgrid::FerriteStructuredGrid) = minimum.(extrema(fgrid))
 
 start(fgrid::FerriteStructuredGrid) = getindex.(extrema(fgrid), 1)
 
-finish(fgrid::FerriteStructuredGrid{D}) where {D} = getindex.(extrema(fgrid), D)
+finish(fgrid::FerriteStructuredGrid{D}) where {D} = getindex.(extrema(fgrid), 2)
 
 
 " Creates a ferrite vector of corners in CCW "
@@ -115,18 +115,40 @@ end
 # ==============
 
 """
-Creates a rectangular Ferrite grid.
+Creates a rectangular Ferrite grid with Quadrilateral.
 """
 function _create_ferrite_rectangular_grid(
-    start_point::NTuple{D},
-    finish_point::NTuple{D},
-    num_elements::NTuple{D},
+    start_point::NTuple{2},
+    finish_point::NTuple{2},
+    num_elements::NTuple{2},
     element::Type{ET}
-) where {D,ET<:AbstractCell}
+) where {ET<:AbstractCell{2}}
 
     grid_corners = _corners(start_point, finish_point)
 
     return generate_grid(element, num_elements, grid_corners), grid_corners
+
+end
+
+"""
+Creates a rectangular Ferrite grid with Hexahedron.
+"""
+function _create_ferrite_rectangular_grid(
+    start_point::NTuple{3},
+    finish_point::NTuple{3},
+    num_elements::NTuple{3},
+    element::Type{ET}
+) where {ET<:Hexahedron}
+
+    grid_corners = _corners(start_point, finish_point)
+
+    # extract start and finish borders accordring to generate_grid ferrite function
+    # the end -1 entry corresponds to the right ferrite nomenclature
+    left = grid_corners[1]
+    right = grid_corners[end - 1]
+
+    # return corners to add into FerriteGrid.vertices
+    return generate_grid(element, num_elements, left, right), grid_corners
 
 end
 
@@ -155,18 +177,21 @@ function PointEvalHandler(fgrid::FerriteStructuredGrid, eval_points)
     return PointEvalHandler(grid(fgrid), eval_points)
 end
 
+_borders(::FerriteStructuredGrid{2}) = ["top", "bottom", "left", "right"]
+_borders(::FerriteStructuredGrid{3}) = ["top", "bottom", "left", "right", "back", "front"]
+
 "Get ferrite facesets of the grid border"
-function _boundary_indexes(my_fgrid::FerriteStructuredGrid{2})
+function _boundary_indexes(fgrid::FerriteStructuredGrid)
 
     # extract Ferrite.Grid type
-    fgrid = grid(my_fgrid)
+    ferrite_grid = grid(fgrid)
 
     Ωfaceset = Set{FaceIndex}()
 
     # get faces indexes
-    for border in ["top", "bottom", "left", "right"]
+    for border in _borders(fgrid)
 
-        faces_index = getfaceset(fgrid, border)
+        faces_index = getfaceset(ferrite_grid, border)
         [push!(Ωfaceset, face) for face in faces_index]
 
     end
@@ -275,7 +300,8 @@ end
 function _interpolate(
     vec_points::Vector{NTuple{DG,T}},
     mag::Array{T,DM},
-    fgrid::FerriteStructuredGrid{DG}
+    mag_symbol::Symbol,
+    fgrid::FerriteStructuredGrid{DG},
 ) where {DG,T,DM}
 
     [p ⊄ fgrid && throw(ArgumentError("p = $p ⊄ the grid domain")) for p in vec_points]
@@ -284,8 +310,9 @@ function _interpolate(
     # make the magnitude compatible with ferrite grids
     fmag, _ = _convert_to_ferrite_nomenclature(mag, fgrid)
 
+    # Scalar magnitude dofHandler
     dh = DofHandler(fgrid)
-    push!(dh, :magnitude, 1, Lagrange{DG,RefCube,1}())
+    push!(dh, mag_symbol, 1, Lagrange{DG,RefCube,1}())
     close!(dh)
 
     # create a point evaluation handler
@@ -298,35 +325,33 @@ function _interpolate(
         ph,
         dh,
         fmag,
-        :magnitude
+        mag_symbol
     )
 
     return m_points
 
 end
 
-"Computes which grid border should be used to extrapolate"
+"Computes which grid border should be used to extrapolate for a 2D grid"
 function _which_border(
-    p::NTuple{DG},
-    fgrid::FerriteStructuredGrid{DG}
-) where {DG}
+    p::NTuple{2},
+    start_point::NTuple{2},
+    finish_point::NTuple{2},
+)
 
-    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
-
-    start_point = start(fgrid)
-    finish_point = finish(fgrid)
-
-    # if the point is inside the border pixels (1,1), (end,1)
+    # Bottom borders
     #(1,1)
     p[1] ≤ start_point[1] && p[2] ≤ start_point[2] && return :left_bottom
     #(end,1)
     p[1] ≥ finish_point[1] && p[2] ≤ start_point[2] && return :right_bottom
+
+    # Top borders
     #(1,end)
     p[1] ≤ start_point[1] && p[2] ≥ finish_point[2] && return :left_top
     #(end,end)
     p[1] ≥ finish_point[1] && p[2] ≥ finish_point[2] && return :right_top
 
-
+    # Other cases
     p[2] < start_point[2] && return :bottom
     p[1] < start_point[1] && return :left
     p[2] > finish_point[2] && return :top
@@ -335,17 +360,52 @@ function _which_border(
 end
 
 
-"Computes the closest point at the grid wi"
-function _closest_point(
-    p::NTuple,
-    fgrid::FerriteStructuredGrid
+"Computes which grid border should be used to extrapolate for 3D grids"
+function _which_border(
+    p::NTuple{3},
+    start_point::NTuple{3},
+    finish_point::NTuple{3},
 )
 
-    border = _which_border(p, fgrid)
+    # Front borders
+    #(1,1,1)
+    p[1] ≤ start_point[1] && p[2] ≤ start_point[2] && p[3] ≤ start_point[3] && return :left_bottom_front
+    #(end,1,1)
+    p[1] ≥ finish_point[1] && p[2] ≤ start_point[2] && p[3] ≤ start_point[3] && return :right_bottom_front
+    #(1,1,end)
+    p[1] ≤ start_point[1] && p[2] ≤ start_point[2] && p[3] ≥ finish_point[3] && return :left_top_front
+    #(end,1,end)
+    p[1] ≥ finish_point[1] && p[2] ≤ start_point[2] && p[3] ≥ finish_point[3] && return :right_top_front
+
+
+    # Back borders
+    #(1,end,1)
+    p[1] ≤ start_point[1] && p[2] ≥ finish_point[2] && p[3] ≤ start_point[3] && return :left_bottom_back
+    #(end,end,1)
+    p[1] ≥ finish_point[1] && p[2] ≥ finish_point[2] && p[3] ≤ start_point[3] && return :right_bottom_back
+    #(1,end,end)
+    p[1] ≤ start_point[1] && p[2] ≥ finish_point[2] && p[3] ≥ finish_point[3] && return :left_top_back
+    #(end,end,end)
+    p[1] ≥ finish_point[1] && p[2] ≥ finish_point[2] && p[3] ≥ finish_point[3] && return :right_top_back
+
+    # Other cases are 2D
+    return _which_border((p[1],p[2]), (start_point[1], start_point[2]), (finish_point[1], finish_point[2]))
+
+end
+
+
+"Computes the border closes point to extrapolate in 2D grid cases"
+function _closest_point(
+    p::NTuple{2},
+    fgrid::AbstractStructuredGrid{2}
+)
+
+    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
 
     start_point = start(fgrid)
     finish_point = finish(fgrid)
 
+    border = _which_border(p, start_point, finish_point)
 
     border == :left_bottom && return start_point
     border == :left_top && return (start_point[1], finish_point[2])

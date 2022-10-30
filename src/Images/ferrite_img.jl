@@ -2,19 +2,18 @@
 # Main types and functions to handle with ferrite images #
 ##########################################################
 
-using Ferrite: Quadrilateral
+using Ferrite: Quadrilateral, Hexahedron
 
+using ..Geometry: FerriteStructuredGrid
+using ..Geometry: _convert_to_ferrite_nomenclature
+using ..Images: finish_grid, finish, start_grid, start
+using ..Images: _grid_num_elements
 
-using Apolo.Geometry: FerriteStructuredGrid
-using Apolo.Geometry: _convert_to_ferrite_nomenclature
-using Apolo.Images: _grid_num_elements, _interpolate, _extrapolate
-using Apolo.Images: finish_grid, finish, start_grid, start
-
-import Apolo.Images: intensity, value
+import ..Images: intensity, value
 
 const FSG = FerriteStructuredGrid
 
-export FerriteImage,FerriteIntensity, create_ferrite_img_fgrid
+export FerriteImage, FerriteIntensity, create_ferrite_img_fgrid
 
 
 """ Ferrite intensity struct.
@@ -53,21 +52,21 @@ end
 - `spacing`    -- Space in each direction between each pixel
 - `grid`       -- Ferrite grid inside the image
 """
-struct FerriteImage{D,T,G} <: AbstractImage{D,T,G}
+struct FerriteImage{D,T} <: AbstractImage{D,T}
     fintensity::FerriteIntensity{D,T}
     num_pixels::NTuple{D,<:Integer}
     start::NTuple{D,<:Real}
     spacing::NTuple{D,<:Real}
-    grid::G
+    grid::FSG
 end
 
-"Creates a FerriteStructuredGrid inside the image frame"
+"Creates a FerriteStructuredGrid inside a 2D image frame"
 function create_ferrite_img_fgrid(
-    start_img::NTuple{D,<:Real},
-    spacing_img::NTuple{D,<:Real},
-    length_img::NTuple{D,<:Real},
-    num_pixels::NTuple{D,<:Integer},
-) where {D}
+    start_img::NTuple{2,<:Real},
+    spacing_img::NTuple{2,<:Real},
+    length_img::NTuple{2,<:Real},
+    num_pixels::NTuple{2,<:Integer},
+)
 
     # Image parameters
     finish_img = start_img .+ length_img
@@ -77,6 +76,29 @@ function create_ferrite_img_fgrid(
     start_grid_point = start_grid(start_img, spacing_img)
     finish_grid_point = finish_grid(finish_img, spacing_img)
     element = Quadrilateral
+
+    # generate grid
+    fgrid = FerriteStructuredGrid(start_grid_point, finish_grid_point, num_elements, element)
+
+    return fgrid
+end
+
+"Creates a FerriteStructuredGrid inside a 3D image frame"
+function create_ferrite_img_fgrid(
+    start_img::NTuple{3,<:Real},
+    spacing_img::NTuple{3,<:Real},
+    length_img::NTuple{3,<:Real},
+    num_pixels::NTuple{3,<:Integer},
+)
+
+    # Image parameters
+    finish_img = start_img .+ length_img
+
+    # Mesh parameters
+    num_elements = _grid_num_elements(num_pixels)
+    start_grid_point = start_grid(start_img, spacing_img)
+    finish_grid_point = finish_grid(finish_img, spacing_img)
+    element = Hexahedron
 
     # generate grid
     fgrid = FerriteStructuredGrid(start_grid_point, finish_grid_point, num_elements, element)
@@ -95,7 +117,7 @@ function FerriteImage(
     # compute end point
     finish_img = finish(start_img, num_pixels, spacing_img)
     length_img = length(start_img, finish_img)
-    # Main.@infiltrate
+
     # create grid
     fgrid = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels)
 
@@ -118,12 +140,3 @@ function intensity(fimg::FerriteImage{D,T}) where {D,T}
 
     return intensity_array
 end
-
-
-
-
-
-
-#TODO implement a function to re-convert the image intensity
-# "Returns a re-shaped intensity array "
-# intensity(f_img::FerriteImage) = reshape(f_img.intensity, size(f_img))

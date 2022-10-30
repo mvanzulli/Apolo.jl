@@ -3,11 +3,11 @@ Module defining image properties and features.
 """
 module Images
 
-using Apolo.Geometry: AbstractStructuredGrid
-
-import Base: length
-import Apolo.Geometry: ⊂, ⊄, coordinates, cartesian_index, dimension, extrema, finish, grid, start
-import Apolo.Geometry: _interpolate, _extrapolate
+using ..Geometry: AbstractStructuredGrid
+using Reexport: @reexport
+@reexport import ..Geometry:  ⊂, ⊄, coordinates, cartesian_index, dimension, extrema, finish,
+grid, start
+import ..Geometry: _interpolate, _extrapolate
 
 export AbstractImage
 export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing
@@ -36,16 +36,10 @@ The following methods are provided by the interface:
 - `spacing(img)`           -- returns the space between pixels.
 - `start(img)`             -- returns the start point coordinates.
 - `start_grid(img)`        -- returns the start point of the image grid.
-
-The following methods must be provided by the user:
-
-_interpolate
-_extrapolate
-
 """
-abstract type AbstractImage{D,T,G} end
+abstract type AbstractImage{D,T} end
 
-const ERROR_IMG = :("This method is not available for this image type. Please implement it")
+const ERROR_IMG = :("This method is not available for this image type. If corresponds please implement it")
 
 " Gets the image coordinates"
 function coordinates(img::AbstractImage)
@@ -69,7 +63,14 @@ end
 dimension(::AbstractImage{D,T}) where {D,T} = D
 
 " Gets the image finish point"
-finish(img::AbstractImage) = start(img) .+ length(img)
+function finish(img::AbstractImage)
+    try
+        return img.finish
+    catch
+        return  start(img) .+ length(img)
+    end
+end
+
 " Gets the image finish point"
 function finish(
     start_img::NTuple{D,<:Real},
@@ -79,6 +80,7 @@ function finish(
 
     return start_img .+ num_pixels .* spacing_img
 end
+
 " Gets the final point"
 function finish_grid(img::AbstractImage)
     try
@@ -118,15 +120,15 @@ end
 intensity_type(::AbstractImage{D,T}) where {D,T} = T
 
 " Gets the image metric dimensions"
-function length(img::AbstractImage)
-    try
-        num_pixels(img) .* spacing(img)
-    catch
-        error(ERROR_IMG)
-    end
+function Base.length(img::AbstractImage)
+        try
+            num_pixels(img) .* spacing(img)
+        catch
+            error(ERROR_IMG)
+        end
 end
 
-function length(
+function Base.length(
     start_img::NTuple{D,<:Real},
     finish_img::NTuple{D,<:Real}
 ) where {D}
@@ -222,17 +224,36 @@ end
 "Checks if a point is outside a grid"
 ⊄(p::NTuple, img::AbstractImage) = !(⊂(p, img))
 
-(img::AbstractImage{2} where {T})(x, y) = _eval_intensity((x, y), img)
-(img::AbstractImage{3} where {T})(x, y, z) = print("IMPLEMENT me")
+"Evaluation functor for a 2D AbstractImage"
+function (img::AbstractImage{2})(x::T, y::T; offset::NTuple{2,T} = Tuple(zeros(T,2))) where {T}
+    _eval_intensity((x, y), img, offset = offset)
+end
+
+"Evaluation functor for a 3D AbstractImage"
+function (img::AbstractImage{3})(x::T, y::T, z::T; offset::NTuple{3,T} = Tuple(zeros(T,3))) where {T}
+    _eval_intensity((x, y, z), img, offset = offset)
+end
+
+"Evaluation functor for a vector of points"
+function (img::AbstractImage{D})(
+    vec_points::Vector{NTuple{D,T}};
+    offset::NTuple{D,T} = Tuple(zeros(T,D))
+) where {D,T}
+    return _eval_intensity(vec_points, img, offset = offset)
+end
 
 "Internal function to evaluate the image intensity at a generic point"
 function _eval_intensity(
     p::NTuple{D,T},
-    img::AbstractImage{D}
+    img::AbstractImage{D};
+    offset::NTuple{D,T} = Tuple(zeros(T,D))
 ) where {D,T}
 
+    p = p .+ offset
+
     # Check p is inisde the image
-    p ⊂ img ? nothing : throw(BoundsError("p = $p is not inside the img frame"))
+    p ⊂ img ? nothing : throw(ArgumentError("p + offset = $p is not inside the img frame"))
+
     # Check if p is inside the grid image
     if p ⊂ grid(img)
         intensity_p = _interpolate([p], img)
@@ -240,6 +261,35 @@ function _eval_intensity(
         intensity_p = _extrapolate([p], img)
     end
     return getindex(intensity_p)
+end
+
+"Internal function to evaluate the image intensity at a vector of points"
+function _eval_intensity(
+    vec_points::Vector{NTuple{D,T}},
+    img::AbstractImage{D};
+    offset::NTuple{D,T} = Tuple(zeros(T,D))
+) where {D,T}
+
+    intensity_vec = Vector{T}(undef, length(vec_points))
+
+    # Check if p is inside the grid image
+    for (num_point, p) in enumerate(vec_points)
+        p = p .+ offset
+        if p ⊂ img
+            if p ⊂ grid(img)
+                intensity_p = _interpolate([p], img)
+            else
+                intensity_p = _extrapolate([p], img)
+            end
+            intensity_vec[num_point] = getindex(intensity_p)
+        else
+            return missing
+            throw(Warning("p + offset = $p is not inside the img frame"))
+        end
+    end
+
+    return intensity_vec
+
 end
 
 "Interpolates the image intensity in a vector of points "
@@ -252,7 +302,7 @@ function _interpolate(
 
     intensity_img = intensity(img)
 
-    return _interpolate(vec_points, intensity_img, grid_img)
+    return _interpolate(vec_points, intensity_img, :intensity, grid_img)
 end
 
 "Extrapolates the image intensity inside a vector of points "
@@ -300,6 +350,7 @@ dimension(::AbstractIntensity{D,T}) where {D,T} = D
 # Images implementations
 # ====================
 include("../Images/ferrite_img.jl")
+include("../Images/analytic_img.jl")
 
 
 # ####################
