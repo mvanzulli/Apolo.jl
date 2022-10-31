@@ -1,268 +1,252 @@
 ################
 # Images tests #
 ################
-
-# External module functions 
-using Apolo:
-    create_rectangular_grid,
-    dimension,
-    getgrid,
-    ⊂
-# Internal exported module functions 
 using Apolo.Images
-# Internal non-exported module functions 
-using Apolo.Images:
-    _eval_intensity,
-    _eval_intensity_inside_grid,
-    _is_inside_img_grid,
-    _index_is_inbounds,
-    _node_cartesian_index,
-    _build_ferrite_img_intensity,
-    _point_is_inbounds,
-    _which_border,
-    _eval_intensity_outside_grid
+
+using Apolo.Geometry: _convert_to_ferrite_nomenclature
+using Apolo.Images: _total_num_pixels, _index_is_inbounds, _eval_intensity, _interpolate, _extrapolate
 
 
-# Using external packages to test 
+# Using external packages to test
 using Test: @test, @testset
-using AutoHashEquals
-using HistogramThresholding: build_histogram
-using Statistics: var, mean
-using DICOM: @tag_str
+
+
+# using AutoHashEquals
+# using HistogramThresholding: build_histogram
+# using Statistics: var, mean
+# using DICOM: @tag_str
 
 
 # Define tolerances
+
+const INTERVAL_START = LinRange(-10.0, 10.0, 20)
+const INTERVAL_LENGTH = LinRange(1.0, 10.0, 20)
+const INTERVAL_OFFSET = LinRange(-10.0, -1.0, 20)
 const TOLERANCE = 1e-3
 
-@testset "Generic images unitary tests" begin
+@testset "Ferrit 2D image unitary tests" begin
 
-    # TODO: add random values
-    # 2D image 
-    # image dimensions 
-    spacing_img = (0.5, 0.25)
-    num_pixels = (4, 3)
-    start_img = (1.0, 1.0)
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START))
+    spacing_img = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
+    num_pixels_img = (4, 3)
+    start_img_grid = start_img .+ spacing_img ./ 2
     image_dimension = length(spacing_img)
-    finish_img = start_img .+ num_pixels .* spacing_img
+    finish_img = start_img .+ num_pixels_img .* spacing_img
+    finish_img_grid = finish_img .- spacing_img ./ 2
     length_img = finish_img .- start_img
+    @test finish(start_img, num_pixels_img, spacing_img) == finish_img
+    @test length(start_img, finish_img) == length_img
+
     # image intensity
-    intensity_vec = collect(1.0:Float64(prod(num_pixels)))
-    intensity_mat = reshape(intensity_vec, num_pixels)
-    # create the image grid
-    grid_img = create_img_grid(start_img, spacing_img, length_img, num_pixels)
+    intensity_vec = collect(1.0:Float64(prod(num_pixels_img)))
+    intensity_array = reshape(intensity_vec, num_pixels_img)
 
-    # generate image 
-    generic_img = GenericImage(intensity_mat, num_pixels, spacing_img, start_img)
+    # generate image
+    f_img = FerriteImage(intensity_array, num_pixels_img, start_img, spacing_img)
+    fgrid_img = grid(f_img)
+    @test grid(f_img).grid.cells == fgrid_img.grid.cells
 
-    # test extractors
-    @test intensity(generic_img) == intensity_mat
-    @test intensity_type(generic_img) == eltype(intensity_mat)
-    @test dimension(generic_img) == image_dimension
-    @test numpix(generic_img) == num_pixels
-    @test total_numpix(generic_img) == prod(num_pixels)
-    @test spacing(generic_img) == spacing_img
-    @test start(generic_img) == start_img
-    @test finish(generic_img) == finish_img
-    @test length(generic_img) == length_img
+    # test the converter intensity function
+    fintensity_to_test, cart_indexes_to_test = _convert_to_ferrite_nomenclature(
+        intensity_array,
+        fgrid_img
+    )
+    fintensity_hand = [1, 2, 6, 5, 3, 7, 4, 8, 10, 9, 11, 12] # this must be the one dim pixel index
+    @test fintensity_to_test ≈ fintensity_hand atol = TOLERANCE
+    cartesian_indexes_hand = cartesian_index.(fintensity_hand, Ref(fgrid_img))
+    @test cart_indexes_to_test == cartesian_indexes_hand
 
-    # test Checks
-    # indexes 
+    # test getter functions
+    @test start(f_img) == start_img
+    @test start_grid(f_img) == start(grid(f_img)) == start_img_grid
+    @test finish(f_img) == finish_img
+    @test finish_grid(f_img) == finish(grid(f_img)) == finish_img_grid
+    @test collect(length(f_img)) ≈ collect(length_img) atol = TOLERANCE
+    coords = coordinates(f_img)
+    @test coords == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)
+    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
+    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
+
+    @test extrema(f_img) == [(start_img[1], finish_img[1]), (start_img[2], finish_img[2])]
+    @test intensity(f_img) == intensity_array
+    @test intensity_type(f_img) == intensity_type(f_img.fintensity)
+    @test dimension(f_img) == image_dimension
+    @test num_pixels(f_img) == num_pixels_img
+    @test _total_num_pixels(f_img) == prod(num_pixels_img)
+    @test spacing(f_img) == spacing_img
+
+    # test checker functions
+    # ⊂ and ⊄
+    @test start_img ⊂ f_img
+    @test finish_img ⊂ f_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ f_img
+    @test (start_img .+ 9 .* finish_img) ⊄ f_img
+
+    # indexes
     # is inside function
-    @test !(_index_is_inbounds(-1, generic_img))
-    @test !(_index_is_inbounds(total_numpix(generic_img) + 1, generic_img))
-    # normal case 
-    @test _node_cartesian_index(10, generic_img) == CartesianIndex(2, 3)
+    @test !(_index_is_inbounds(-1, f_img))
+    @test !(_index_is_inbounds(_total_num_pixels(f_img) + 1, f_img))
+    # normal case
+    @test cartesian_index(10, f_img) == CartesianIndex(2, 3)
     # edge cases
-    @test _node_cartesian_index(2, generic_img) == CartesianIndex(2, 1)
-    @test _node_cartesian_index(12, generic_img) == CartesianIndex(4, 3)
-    # points
-    @test _point_is_inbounds(start_img, generic_img)
-    @test _point_is_inbounds(finish_img, generic_img)
-    @test _point_is_inbounds((start_img .+ finish_img) ./ 2, generic_img)
-    @test !(_point_is_inbounds((start_img .+ (1.0, 1.0)), generic_img))
+    @test cartesian_index(2, f_img) == CartesianIndex(2, 1)
+    @test cartesian_index(12, f_img) == CartesianIndex(4, 3)
 
-    # test coordinates generator
-    coords = coordinates(generic_img)
-    @test spacing_img[1] == coords[1][2] - coords[1][1]
-    @test spacing_img[2] == coords[2][2] - coords[2][1]
-    extremaᵢ, extremaⱼ = extrema.(coords)
-    @test extremaᵢ == (start_img[1] + spacing_img[1] / 2, finish_img[1] - spacing_img[1] / 2)
-    @test extremaⱼ == (start_img[2] + spacing_img[2] / 2, finish_img[2] - spacing_img[2] / 2)
+    # test interpolation functions
+    @test _interpolate([start_img_grid], f_img) ≈ [intensity_array[1, 1]] atol = TOLERANCE
+    @test [f_img(start_img_grid...)] ≈ [intensity_array[1, 1]] atol = TOLERANCE
 
-    # test mesh generator
-    grid_img_extracted = getgrid(generic_img)
-    @test grid_img.cells == grid_img_extracted.cells
-    @test grid_img.nodes == grid_img_extracted.nodes
-    @test grid_img.facesets == grid_img_extracted.facesets
+    # final point the image grid
+    @test _extrapolate([finish_img], f_img) ≈ [intensity_array[end, end]] atol = TOLERANCE
+    @test [intensity_array[end, end]] ≈ [f_img(finish_img...)] atol = TOLERANCE
 
-    # check grid image methods
-    inside_grid_img_point = (1.5, 1.5)
+    # test point at the final cell middle point
+    final_mid_cell_point = finish_img_grid .- spacing_img ./ 2
+    hand_intensity = sum(intensity_array[end-1:end, end-1:end]) / 4
+    @test _interpolate([final_mid_cell_point], f_img) ≈ [hand_intensity] atol = TOLERANCE
+    @test [hand_intensity] ≈ [f_img(final_mid_cell_point...)] atol = TOLERANCE
 
-    # build ferrite vector to evaluate via PointEvalHandler
-    _build_ferrite_img_intensity(generic_img, grid_img)
-
-    # Evaluate intensity via an image functor 
-    # p is inside the grid (interpolate)
-    @test inside_grid_img_point ⊂ grid_img && _is_inside_img_grid(generic_img, inside_grid_img_point)
-    img_grid_origin = start_img .+ spacing_img ./ 2
-    @test start_grid(generic_img) == img_grid_origin
-    img_grid_finish = finish_img .- spacing_img ./ 2
-    @test finish_grid(generic_img) == img_grid_finish
-
-    # test origin intensity
-    @test (coords[1][1], coords[2][1]) == img_grid_origin
-    @test _eval_intensity(generic_img, img_grid_origin)[1] ==
-          generic_img(img_grid_origin...)[1] ==
-          _eval_intensity_inside_grid(generic_img, img_grid_origin)[1] == intensity_vec[1]
-
-    # test second point (start_grid + (Δₓ/2, 0)) intensity
-    consecutive_x_in = img_grid_origin .+ (spacing_img[1], 0) ./ 2
-    @test _eval_intensity(generic_img, consecutive_x_in) ==
-          generic_img(consecutive_x_in...) ==
-          _eval_intensity_inside_grid(generic_img, consecutive_x_in) ==
-          [(intensity_vec[1] + intensity_vec[2]) / 2]
-
-    # test second point (start_grid + (0, Δⱼ/2)) intensity
-    consecutive_y_in = img_grid_origin .+ (0, spacing_img[2]) ./ 2
-    @test _eval_intensity(generic_img, consecutive_y_in) ==
-          generic_img(consecutive_y_in...) ==
-          _eval_intensity_inside_grid(generic_img, consecutive_y_in) == [intensity_vec[1] + intensity_vec[5]] / 2
-
-    # at the middle of the end cell (finish - (Δᵢ, Δⱼ)/2)
-    mid_final_cell = img_grid_finish .- spacing_img ./ 2
-    intensity_mid_end_cell = (intensity_vec[7] + intensity_vec[8] + intensity_vec[11] + intensity_vec[12]) / 4
-    @test _eval_intensity(generic_img, mid_final_cell) ==
-          generic_img(mid_final_cell...) ==
-          _eval_intensity_inside_grid(generic_img, mid_final_cell) ==
-          [intensity_mid_end_cell]
-
-    # TODO: p is not in the grid (extrapolate)
-    # Test corners detection 
-    p_left_bottom = start(generic_img)
-    p_right_top = finish(generic_img)
-    p_left_top = (start(generic_img)[1], finish(generic_img)[2])
-    p_right_bottom = (finish(generic_img)[1], start(generic_img)[2])
-
-    @test _which_border(generic_img, p_left_bottom) == :left_bottom
-    @test _which_border(generic_img, p_right_top) == :right_top
-    @test _which_border(generic_img, p_left_top) == :left_top
-    @test _which_border(generic_img, p_right_bottom) == :right_bottom
-    div = rand(2:10)
-    xₚ = start(generic_img)[1] + ((finish(generic_img)[1] - start(generic_img)[1]) ./ div)
-    yₚ = start(generic_img)[2] + ((finish(generic_img)[2] - start(generic_img)[2]) ./ div)
-
-    # Test borders detection 
-    p_bottom = (xₚ, start(generic_img)[2])
-    p_top = (xₚ, finish(generic_img)[2])
-    p_left = (start(generic_img)[1], yₚ)
-    p_right = (finish(generic_img)[1], yₚ)
-    @test _which_border(generic_img, p_bottom) == :bottom || _which_border(generic_img, p_bottom) == :left_bottom
-    @test _which_border(generic_img, p_top) == :top || _which_border(generic_img, p_top) == :left_top
-    @test _which_border(generic_img, p_left) == :left || _which_border(generic_img, p_left) == :left_bottom
-    @test _which_border(generic_img, p_right) == :right || _which_border(generic_img, p_right) == :right_bottom
-
-    @test _eval_intensity_outside_grid(generic_img, p_left_bottom) == intensity(generic_img)[1, 1]
-    @test _eval_intensity_outside_grid(generic_img, p_right_top) == intensity(generic_img)[end, end]
-    @test _eval_intensity_outside_grid(generic_img, p_left_top) == intensity(generic_img)[1, end]
-    @test _eval_intensity_outside_grid(generic_img, p_right_bottom) == intensity(generic_img)[end, 1]
-
-    # Test bottom outside interpolation
-    # test point (point_bottom_x + n(Δᵢ, 0)) intensity
-    batch_x = rand(1:num_pixels[1]-2)
-
-    # point that matches with a node
-    point_bottom_x = (p_left_bottom .+ batch_x .* (spacing_img[1], 0))
-    @test position = _which_border(generic_img, point_bottom_x) == :bottom
-    @test _eval_intensity_outside_grid(generic_img, point_bottom_x) ==
-          generic_img(point_bottom_x...)[1] ==
-          intensity(generic_img)[batch_x+1, 1]
-
-    # point that doesn't matches with a node
-    fraction = 2 / 3
-    point_bottom_x_inter = (point_bottom_x .+ (spacing_img[1], 0) .* fraction)
-    @test position = _which_border(generic_img, point_bottom_x_inter) == :bottom
-    @test _eval_intensity_outside_grid(generic_img, point_bottom_x_inter) ==
-          generic_img(point_bottom_x_inter...)[1]
-    hand_interpolation = intensity(generic_img)[batch_x+2, 1] * fraction + intensity(generic_img)[batch_x+1, 1] * (1 - fraction)
-    @test isapprox(hand_interpolation, generic_img(point_bottom_x_inter...)[1], atol=TOLERANCE)
-
-    # Test top outside interpolation
-    # test point (p_top + n(Δᵢ, end)) intensity
-    batch_x = rand(1:num_pixels[1]-2)
-
-    # point that matches with a node
-    point_top_x = (p_left_top .+ batch_x .* (spacing_img[1], 0))
-    @test position = _which_border(generic_img, point_top_x) == :top
-    @test _eval_intensity_outside_grid(generic_img, point_top_x) ==
-          generic_img(point_top_x...)[1] ==
-          intensity(generic_img)[batch_x+1, end]
-
-    # point that doesn't matches with a node
-    point_top_x_inter = (point_top_x .+ (spacing_img[1], 0) .* fraction)
-    @test position = _which_border(generic_img, point_top_x_inter) == :top
-    @test _eval_intensity_outside_grid(generic_img, point_top_x_inter) ==
-          generic_img(point_top_x_inter...)[1]
-    hand_interpolation = intensity(generic_img)[batch_x+2, end] * fraction + intensity(generic_img)[batch_x+1, end] * (1 - fraction)
-    @test isapprox(hand_interpolation, generic_img(point_top_x_inter...)[1], atol=TOLERANCE)
-
-
-    # Test left outside interpolation
-    # test point (p_left_bottom + n(0, Δⱼ)) intensity
-    batch_y = rand(1:num_pixels[2]-2)
-
-    # point that matches with a node
-    point_left_y = (p_left_bottom .+ batch_y .* (0, spacing_img[2]))
-    position = _which_border(generic_img, point_left_y) == :left
-    @test _eval_intensity_outside_grid(generic_img, point_left_y) ==
-          generic_img(point_left_y...)[1] ==
-          intensity(generic_img)[1, batch_y+1]
-
-    # point that doesn't matches with a node
-    point_left_y_inter = (point_left_y .+ (0, spacing_img[2]) .* fraction)
-    @test position = _which_border(generic_img, point_left_y_inter) == :left
-    @test _eval_intensity_outside_grid(generic_img, point_left_y_inter) ==
-          generic_img(point_left_y_inter...)[1]
-    hand_interpolation = intensity(generic_img)[1, batch_y+2] * fraction + intensity(generic_img)[1, batch_y+1] * (1 - fraction)
-    @test isapprox(hand_interpolation, generic_img(point_left_y_inter...)[1], atol=TOLERANCE)
-
-    # Test right outside interpolation
-    # test point (p_right_bottom + n(0, Δⱼ)) intensity
-    batch_y = rand(1:num_pixels[2]-2)
-    # point that matches with a node
-    point_right_y = (p_right_bottom .+ batch_y .* (0, spacing_img[2]))
-    position = _which_border(generic_img, point_right_y) == :right
-    @test _eval_intensity_outside_grid(generic_img, point_right_y) ==
-          generic_img(point_right_y...)[1] ==
-          intensity(generic_img)[end, batch_y+1]
-
-    # point that doesn't matches with a node
-    point_right_y_inter = (point_right_y .+ (0, spacing_img[2]) .* fraction)
-    position = _which_border(generic_img, point_right_y) == :right
-    @test _eval_intensity_outside_grid(generic_img, point_right_y_inter) ==
-          generic_img(point_right_y_inter...)[1]
-    hand_interpolation = intensity(generic_img)[end, batch_y+2] * fraction + intensity(generic_img)[end, batch_y+1] * (1 - fraction)
-    @test isapprox(hand_interpolation, generic_img(point_right_y_inter...)[1], atol=TOLERANCE)
-
-    # Test left outside interpolation
-    # test point (p_left_bottom + n(0, Δⱼ)) intensity
-    batch_y = rand(1:num_pixels[2]-2)
-    # point that matches with a node
-    point_left_y = (p_left_bottom .+ batch_y .* (0, spacing_img[2]))
-    position = _which_border(generic_img, point_left_y) == :left
-    @test _eval_intensity_outside_grid(generic_img, point_left_y) ==
-          generic_img(point_left_y...)[1] ==
-          intensity(generic_img)[1, batch_y + 1]
-
-    # point that doesn't matches with a node
-    point_left_y_inter = (point_left_y .+ (0, spacing_img[2]) .* fraction)
-    position = _which_border(generic_img, point_left_y) == :left
-    @test _eval_intensity_outside_grid(generic_img, point_left_y_inter) ==
-          generic_img(point_left_y_inter...)[1]
-    hand_interpolation = intensity(generic_img)[1, batch_y + 2] * fraction + intensity(generic_img)[1, batch_y + 1] * (1 - fraction)
-    @test isapprox(hand_interpolation, generic_img(point_left_y_inter...)[1], atol=TOLERANCE)
+    # test functor with a vector of points
+    vec_points = [start_img_grid, finish_img, final_mid_cell_point]
+    vec_intensities_hand = [intensity_array[1, 1], intensity_array[end, end], hand_intensity]
+    @test _eval_intensity(vec_points, f_img) ≈ f_img(vec_points) atol = TOLERANCE
+    @test f_img(vec_points) ≈ vec_intensities_hand atol = TOLERANCE
 
 end
 
+@testset "Ferrite 3D image unitary tests" begin
+
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
+    spacing_img = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
+    num_pixels_img = (2, 4, 3)
+    start_img_grid = start_img .+ spacing_img ./ 2
+    image_dimension = length(spacing_img)
+    finish_img = start_img .+ num_pixels_img .* spacing_img
+    finish_img_grid = finish_img .- spacing_img ./ 2
+    length_img = finish_img .- start_img
+
+    # image intensity
+    intensity_vec = collect(1.0:Float64(prod(num_pixels_img)))
+    intensity_array = reshape(intensity_vec, num_pixels_img)
+
+    # create the image ferrite grid
+    fgrid_img = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels_img)
+
+    # test the converter intensity function
+    fintensity_to_test, cart_indexes_to_test = _convert_to_ferrite_nomenclature(intensity_array, fgrid_img)
+
+    fintensity_hand = [
+        1, 2, 4, 3, 9, 10, 12, 11, 6, 5, 14, 13, 8,
+        7, 16, 15, 17, 18, 20, 19, 22, 21, 24, 23
+    ] # this must be the one dim pixel index
+
+    @test fintensity_to_test == fintensity_hand
+    cartesian_indexes_hand = cartesian_index.(fintensity_hand, Ref(fgrid_img))
+    @test fintensity_to_test == fintensity_hand
+    @test cart_indexes_to_test == cartesian_indexes_hand
+
+    # generate image
+    f_img = FerriteImage(intensity_array, num_pixels_img, start_img, spacing_img)
+    @test grid(f_img).grid.cells == fgrid_img.grid.cells
+
+    # test getter functions
+    @test start(f_img) == start_img
+    @test start_grid(f_img) == start(grid(f_img)) == start_img_grid
+    @test finish(f_img) == finish_img
+    @test finish_grid(f_img) == finish(grid(f_img)) == finish_img_grid
+    @test collect(length(f_img)) ≈ collect(length_img) atol = TOLERANCE
+    coords = coordinates(f_img)
+    @test coords == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)
+    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
+    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
+    @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
+
+    @test extrema(f_img) == [
+        (start_img[1], finish_img[1]),
+        (start_img[2], finish_img[2]),
+        (start_img[3], finish_img[3]),
+    ]
+    @test intensity(f_img) == intensity_array
+    @test intensity_type(f_img) == intensity_type(f_img.fintensity)
+    @test dimension(f_img) == image_dimension
+    @test num_pixels(f_img) == num_pixels_img
+    @test _total_num_pixels(f_img) == prod(num_pixels_img)
+    @test spacing(f_img) == spacing_img
+
+    # test checker functions
+    # ⊂ and ⊄
+    @test start_img ⊂ f_img
+    @test finish_img ⊂ f_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ f_img
+    @test (start_img .+ 900 .* finish_img) ⊄ f_img
+
+    # indexes
+    # is inside function
+    @test !(_index_is_inbounds(-1, f_img))
+    @test !(_index_is_inbounds(_total_num_pixels(f_img) + 1, f_img))
+    # normal case
+    @test cartesian_index(10, f_img) == CartesianIndex(2, 1, 2)
+    # edge cases
+    @test cartesian_index(2, f_img) == CartesianIndex(2, 1, 1)
+    @test cartesian_index(16, f_img) == CartesianIndex(2, 4, 2)
+
+    # test interpolation functions
+    @test _interpolate([start_img_grid], f_img) ≈ [intensity_array[1, 1, 1]] atol = TOLERANCE
+    @test [f_img(start_img_grid...)] ≈ [intensity_array[1, 1, 1]] atol = TOLERANCE
+
+    # final point the image grid
+    @test _extrapolate([finish_img .+ (1.0, 1.0, 1.0)], f_img) ≈ [intensity_array[end, end, end]] atol = TOLERANCE
+    @test [intensity_array[end, end, end]] ≈ [f_img(finish_img...)] atol = TOLERANCE
+
+    # test point at the final cell middle point
+    final_mid_cell_point = finish_img_grid .- spacing_img ./ 2
+    hand_intensity = sum(intensity_array[end-1:end, end-1:end, end-1:end]) / 8
+    @test _interpolate([final_mid_cell_point], f_img) ≈ [hand_intensity] atol = TOLERANCE
+    @test [hand_intensity] ≈ [f_img(final_mid_cell_point...)] atol = TOLERANCE
+
+    # test functor with a vector of points
+    offset_img = (rand(INTERVAL_OFFSET), rand(INTERVAL_OFFSET), rand(INTERVAL_OFFSET))
+    vec_points = [
+        start_img_grid .- offset_img,
+        finish_img .- offset_img,
+        final_mid_cell_point .- offset_img,
+    ]
+    vec_intensities_hand = [intensity_array[1, 1, 1], intensity_array[end, end, end], hand_intensity]
+    @test _eval_intensity(vec_points, f_img, offset=offset_img) ≈ f_img(vec_points, offset=offset_img) atol = TOLERANCE
+    @test f_img(vec_points, offset=offset_img) ≈ vec_intensities_hand atol = TOLERANCE
+
+end
+
+@testset "Analytic 3D image unitary tests" begin
+
+    analytic_intensity(x, y, z) = sin(y) * cos(x) * exp(z)
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
+    length_img = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
+    offset_img = (rand(INTERVAL_OFFSET), rand(INTERVAL_OFFSET), rand(INTERVAL_OFFSET))
+
+    finish_img = start_img .+ length_img
+
+    a_img = AnalyticImage(analytic_intensity, start_img, finish_img)
+
+    @test start(a_img) == start_img
+    @test finish(a_img) == finish_img
+    @test length(a_img) == finish_img .- start_img
+    @test dimension(a_img) == length(start_img) == length(finish_img)
+    @test intensity(a_img) == analytic_intensity
+
+    @test a_img((start_img .- offset_img)..., offset=offset_img) ≈
+          analytic_intensity(start_img...) atol = TOLERANCE
+    @test a_img((finish_img .- offset_img)..., offset=offset_img) ≈
+          analytic_intensity(finish_img...) atol = TOLERANCE
+    vec_points = [start_img, finish_img]
+    @test a_img(vec_points) ≈
+          [analytic_intensity(start_img...), analytic_intensity(finish_img...)] atol = TOLERANCE
+
+end
+
+
+
+#=
 
 # Constant variables and tpyes
 # this file is executed from /test/
@@ -325,22 +309,23 @@ end
     segments_pkg, num_pix_pkg = build_histogram(vec(intensity_med), num_segments)
     # transform it into vectors
     segments_pkg = segments_pkg |> collect
-    # remove the first elements 
-    # compute segments 
+    # remove the first elements
+    # compute segments
     segments = compute_histogram(med_img, segments_pkg[2:end])
-    # get segments indexes 
+    # get segments indexes
     seg_indexs = indexes.(segments)
     # get num pixels inside each segment
     num_pixes = numpix.(segments)
     # test results (offset array)
     @test isapprox(num_pix_pkg[1:end], num_pixes, atol=2)
-    # get segments intensity vector 
+    # get segments intensity vector
     intensity_segments = intensity.(segments)
-    # compute means for each segments  
+    # compute means for each segments
     mean_segments = mean.(segments)
-    # compute std for each segments  
+    # compute std for each segments
     std_segments = std.(segments)
 
 end
 
 
+=#

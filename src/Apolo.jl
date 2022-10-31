@@ -7,12 +7,10 @@ using Reexport
 # ==============
 include("Interfaces/Geometry.jl")
 @reexport using .Geometry
-include("Geometry/ferrite_grids.jl")
 
 # ==============
 # Materials
 # ==============
-# module
 include("Interfaces/Materials.jl")
 @reexport using .Materials
 
@@ -20,18 +18,16 @@ include("Interfaces/Materials.jl")
 # ==============
 # Forward Problem
 # ==============
-# module
 include("Interfaces/ForwardProblem.jl")
 @reexport using .ForwardProblem
-
 # ferrite.jl interface
 include("ferritesolver.jl")
 
 
-# ==============
-# Geometry
-# ==============
-include("geometry.jl")
+# # ==============
+# # Geometry
+# # ==============
+# include("geometry.jl")
 
 
 # ==============
