@@ -248,6 +248,89 @@ end
 
 end
 
+@testset "VTK 2D image unitary tests" begin
+
+    # Define vtk image properties
+    intensity_function(x, y) = 2x + 2y
+
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START))
+    start_img = (0., 0.)
+    spacing_img = (.25, .25)
+    num_pixels_img = (4, 4)
+    start_img_grid = start_img .+ spacing_img ./ 2
+    image_dimension = length(spacing_img)
+    finish_img = start_img .+ num_pixels_img .* spacing_img
+    finish_img_grid = finish_img .- spacing_img ./ 2
+    length_img = finish_img .- start_img
+
+
+    xc = LinRange(start_img_grid[1], finish_img_grid[1], num_pixels_img[1])
+    yc = LinRange(start_img_grid[2], finish_img_grid[2], num_pixels_img[2])
+    coords = [xc, yc]
+
+    intensity_array = [intensity_function(x, y) for x in xc for y in yc]
+
+    # Write a vtk image
+    path_img = "./testVTK"
+    vtk_structured_write(coords, intensity_function, :intensity, path_img)
+    intensity_array = reshape(intensity_array, num_pixels_img)
+
+    vtk_structured_write(coords, intensity_array, :intensity, path_img)
+
+    # Test VTK image features
+    vtk_img = VTKImage(
+        intensity_array, spacing_img, start_img, path_img, ferrite_grid = true
+        )
+
+    # test getter functions
+    @test start(vtk_img) == start_img
+    @test start_grid(vtk_img) == start(grid(vtk_img)) == start_img_grid
+    @test finish(vtk_img) == finish_img
+    @test finish_grid(vtk_img) == finish(grid(vtk_img)) == finish_img_grid
+    @test collect(length(vtk_img)) ≈ collect(length_img) atol = TOLERANCE
+    coords = coordinates(vtk_img)
+    @test coords[1] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[1]
+    @test coords[2] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[2]
+    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
+    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
+
+    @test extrema(vtk_img) == [
+        (start_img[1], finish_img[1]),
+        (start_img[2], finish_img[2]),
+        ]
+
+    @test intensity(vtk_img) == intensity_array
+    @test intensity_type(vtk_img) == eltype(value(vtk_img.intensity))
+    @test dimension(vtk_img) == image_dimension
+    @test num_pixels(vtk_img) == num_pixels_img
+    @test _total_num_pixels(vtk_img) == prod(num_pixels_img)
+    @test spacing(vtk_img) == spacing_img
+
+    # test checker functions
+    # ⊂ and ⊄
+    @test start_img ⊂ vtk_img
+    @test finish_img ⊂ vtk_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ vtk_img
+    @test (start_img .+ 900 .* finish_img) ⊄ vtk_img
+
+    # final point the image grid
+    @test _extrapolate([finish_img .+ (1.0, 1.0)], vtk_img) ≈ [intensity_array[end, end]] atol = TOLERANCE
+    @test [intensity_array[end, end]] ≈ [vtk_img(finish_img...)] atol = TOLERANCE
+
+    # test point at the final cell middle point
+    final_mid_cell_point = finish_img_grid .- spacing_img ./ 2
+    hand_intensity = sum(intensity_array[end-1:end, end-1:end]) / 4
+    @test _interpolate([final_mid_cell_point], vtk_img) ≈ [hand_intensity] atol = TOLERANCE
+    @test [hand_intensity] ≈ [vtk_img(final_mid_cell_point...)] atol = TOLERANCE
+
+    # test with a random point
+    rand_point = start_img .+ length_img ./ rand(1:10)
+    @test vtk_img(rand_point...) ≈ intensity_function(rand_point...) atol = TOLERANCE
+
+end
+
+
+
 @testset "VTK 3D image unitary tests" begin
 
     # Define vtk image properties
@@ -263,9 +346,9 @@ end
     length_img = finish_img .- start_img
 
 
-    xc = LinRange(start_img[1], finish_img[1], num_pixels_img[1])
-    yc = LinRange(start_img[2], finish_img[2], num_pixels_img[2])
-    zc = LinRange(start_img[3], finish_img[3], num_pixels_img[3])
+    xc = LinRange(start_img_grid[1], finish_img_grid[1], num_pixels_img[1])
+    yc = LinRange(start_img_grid[2], finish_img_grid[2], num_pixels_img[2])
+    zc = LinRange(start_img_grid[3], finish_img_grid[3], num_pixels_img[3])
     coords = [xc, yc, zc]
 
     intensity_array = [intensity_function(x, y, z) for x in xc for y in yc for z in zc]
@@ -336,9 +419,10 @@ end
 
     # test with a random point
     rand_point = start_img .+ length_img ./ rand(1:100)
-    @test vtk_img(rand_point...) ==  intensity_function(rand_point...) skip = true
+    itp_rand_int = vtk_img(rand_point...)
+    exact_rand_int = intensity_function(rand_point...)
+    @test  exact_rand_int ≈ itp_rand_int atol = TOLERANCE*10
 end
-
 #=
 
 # Constant variables and tpyes
