@@ -3,3 +3,7 @@
 ###################
 
 
+start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
+    length_img = (rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH), rand(INTERVAL_LENGTH))
+    offset_img = (.2, .1, .3)
+    finish_img = start_img .+ length_img

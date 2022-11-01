@@ -2,18 +2,24 @@
 # Main types and functions to handle with medical images #
 ##########################################################
 
-
+import ..Images: finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing
+import ..Geometry:  ⊂, ⊄, coordinates, cartesian_index, dimension, extrema, finish,
+grid, start
+import ..Geometry: _interpolate, _extrapolate
 import Statistics: mean, std
-import ..Images: finish_grid, intensity, intensity_type, num_pix, start_grid, spacing
 
+using ..Geometry: AbstractStructuredGrid
+using ..Geometry: _create_ferrite_rectangular_grid
+using ..Images: AbstractIntensity
 using DICOM: DICOMData, dcmdir_parse, @tag_str
-using Apolo: create_rectangular_grid, ⊂
+
+export MedicalImage
 
 """ Medical image struct.
 
 ### Fields:
 
-- `intensity`   -- intensity array
+- `intensity`   -- image intensity
 - `dimension`   -- number of pixels in each direction
 - `spacing`     -- space in each direction between each pixel
 - `start`      -- start coordinates (considering the start located at [1,1,1] )
@@ -21,30 +27,33 @@ using Apolo: create_rectangular_grid, ⊂
 - `hyp_params`  -- last slice DICOM image with its corresponding hyper parameters
 
 """
-struct MedicalImage{T,D,F} <: AbstractImage{T,D}
-    intensity::Array{T,D}
-    dimension::NamedTuple
+struct MedicalImage{T,D,I<:AbstractIntensity,G<:AbstractStructuredGrid} <: AbstractImage{D,T,G}
+    intensity::I
+    num_pixels::NamedTuple
+    start::NTuple{D,T}
     spacing::NamedTuple
-    start::NTuple{D,<:Real}
     orientation::Symbol
-    hyp_params
-    # Cash the Ferrite.Grid element of the MedicalImage
-    # function MedicalImage{T,D,F}(
-    #     intensity::Array{T,D}
-    #     dimension::NamedTuple
-    #     spacing::NamedTuple
-    #     start::NTuple{D,<:Real}
-    #     orientation::Symbol
-    #     hyp_params) where {T,D,F}
-
-    # end
+    hyp_params::Dict
+    grid::G
 end
-#AbstractImage{D}
-#TODO: Fake Image
-#TODO: VTKImage
-#TODO:Cashear al medical image PointEvalHandler
-#TODO implement interpolation
-# (med_img::MedicalImage)(x, y, z) = # llamada al eval handler
+
+# function MedicalImage(
+#     int_array::Array{T,D},
+#     num_pixels::NamedTuple,
+#     spacing_img::NTuple{D,T} = Tuple(ones(T,D)),
+#     start_img::NTuple{D,T} = Tuple(zeros(T,D)),
+#     ferrite_grid::Bool = true,
+#     )
+
+#     !ferrite_grid && return throw(ArgumentError("Ferrite grids are included by default")
+
+
+#     _create_ferrite_rectangular_grid()
+
+
+#=
+
+
 
 " Gets the image hyper-parameters"
 dimension(med_img::MedicalImage) = med_img.dimension
@@ -230,3 +239,5 @@ mean(med_seg::MedicalSegment) = mean(intensity(med_seg))
 std(med_seg::MedicalSegment) = std(intensity(med_seg))
 " Gets the variation coefficient of an image segment"
 varcoef(med_seg::MedicalSegment) = getstd(med_seg) / getmean(med_seg)
+
+=#

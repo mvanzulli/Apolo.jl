@@ -110,10 +110,6 @@ function _corners(start_point::NTuple{3}, finish_point::NTuple{3})
 
 end
 
-# ==============
-# Constructors
-# ==============
-
 """
 Creates a rectangular Ferrite grid with Quadrilateral.
 """

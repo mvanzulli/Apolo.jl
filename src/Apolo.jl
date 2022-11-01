@@ -41,6 +41,6 @@ include("Interfaces/Images.jl")
 # ==============
 # VTK
 # ==============
-# include("vtkIO.jl")
+include("vtkIO.jl")
 
 end # module Apolo
