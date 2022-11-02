@@ -514,7 +514,7 @@ end
     rand_point = start_img .+ length_img ./ rand(1:100)
     itp_rand_int = vtk_img(rand_point...)
     exact_rand_int = intensity_function(rand_point...)
-    @test exact_rand_int ≈ itp_rand_int atol = itp_rand_int * 1e-1
+    @test exact_rand_int ≈ itp_rand_int atol = abs(itp_rand_int * 1e-1)
 
 end
 
