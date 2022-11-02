@@ -52,7 +52,7 @@ end
 - `u` -- displacement dof
 
 "
-Base.@kwdef struct StressDispDofs{dimσ,dimu}
+struct StressDispDofs{dimσ,dimu}
     σ::Dof{dimσ}
     u::Dof{dimu}
 end

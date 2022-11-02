@@ -25,7 +25,7 @@ export InterStressDisp, getuinter, getσinter,
     Grid
 
 " Struct with the interpolations for stress and displacements."
-Base.@kwdef struct InterStressDisp
+struct InterStressDisp
     u::Interpolation
     σ::Interpolation
 end
@@ -37,7 +37,7 @@ getuinter(ints::InterStressDisp) = ints.u
 getσinter(ints::InterStressDisp) = ints.σ
 
 " Struct with the quadrature rules for stress and displacements." # Is assumed that the same qrule is used for face cell
-Base.@kwdef struct QuadratureRulesStressDisp
+struct QuadratureRulesStressDisp
     faceu::QuadratureRule
     cellu::QuadratureRule
     cellσ::QuadratureRule
@@ -51,7 +51,7 @@ getfaceuqr(qrs::QuadratureRulesStressDisp) = qrs.faceu
 getcellσqr(qrs::QuadratureRulesStressDisp) = qrs.cellq
 
 " Struct with the Face and Cell vector values for stress and displacements."
-Base.@kwdef struct CellFaceValsStressDisp
+struct CellFaceValsStressDisp
     u::Tuple{CellVectorValues,FaceVectorValues}
     σ::CellScalarValues
 end
@@ -100,7 +100,7 @@ struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
     function FerriteForwardSolv(fproblem::AbstractForwardProblem)
         # load default elements and interpolations
         inter_geo, qrs, inter_dofs = default_elements(fproblem)
-        # use the full inputs constructor 
+        # use the full inputs constructor
         FerriteForwardSolv(fproblem, inter_geo, qrs, inter_dofs)
     end
 
@@ -115,7 +115,7 @@ function default_elements(fproblem)
     dimσ = dimension(fproblem.data.dofs.σ)
     dimgrid = dimension(fproblem.data.grid)
 
-    # elements to use 
+    # elements to use
     tetra = RefTetrahedron
     # define interpolations
     inter_u = Lagrange{dimu,tetra,dimu}() # dim grid, element, order
@@ -148,11 +148,11 @@ getdh(ffs::FerriteForwardSolv) = ffs.dh
 function getdh(sol::ForwardProblemSolution)
     if (:dh  ∈ keys(sol.extra) )
         sol.extra[:dh]
-    else 
+    else
         throw(ArgumentError("This solution type has no dofhandler"))
     end
 end
-    
+
 " Extract cell face values."
 getcellfacevalues(ffs::FerriteForwardSolv) = ffs.cellfacevals
 
@@ -170,7 +170,7 @@ function create_dofhandler(
     # Push displacement into dof handler
     push!(dh, getsym(dofs.u), dimension(dofs.u), inter_dofs.u)
     # Push pressure into dof handler
-    push!(dh, getsym(dofs.σ), dimension(dofs.σ), inter_dofs.σ) # check why is 1 
+    push!(dh, getsym(dofs.σ), dimension(dofs.σ), inter_dofs.σ) # check why is 1
     # Close dofhandler and return it
     close!(dh)
     return dh
@@ -255,9 +255,9 @@ function create_dirichlet_bc(
             )
         end
     end
-    # close dirichlet boundary condition dof handler 
+    # close dirichlet boundary condition dof handler
     close!(dbc)
-    # update time 
+    # update time
     t = 0.0
     update!(dbc, t)
     return dbc
@@ -269,7 +269,7 @@ function _solve(
     solver::FerriteForwardSolv,
 )
 
-    # unwarp fproblem data 
+    # unwarp fproblem data
     grid = getgrid(fproblem)
     mats = getmats(fproblem)
     bcs = getbcs(fproblem)
@@ -320,7 +320,7 @@ function doassemble(
     bcs::Dict{AbstractBoundaryCondition,Function},
 ) where {dim}
 
-    # external force for all dofs 
+    # external force for all dofs
     f = zeros(ndofs(dh))
 
     # start assemble process
@@ -380,7 +380,7 @@ function assemble_up!(
     matcell = getcellmat(cell, mats, grid)
     (Gmod, Kmod) = getmatparams(matcell)
 
-    # fill ke  
+    # fill ke
     fill_linear_elasticKe!(
         Ke,
         matcell,
@@ -402,12 +402,12 @@ function applyNeumannBC!(
     cellvalues_u,
     facevalues_u,
 )
-    # update cell values for each dof 
+    # update cell values for each dof
     n_basefuncs_u = getnbasefunctions(cellvalues_u)
 
     # We integrate the Neumann boundary using the facevalues.
     # We loop over all the faces in the cell, then check if the face
-    # Add NeumannLoadBC to the problem 
+    # Add NeumannLoadBC to the problem
     for bc in keys(bcs)
 
         if typeof(bc) == NeumannLoadBC
@@ -420,7 +420,7 @@ function applyNeumannBC!(
                     for q_point = 1:getnquadpoints(facevalues_u)
                         dΓ = getdetJdV(facevalues_u, q_point)
                         for i = 1:n_basefuncs_u
-                            # compute δu for the virtual work 
+                            # compute δu for the virtual work
                             δu = shape_value(facevalues_u, q_point, i)
                             # build tension vector
                             time = 0
@@ -442,10 +442,10 @@ function fill_linear_elasticKe!(
     cellvalues_u,
     cellvalues_p)
 
-    # compute G and K 
+    # compute G and K
     (Gmod, Kmod) = getmatparams(matcell) #TODO move to materials interface from Hook to Bulk
 
-    # update cell values for each dof 
+    # update cell values for each dof
     n_basefuncs_u = getnbasefunctions(cellvalues_u)
     n_basefuncs_p = getnbasefunctions(cellvalues_p)
     u▄, p▄ = 1, 2
@@ -487,7 +487,7 @@ end
 function getcellmat(cell, mats, grid)
     # find material of the cell
     idx_cell = cellid(cell)
-    # check gird cell sets and extract first material label and then mat 
+    # check gird cell sets and extract first material label and then mat
     for (matlabel, matcellset) in getcellsets(grid)
         if idx_cell ∈ matcellset
             for mat in keys(mats)
@@ -503,7 +503,7 @@ function getmatparams(svk::SVK)
     E = getval(svk[:E])
     ν = getval(svk[:ν])
 
-    # Compute Lamé parameters 
+    # Compute Lamé parameters
     Gmod = E / 2(1 + ν)
     Kmod = E * ν / ((1 + ν) * (1 - 2ν))
 
@@ -533,7 +533,3 @@ function get_dof_point_values(sol::ForwardProblemSolution, vec_points::Vector{Ve
    return Ferrite.get_point_values(ph, dh, dofvals, getsym(dof))
 
 end
-
-
-
-

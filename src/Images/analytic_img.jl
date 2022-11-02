@@ -11,10 +11,11 @@ export AnalyticImage
 - `start`      -- Start coordinates (considering the start located at [1,1,1] )
 - `finish`    -- Space in each direction between each pixel
 """
-struct AnalyticImage{D,T} <: AbstractImage{D,T}
+struct AnalyticImage{D,T,G<:Nothing} <: AbstractImage{D,T,G}
     intensity::Function
     start::NTuple{D,T}
     finish::NTuple{D,T}
+    grid::G
     function AnalyticImage(
         intensity::Function,
         start::NTuple{D,T},
@@ -27,7 +28,7 @@ struct AnalyticImage{D,T} <: AbstractImage{D,T}
             throw(ArgumentError("The intensity function has not D nargs"))
         end
 
-        new{D,T}(intensity, start, finish)
+        new{D,T, Nothing}(intensity, start, finish, nothing)
 
     end
 

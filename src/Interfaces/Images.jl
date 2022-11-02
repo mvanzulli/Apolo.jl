@@ -5,12 +5,13 @@ module Images
 
 using ..Geometry: AbstractStructuredGrid
 using Reexport: @reexport
+
 @reexport import ..Geometry:  ⊂, ⊄, coordinates, cartesian_index, dimension, extrema, finish,
 grid, start
 import ..Geometry: _interpolate, _extrapolate
 
 export AbstractImage
-export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing
+export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing, path, value
 
 
 #################
@@ -37,7 +38,7 @@ The following methods are provided by the interface:
 - `start(img)`             -- returns the start point coordinates.
 - `start_grid(img)`        -- returns the start point of the image grid.
 """
-abstract type AbstractImage{D,T} end
+abstract type AbstractImage{D,T,G} end
 
 const ERROR_IMG = :("This method is not available for this image type. If corresponds please implement it")
 
@@ -51,7 +52,7 @@ end
 cartesian_index(ondim_index::Int, img::AbstractImage) = cartesian_index(ondim_index, grid(img))
 
 "Gets the image max and min coordinates"
-function extrema(img::AbstractImage{D,T}) where {D,T}
+function extrema(img::AbstractImage{D}) where {D}
 
     start_point = start(img)
     finish_point = finish(img)
@@ -186,6 +187,15 @@ function start_grid(
     return start_img .+ spacing_img ./ 2
 end
 
+"Gets the image path if corresponds "
+function path(img::AbstractImage)
+    try
+        img.path
+    catch
+        error(ERROR_IMG)
+    end
+end
+
 " Gets the total number of pixels"
 _total_num_pixels(img::AbstractImage) = prod(num_pixels(img))
 
@@ -293,10 +303,7 @@ function _eval_intensity(
 end
 
 "Interpolates the image intensity in a vector of points "
-function _interpolate(
-    vec_points::Vector{NTuple{D,T}},
-    img::AbstractImage{D}
-) where {D,T}
+function _interpolate(vec_points::Vector{NTuple{D,T}},img::AbstractImage{D}) where {D,T}
 
     grid_img = grid(img)
 
@@ -304,6 +311,7 @@ function _interpolate(
 
     return _interpolate(vec_points, intensity_img, :intensity, grid_img)
 end
+
 
 "Extrapolates the image intensity inside a vector of points "
 function _extrapolate(
@@ -325,13 +333,13 @@ end
 
 The following methods are provided by the interface:
 
-- `dimension(intensity)`   -- returns the intensity array dimension.
 - `value(intensity)`       -- returns the image intensity array.
-- `typeof(intensity)`      -- returns the intensity type.
+- `intensity_type(intensity)`      -- returns the intensity type.
 - `maximum(intensity)`     -- returns the intensity maximum value.
-- `minimum(intensity)`     -- returns the intensity maximum value.
+- `minimum(intensity)`     -- returns the intensity minimum value.
+- `extrema(intensity)`     -- returns max and min intensity values.
 """
-abstract type AbstractIntensity{D,T} end
+abstract type AbstractIntensity{T} end
 
 " Gets the intensity array value"
 function value(int::AbstractIntensity)
@@ -342,56 +350,27 @@ function value(int::AbstractIntensity)
     end
 end
 
-intensity_type(::AbstractIntensity{D,T}) where {D,T} = T
+"Computes the maximum intensity"
+maximum(I::AbstractIntensity) = maximum(value(I))
 
-dimension(::AbstractIntensity{D,T}) where {D,T} = D
+"Computes the mimunum intensity"
+minimum(I::AbstractIntensity) = minimum(value(I))
+
+"Computes the intensity type"
+intensity_type(::AbstractIntensity{T}) where {T} = T
+
+struct ScalarIntensity{T} <: AbstractIntensity{T}
+    value::Array{T}
+end
+
 
 # ====================
 # Images implementations
 # ====================
 include("../Images/ferrite_img.jl")
 include("../Images/analytic_img.jl")
-
-
-# ####################
-# # Generic Image
-# ####################
-
-# """ Generic image struct.
-
-# ### Fields:
-
-# - `intensity`  -- Intensity array
-# - `num_pixels` -- Number of pixels in each direction
-# - `spacing`    -- Space in each direction between each pixel
-# - `start`      -- Start coordinates (considering the start located at [1,1,1] )
-# - `grid`       -- Ferrite grid inside the image
-# """
-# struct GenericImage{T,D} <: AbstractImage{T,D}
-#     intensity::Array{T,D}
-#     num_pixels::NTuple{D,<:Integer}
-#     spacing::NTuple{D,<:Real}
-#     start::NTuple{D,<:Real}
-#     grid::Grid
-
-#     # Cash the Ferrite.Grid into grid field of MedicalImage
-#     function GenericImage(
-#         intensity::Array{T,D},
-#         num_pixels::NTuple{D,<:Integer},
-#         spacing::NTuple{D,<:Real},
-#         start::NTuple{D,<:Real},
-#     ) where {T,D}
-
-#         # compute end point
-#         finish = start .+ num_pixels .* spacing
-#         length_img = finish .- start
-#         # create grid
-#         grid = create_img_grid(start, spacing, length_img, num_pixels)
-
-#         # instantiate generic grid
-#         new{T,D}(intensity, num_pixels, spacing, start, grid)
-#     end
-# end
+include("../Images/vtk_img.jl")
+include("../Images/medical_img.jl")
 
 
 
