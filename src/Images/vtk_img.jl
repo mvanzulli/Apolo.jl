@@ -2,17 +2,11 @@
 # Main types and functions to handle with .VTK images #
 #######################################################
 
-import ..Images: finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing
-import ..Geometry:  ⊂, ⊄, coordinates, cartesian_index, dimension, extrema, finish,
-grid, start
-import ..Geometry: _interpolate, _extrapolate
-
 using ..Geometry: AbstractStructuredGrid
-using ..Geometry: _create_ferrite_rectangular_grid
-using ..Images: AbstractIntensity
-using DICOM: DICOMData, dcmdir_parse, @tag_str
+using ..Images: AbstractImage, AbstractIntensity
+using ..Images: create_ferrite_img_fgrid
 
-export VTKImage, path
+export VTKImage
 
 """ VTK image struct.
 
@@ -33,7 +27,7 @@ struct VTKImage{D,T,I<:AbstractIntensity,G<:AbstractStructuredGrid} <: AbstractI
     path::String
 end
 
-"VTKImage constructor"
+"VTKImage constructor given an intensity array"
 function VTKImage(
     intensity_array::Array{T,D},
     spacing_img::NTuple{D,T} = Tuple(ones(T,D)),
@@ -58,8 +52,6 @@ function VTKImage(
     fintensity= FerriteIntensity(intensity_array, fgrid)
 
     # instantiate generic grid
-    VTKImage(fintensity, num_pixels, start_img, spacing_img, fgrid, path_img)
+    return VTKImage(fintensity, num_pixels, start_img, spacing_img, fgrid, path_img)
 
 end
-
-path(vtk_img::VTKImage) = vtk_img.path_img

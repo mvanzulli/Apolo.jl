@@ -2,16 +2,12 @@
 # Functions to read and plot vtk files #
 ########################################
 
-# Import dependencies to overlead
-
-# Add libraries to use
-# Internal
 using Apolo.Images
-# External
-using WriteVTK: VTKPointData, vtk_grid
 
-# Export file functions
-export vtk_structured_write
+using WriteVTK: VTKPointData, vtk_grid
+using ReadVTK: VTKFile, get_whole_extent, get_origin, get_spacing, get_point_data, get_data
+
+export vtk_structured_write, load_vtk_img
 
 ##########
 # Images #
@@ -94,6 +90,51 @@ function vtk_structured_write(
 
 end
 
+
+"""
+Reads a .VTK image with an structured grid.
+"""
+function load_vtk_img(path_img::String)
+
+    # Checks if it has the .vti extension and if not added
+    extension = ".vti"
+    if occursin(extension, path_img)
+        path_with_extension = path_img
+        vtk = VTKFile(path_with_extension)
+    else
+        path_with_extension = path_img * ".vti"
+        vtk = VTKFile(path_with_extension)
+    end
+
+    # Extract image dimensions
+    start_img_grid = Tuple(get_origin(vtk))
+    spacing_img = Tuple(get_spacing(vtk))
+    start_img = start_img_grid .- spacing_img./2
+
+    # Computes the number of voxels and if it is zero then delete it
+    num_voxels = get_whole_extent(vtk)[2:2:end]
+    zero_voxels_axis = findall(iszero, num_voxels)
+    [popat!(num_voxels, i) for i in zero_voxels_axis]
+
+    if length(num_voxels) == 2
+        num_pixels_img = Tuple(num_voxels .+ (1, 1))
+    elseif length(num_voxels) == 3
+        num_pixels_img = Tuple(num_voxels .+ (1, 1, 1))
+    else
+        throw(ArgumentError("Dimension error"))
+    end
+
+    # Builds intensity array
+    intensity_vec = get_data( get_point_data(vtk)["intensity"] )
+    intensity_array = reshape(intensity_vec, num_pixels_img) |> collect
+
+    vtk_img = VTKImage(
+        intensity_array, spacing_img, start_img, path_img, ferrite_grid = true
+        )
+
+    return vtk_img
+
+end
 
 
 

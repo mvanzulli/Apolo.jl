@@ -11,7 +11,7 @@ grid, start
 import ..Geometry: _interpolate, _extrapolate
 
 export AbstractImage
-export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing, value
+export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing, path, value
 
 
 #################
@@ -185,6 +185,15 @@ function start_grid(
     spacing_img::NTuple{D,<:Real}
 ) where {D}
     return start_img .+ spacing_img ./ 2
+end
+
+"Gets the image path if corresponds "
+function path(img::AbstractImage)
+    try
+        img.path
+    catch
+        error(ERROR_IMG)
+    end
 end
 
 " Gets the total number of pixels"
