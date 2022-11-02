@@ -60,7 +60,6 @@ const DCM_TO_LOAD = "./test/DICOMImages/"
     @test finish_grid(med_img) == finish(grid(med_img)) == finish_img_grid
     @test collect(length(med_img)) ≈ collect(length_img) atol = TOLERANCE
     coords = coordinates(med_img)
-    @test coords == LinRange.(start_img_grid, finish_img_grid, collect(num_pixels_img))
     @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
     @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
     @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
@@ -84,7 +83,7 @@ const DCM_TO_LOAD = "./test/DICOMImages/"
     @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ med_img
     @test (start_img .+ 9 .* finish_img) ⊄ med_img
 
-    # FIXME: IMPROOVE PERFORMANCE
+    # FIXME: IMPROVE PERFORMANCE
     # # Load a .dcm folder
     # time = @elapsed begin
     #     med_img = load_medical_img(DCM_TO_LOAD)
@@ -311,10 +310,10 @@ end
     @test intensity(a_img) == analytic_intensity
     @test grid(a_img) == nothing
 
-    @test a_img((start_img .- offset_img)..., offset=offset_img) ≈
-          analytic_intensity(start_img...) atol = TOLERANCE
-    @test a_img((finish_img .- offset_img)..., offset=offset_img) ≈
-          analytic_intensity(finish_img...) atol = TOLERANCE
+    @test a_img((start_img .+ length_img./100 .- offset_img)..., offset=offset_img) ≈
+          analytic_intensity((start_img.+ length_img./100)...) atol = TOLERANCE
+    @test a_img((finish_img .- length_img./100 .- offset_img)..., offset=offset_img) ≈
+          analytic_intensity((finish_img .- length_img./100)...) atol = TOLERANCE
     vec_points = [start_img, finish_img]
     @test a_img(vec_points) ≈
           [analytic_intensity(start_img...), analytic_intensity(finish_img...)] atol = TOLERANCE
@@ -421,7 +420,7 @@ end
 
     start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
     spacing_img = (rand(INTERVAL_POS), rand(INTERVAL_POS), rand(INTERVAL_POS)) ./ 100
-    num_pixels_img = (40, 40, 40)
+    num_pixels_img = (15, 15, 15)
     start_img_grid = start_img .+ spacing_img ./ 2
     image_dimension = length(spacing_img)
     finish_img = start_img .+ num_pixels_img .* spacing_img
@@ -437,17 +436,15 @@ end
     intensity_array = [intensity_function(x, y, z) for x in xc for y in yc for z in zc]
     intensity_array = reshape(intensity_array, num_pixels_img)
 
-    # Test VTK image features
-    vtk_img = VTKImage(
-        intensity_array, spacing_img, start_img, path_img, ferrite_grid=true
-    )
-
-
-
     # Write a vtk image (structured grids only)
     path_img = "./testVTK"
     vtk_structured_write(coords, intensity_function, :intensity, path_img)
     vtk_structured_write(coords, intensity_array, :intensity, path_img)
+
+    # Test VTK image features
+    vtk_img = VTKImage(
+        intensity_array, spacing_img, start_img, path_img, ferrite_grid=true
+    )
 
     # Read a vtk image
     vtk_img_red = load_vtk_img(path_img)
@@ -517,7 +514,7 @@ end
     rand_point = start_img .+ length_img ./ rand(1:100)
     itp_rand_int = vtk_img(rand_point...)
     exact_rand_int = intensity_function(rand_point...)
-    @test exact_rand_int ≈ itp_rand_int atol = itp_rand_int * 1e-2
+    @test exact_rand_int ≈ itp_rand_int atol = itp_rand_int * 1e-1
 
 end
 
