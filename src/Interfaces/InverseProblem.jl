@@ -113,7 +113,11 @@ admissible_ranges(::....)
 
 update!()
 
-msf(fproblem, data_imgs)
+msf(fproblem, imgs)
+
+
+solve(Inv_problem) = optimize!(msf, BruteForce(), args...; kwargs...)
+
 
 
 
