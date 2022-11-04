@@ -20,8 +20,6 @@ include("Interfaces/Materials.jl")
 # ==============
 include("Interfaces/ForwardProblem.jl")
 @reexport using .ForwardProblem
-# ferrite.jl interface
-include("ferritesolver.jl")
 
 
 # # ==============

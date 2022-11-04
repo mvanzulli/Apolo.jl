@@ -4,7 +4,7 @@
 ####################################
 
 # Import dependencies to overlead
-import Apolo.ForwardProblem: _solve, initialize!
+import Apolo.ForwardProblem: _solve, _initialize!
 
 # Add libraries to use
 # Internal
@@ -80,13 +80,14 @@ struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
         qrs::QRS,
         inter_dofs::IDOFS,
     ) where {IGEO,QRS,IDOFS}
+
         # extract grid, dofs  and create: dof handler, cellface vals, nbasefuncs
-        grid = getgrid(fproblem)
-        dofs = getdofs(fproblem)
-        dh = create_dofhandler(grid, dofs, inter_dofs)
-        cfv = create_values(dofs, inter_dofs, inter_geo, qrs)
+        grid_fproblem = grid(fproblem)
+        dofs_fproblem = dofs(fproblem)
+        dh = create_dofhandler(grid_fproblem, dofs_fproblem, inter_dofs)
+        cfv = create_values(dofs_fproblem, inter_dofs, inter_geo, qrs)
         nbasef = NumBaseFuncStressDisp(cfv)
-        # construct
+
         new{IGEO,QRS,IDOFS,typeof(dh),typeof(cfv),typeof(nbasef)}(
             inter_geo,
             qrs,
@@ -96,6 +97,7 @@ struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
             nbasef,
         )
     end
+
     "`FerriteForwardSolv` constructor with default defined interpolations. "
     function FerriteForwardSolv(fproblem::AbstractForwardProblem)
         # load default elements and interpolations
@@ -216,7 +218,7 @@ function initialize!(
 ) where {FP<:AbstractForwardProblem}
 
     # extract bcs and dofh
-    bcs = getbcs(fproblem)
+    bcs = boundary_conditions(fproblem)
     dh = getdh(solver)
 
     # create dirichlet_bcs
@@ -270,9 +272,9 @@ function _solve(
 )
 
     # unwarp fproblem data
-    grid = getgrid(fproblem)
-    mats = getmats(fproblem)
-    bcs = getbcs(fproblem)
+    grid_fp = grid(fproblem)
+    mats = materials(fproblem)
+    bcs = boundary_conditions(fproblem)
     cfv = getcellfacevalues(solver)
     cellvalues_u = getucellval(cfv)
     facevalues_u = getufaceval(cfv)
@@ -290,7 +292,7 @@ function _solve(
         facevalues_u,
         cellvalues_σ,
         K,
-        grid,
+        grid_fp,
         dh,
         mats,
         bcs)
@@ -302,7 +304,7 @@ function _solve(
     u = Symmetric(K) \ f
 
     # build solution
-    sol = ForwardProblemSolution(solver, getfemdata(fproblem), mats, getdofs(fproblem), u, Dict(:dh => dh))
+    sol = ForwardProblemSolution(solver, femdata(fproblem), mats, getdofs(fproblem), u, Dict(:dh => dh))
 
     return sol
 end
@@ -523,13 +525,13 @@ end
 " Get the values  "
 function get_dof_point_values(sol::ForwardProblemSolution, vec_points::Vector{Vec{dim,T}}, dof) where {dim,T}
     # get all dofs u value
-    dofvals = getdofsvals(sol)
+    dofvals_sol = dofsvals(sol)
     # get dof handler
     dh = getdh(sol)
     # create a point handler
-    grid = getgrid(sol)
-    ph = PointEvalHandler(grid, vec_points)
+    grid_s = grid(sol)
+    ph = PointEvalHandler(grid_s, vec_points)
     # eval the points
-   return Ferrite.get_point_values(ph, dh, dofvals, symbol(dof))
+   return Ferrite.get_point_values(ph, dh, dofvals_sol, symbol(dof))
 
 end

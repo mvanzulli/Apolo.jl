@@ -6,7 +6,8 @@ module Geometry
 import .Base: extrema, maximum, minimum
 
 # Structured grid methods
-export AbstractStructuredGrid
+export AbstractGrid, AbstractStructuredGrid
+
 export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, element_type,
     element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes, start
 
@@ -37,7 +38,9 @@ The following methods are provided by the interface:
 - `num_nodes(grid)`   -- returns the number of grid nodes.
 - `start(grid)`       -- returns the grid start point.
 """
-abstract type AbstractStructuredGrid{D,T} end
+abstract type AbstractGrid{D,T} end
+
+abstract type AbstractStructuredGrid{D,T} <: AbstractGrid{D,T} end
 
 
 const ERROR_GRID = :("This method is not available for this grid type. Please implement it")

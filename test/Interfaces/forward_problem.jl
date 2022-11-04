@@ -1,13 +1,12 @@
 ##########################
 # Forward problem tests #
 ##########################
-# Using internal packages to test
+
+using Apolo.Geometry
 using Apolo.ForwardProblem
 
-# Using external packages to test
 using Test: @test, @testset
-
-using Ferrite: Grid, generate_grid, Triangle, Vec, PointEvalHandler, get_point_values
+using Ferrite: Grid, Triangle, generate_grid, Triangle, Vec, PointEvalHandler, get_point_values
 using LinearAlgebra: norm
 
 @testset "ForwardProblem unitary tests" begin
@@ -21,7 +20,7 @@ using LinearAlgebra: norm
     @test dimension(dofu) == dim
     dofu = Dof{2}(:u)
     dofσ = Dof{1}(:p)
-    dofs = StressDispDofs(σ=dofσ, u=dofu)
+    dfs = StressDispDofs(σ=dofσ, u=dofu)
 
     # --- Boundary Conditions ---
     # dof name
@@ -38,9 +37,8 @@ using LinearAlgebra: norm
     clamped_ΓD = DirichletBC(dof_clampedΓD, vals_calmpedΓD, dofs_clampedΓD, label_clampedΓD)
 
     @test dofs(clamped_ΓD) == dof_clampedΓD
-    @test vals_func(clamped_ΓD) == vals_calmpedΓD
-    @test getlabel(clamped_ΓD) == Symbol(label_clampedΓD)
-    @test getlabel(clamped_ΓD) == Symbol(label_clampedΓD)
+    @test values_function(clamped_ΓD) == vals_calmpedΓD
+    @test label(clamped_ΓD) == Symbol(label_clampedΓD)
     # region
     region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
     # load factors
@@ -64,25 +62,11 @@ using LinearAlgebra: norm
     Lᵢₛ = 2.0
     Lⱼₛ = 1.0
     # -- grid -- #
-    #TODO: Update create grid test
-    """ Creates a triangle grid inside a square domain of (Lᵢₛ, Lⱼₛ) """
-    function create_solid_grid(nx, ny, Lᵢₛ=Lᵢₛ, Lⱼₛ=Lⱼₛ)
-        corners = [
-            Vec{2}((0.0, 0.0)),
-            Vec{2}((Lᵢₛ, 0.0)),
-            Vec{2}((Lᵢₛ, Lⱼₛ)),
-            Vec{2}((0.0, Lⱼₛ)),
-        ]
-        # create grid using Triangle  type of element
-        grid = generate_grid(Triangle, (nx, ny), corners)
-        return grid
-    end
-    # define number of elements and create the grid
-    nx = ny = 20
-    Ωₛ = create_solid_grid(nx, ny)
-    # number of triangles
-    numcells = nx * ny * 2
-    @test length(Ωₛ.cells) == numcells
+    start_point = (0., 0.)
+    finish_point = (Lᵢₛ, Lⱼₛ)
+    num_elements_grid = (3, 2)
+    elemtype = Triangle
+    fgrid = FerriteStructuredGrid(start_point, finish_point, num_elements_grid, elemtype)
 
     # -- material -- #
     # reference parameters
@@ -102,19 +86,27 @@ using LinearAlgebra: norm
     mats = Dict{AbstractMaterial,Function}(svk => region_svk)
 
     # -- create data_fem -- #
-    data_fem = FEMData(Ωₛ, dofs, bcs)
+    data_fem_p = FEMData(fgrid, dfs, bcs)
 
     # test methods
-    @test getgrid(data_fem) == Ωₛ
-    @test getbcs(data_fem) == bcs
-    @test getdofs(data_fem) == dofs
+    @test grid(data_fem_p) == fgrid
+    @test boundary_conditions(data_fem_p) == bcs
+    @test dofs(data_fem_p) == dfs
 
     # --- Forward problem formulation and grid labeled with a material ---
-    fproblem = LinearElasticityProblem(data_fem, mats)
+    fproblem = LinearElasticityProblem(data_fem_p, mats)
 
     # test grid label initialize
-    @test haskey(Ωₛ.cellsets, string(label_mat))
-    @test length(Ωₛ.cellsets[string(label_mat)]) == numcells
+    ferrite_grid = grid(grid(fproblem))
+    @test haskey(ferrite_grid.cellsets, string(label_mat))
+    numcells = 12
+    @test length(ferrite_grid.cellsets[string(label_mat)]) == numcells
+
+end
+
+
+@testset "Ferrite solver end-to-end 2D case" begin
+
 
     # --- Ferrite solver tests  ---
     # ferrite solver with some default interpolation  parameters
