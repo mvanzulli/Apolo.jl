@@ -60,16 +60,9 @@ function expression(f::AbstractFunctional)
     end
 end
 
-function Base.
 
 "Checks if the optimization process is done"
-function optim_done(f::AbstractFunctional)
-    try
-        f.optim_done
-    catch
-        error(ERROR_FUNC)
-    end
-end
+optim_done(f::AbstractFunctional) = f.done
 
 "Returns the functional maximum value explored so far"
 Base.maximum(f::AbstractFunctional) = f.max
@@ -104,19 +97,23 @@ function evaluate(::AbstractFunctional, args...) end
 - `optim_done` -- boolean optimization status.
 
 """
-Base.@kwdef struct MSFOpticalFlow{T,NP} <:AbstractFunctional{NP}
-    expression::Symbol = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀)) * dΩdt))
-    vals::Vector{T} = Vector{Float64}(undef, 0)
-    exp_reg::Dict{Symobol,Vector} = Dict(:no_param => Vector{Float64}(undef, 0) )
-    min::Real = -Inf
-    max::Real = +Inf
-    gradient::Vector{T} = Vector{Float64}(undef, 0)
-    optim_params::NTuple{NP,Symbol} = (:no_param)
+Base.@kwdef struct MSFOpticalFlow{T,M<:AbstractMaterial,GT,HT} <:AbstractFunctional
+    expression::Expr = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀)) * dΩdt))
+    vals::Vector{T} = Vector{T}(undef, 0)
+    trials::Dict{P,Vector{T}} = Dict{Parameter,Vector{T}}()
+    gradient::GT = Vector{T}(undef, 0)
+    hessian::HT = Matrix{T}(undef, (0,0))
+    search_region::Dict{P,Vector{Tuple{T,T}}} = Dict{P,Vector{Tuple{T,T}}}()
+    #optim_params::NTuple{NP,Symbol} = (:no_param)
 #    params_reg::NTuple{NP,Symbol} = (:no_param) agregar aca
-    optim_done::Bool = false
+    done::MutableScalar{Bool} = false
 end
 
+admissible_ranges(::....)
 
+update!()
+
+msf(fproblem, data_imgs)
 
 
 
