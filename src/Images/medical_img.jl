@@ -92,10 +92,6 @@ function pixeldata(dcm_array)
     end
 end
 
-
-orientation(med_img::MedicalImage) = med_img.orientation
-
-
 "Extract the image orientation from a DICOMData"
 function _orientation(hyp::DICOMData)
     orientations = Dict(

@@ -6,6 +6,7 @@ module Images
 using ..Geometry: AbstractStructuredGrid
 using Reexport: @reexport
 
+@reexport import ..Materials: value
 @reexport import ..Geometry:  ⊂, ⊄, coordinates, cartesian_index, dimension, extrema, finish,
 grid, start
 import ..Geometry: _interpolate, _extrapolate

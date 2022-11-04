@@ -168,9 +168,9 @@ function create_dofhandler(
     # create a dof handle
     dh = DofHandler(grid)
     # Push displacement into dof handler
-    push!(dh, getsym(dofs.u), dimension(dofs.u), inter_dofs.u)
+    push!(dh, symbol(dofs.u), dimension(dofs.u), inter_dofs.u)
     # Push pressure into dof handler
-    push!(dh, getsym(dofs.σ), dimension(dofs.σ), inter_dofs.σ) # check why is 1
+    push!(dh, symbol(dofs.σ), dimension(dofs.σ), inter_dofs.σ) # check why is 1
     # Close dofhandler and return it
     close!(dh)
     return dh
@@ -248,7 +248,7 @@ function create_dirichlet_bc(
         if typeof(bcᵢ) == DirichletBC # dispatch or method to extract dirichlet bcs
             add!(
                 dbc,
-                Ferrite.Dirichlet(getsym(getdofs(bcᵢ)),
+                Ferrite.Dirichlet(symbol(getdofs(bcᵢ)),
                     getfaceset(dh.grid, string(getlabel(bcᵢ))),
                     vals_func(bcᵢ),
                     convert.(Int64, component(bcᵢ))),
@@ -530,6 +530,6 @@ function get_dof_point_values(sol::ForwardProblemSolution, vec_points::Vector{Ve
     grid = getgrid(sol)
     ph = PointEvalHandler(grid, vec_points)
     # eval the points
-   return Ferrite.get_point_values(ph, dh, dofvals, getsym(dof))
+   return Ferrite.get_point_values(ph, dh, dofvals, symbol(dof))
 
 end

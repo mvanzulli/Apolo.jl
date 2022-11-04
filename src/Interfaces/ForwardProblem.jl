@@ -4,36 +4,33 @@
 module ForwardProblem
 
 # Import dependencies to overlead
-import ..Materials: getlabel
-import ..Geometry: dimension
+import ..Geometry: dimension, grid
+import ..Materials: label
 
 # Add libraries to use
 using ..Materials: AbstractMaterial
+using ..Geometry: AbstractStructuredGrid
 using Ferrite: Grid, addfaceset!, addcellset!
 
 
 # Export interface functions and types
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
 AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProbSolver, ForwardProblemSolution,
-getsym, getdofs, getgrid, getbcs, getdofsvals, vals_func, solve, _solve, component
-
-" Return the dimenssion of a grid. "
-dimension(::Grid{Dim}) where {Dim} = Dim
+symbol, getdofs, getgrid, getbcs, getdofsvals, vals_func, solve, _solve, component
 
 """ Abstract supertype that includes degrees of freedom  information.
 
 The following methods are provided by the interface
-- `getsym(dof)` -- return the symbol of the degree of freedom `dof`.
+- `symbol(dof)` -- return the symbol of the degree of freedom `dof`.
 - `dimension(dof)` -- return the dimension of the degree of freedom `dof`.
 """
-abstract type AbstractDof{dim} end
+abstract type AbstractDof{D} end
 
 " Return the `dof` symbol. "
-getsym(dof::AbstractDof{Dim}) where {Dim} = dof.symbol
+symbol(dof::AbstractDof{D}) where {D} = dof.symbol
 
 " Return the dof dimension. "
-dimension(::AbstractDof{Dim}) where {Dim} = Dim
-
+dimension(::AbstractDof{D}) where {D} = D
 
 """ Degree of freedom struct.
 
@@ -57,24 +54,28 @@ struct StressDispDofs{dimσ,dimu}
     u::Dof{dimu}
 end
 
+"Constructor with σ and u keyword arguments "
+StressDispDofs(;σ = dimσ, u = dimu) = StressDispDofs(σ, u)
+
 """ Abstract supertype that includes boundary conditions information.
 
 The following methods are provided by the interface:
 
-- `getdofs(bc)`       -- return the degree of freedom symbol where the bc is prescribed.
-- `vals_func(bc)` -- return the value of the bc function.
-- `getlabel(bc)`  -- return the value the bc label.
+- `dofs(bc)`      -- returns the degree of freedom symbol where the bc is prescribed.
+- `values_function(bc)` -- return the value of the bc function.
+- `label(bc)`  -- return the value the bc label.
 
 """
 abstract type AbstractBoundaryCondition end
 
 " Extract degrees of freedom. "
-getdofs(bc::AbstractBoundaryCondition) = bc.dof
+dof(bc::AbstractBoundaryCondition) = bc.dof
 
 " Return the function values of an boundary condition `bc`. "
-vals_func(bc::AbstractBoundaryCondition) = bc.vals_func
+values_function(bc::AbstractBoundaryCondition) = bc.vals_func
 
-getlabel(bc::AbstractBoundaryCondition) = bc.label
+"Returns the boundary condition label"
+label(bc::AbstractBoundaryCondition) = bc.label
 
 """ Struct that contains the info of a Dirichlet boundary condition
 

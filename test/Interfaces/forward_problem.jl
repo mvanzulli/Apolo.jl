@@ -1,29 +1,30 @@
 ##########################
 # Forward problem tests #
 ##########################
-# Using internal packages to test 
-using Apolo
+# Using internal packages to test
+using Apolo.ForwardProblem
 
-# Using external packages to test 
+# Using external packages to test
 using Test: @test, @testset
 
 using Ferrite: Grid, generate_grid, Triangle, Vec, PointEvalHandler, get_point_values
 using LinearAlgebra: norm
 
-@testset "Ferrite ForwardProblem interface" begin
+@testset "ForwardProblem unitary tests" begin
 
     # --- Dofs ---
-    symbol = :u
+    symbol_u = :u
     dim = 2
-    dofu = Dof{dim}(symbol)
-    @test getsym(dofu) == symbol
+    dofu = Dof{dim}(symbol_u)
+    # test getter functions
+    @test symbol(dofu) == symbol_u
     @test dimension(dofu) == dim
     dofu = Dof{2}(:u)
     dofσ = Dof{1}(:p)
     dofs = StressDispDofs(σ=dofσ, u=dofu)
 
     # --- Boundary Conditions ---
-    # dof name 
+    # dof name
     dof_clampedΓD = dofu
     # region function
     region_clampedΓD = x -> norm(x[1]) ≈ 0.0
@@ -35,8 +36,8 @@ using LinearAlgebra: norm
     label_clampedΓD = "clamped"
     # create BC
     clamped_ΓD = DirichletBC(dof_clampedΓD, vals_calmpedΓD, dofs_clampedΓD, label_clampedΓD)
-    # test methods
-    @test getdofs(clamped_ΓD) == dof_clampedΓD
+
+    @test dofs(clamped_ΓD) == dof_clampedΓD
     @test vals_func(clamped_ΓD) == vals_calmpedΓD
     @test getlabel(clamped_ΓD) == Symbol(label_clampedΓD)
     @test getlabel(clamped_ΓD) == Symbol(label_clampedΓD)
@@ -51,7 +52,7 @@ using LinearAlgebra: norm
     label_tensionΓN = "traction"
     # create BC
     tension_ΓN = NeumannLoadBC(tensionΓN, dir_tensionΓN, label_tensionΓN)
-    # gether into a dict different boundary conditions  
+    # gether into a dict different boundary conditions
     # ----------------------------
     bcs = Dict{AbstractBoundaryCondition,Function}(
         clamped_ΓD => region_clampedΓD,
@@ -63,7 +64,7 @@ using LinearAlgebra: norm
     Lᵢₛ = 2.0
     Lⱼₛ = 1.0
     # -- grid -- #
-    #TODO: Update create grid test 
+    #TODO: Update create grid test
     """ Creates a triangle grid inside a square domain of (Lᵢₛ, Lⱼₛ) """
     function create_solid_grid(nx, ny, Lᵢₛ=Lᵢₛ, Lⱼₛ=Lⱼₛ)
         corners = [
@@ -90,7 +91,7 @@ using LinearAlgebra: norm
     # range where E lives
     Eₘᵢₙ = 0.2Eᵣ
     Eₘₐₓ = 9Eₘᵢₙ
-    # create params 
+    # create params
     E = Parameter(:E, Eᵣ, (Eₘᵢₙ, Eₘₐₓ))
     ν = Parameter(:ν, νᵣ)
     # create material
