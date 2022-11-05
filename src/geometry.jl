@@ -158,12 +158,12 @@ function get_boundary_points_def(
     num_points_border::Int,
 )
     # extract grid
-    grid = getgrid(sol)
+    grid_f = grid(sol)
     # extract boundary points of the grid in the reference configuration
-    Ω_grid_ref = get_boundary_points_ref(grid, num_points_border)
+    Ω_grid_ref = get_boundary_points_ref(grid_f, num_points_border)
     # extract u at the grid boundary
-    dofs = getdofs(sol)
-    dofu = dofs.u
+    dofs_bc = dofs(sol)
+    dofu = dofs_bc.u
     Ω_grid_u = get_dof_point_values(sol, Ω_grid_ref, dofu)
     # return boundary displacements
     return Ω_grid_u + Ω_grid_ref

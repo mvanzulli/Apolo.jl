@@ -3,69 +3,107 @@
 # Main types for Ferrite.jl solver #
 ####################################
 
-# Import dependencies to overlead
-import Apolo.ForwardProblem: _solve, initialize!
+import Apolo.ForwardProblem: _solve, _initialize!
+import Ferrite.DofHandler
 
-# Add libraries to use
-# Internal
-using Apolo.Materials: SVK
-using Apolo.ForwardProblem: ForwardProblemSolution, getfemdata, getmats, getdofsvals
-# External
+using Apolo.Materials: SVK, value
+using Apolo.ForwardProblem: ForwardProblemSolution, femdata, materials, dofsvals, label
+
+using Reexport: @reexport
+@reexport using Ferrite
 using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC
-using LinearAlgebra: Symmetric
-using Ferrite
+using LinearAlgebra: Symmetric, norm
 
-# Export interface functions
-export InterStressDisp, getuinter, getσinter,
-    QuadratureRulesStressDisp, getcellqr, getfaceqr,
-    CellFaceValsStressDisp, getucellval, getufaceval, getσcellval,
-    FerriteForwardSolv, getdh, getintgeo, getintdofs, create_dirichlet_bc,
-    create_values, get_dof_point_values,
-    Grid
+export FerriteForwardSolver
 
-" Struct with the interpolations for stress and displacements."
+
+""" Struct with the interpolations for stress and displacements.
+
+## Fields
+
+- `itp_u` -- interpolation for displacement field u.
+- `itp_σ` -- interpolation for stress σ field σ.
+"""
 struct InterStressDisp
-    u::Interpolation
-    σ::Interpolation
+    itp_u::Interpolation
+    itp_σ::Interpolation
 end
 
-" get u interpolation. "
-getuinter(ints::InterStressDisp) = ints.u
+InterStressDisp(; itp_u=u_itp, itp_σ=σ_itp) = InterStressDisp(itp_u, itp_σ)
 
-" get σ interpolation. "
-getσinter(ints::InterStressDisp) = ints.σ
+" Returns u interpolation. "
+_u_itp(int::InterStressDisp) = int.itp_u
 
-" Struct with the quadrature rules for stress and displacements." # Is assumed that the same qrule is used for face cell
+" Returns σ interpolation. "
+_σ_itp(int::InterStressDisp) = int.itp_σ
+
+" Struct with the quadrature rules for stress and displacements.
+
+## Fields
+
+- `face_u` -- quadrature rule for displacement field u across each face.
+- `cell_u` -- quadrature rule for displacement field u inside each cell.
+- `cell_σ` -- quadrature rule for stress field σ inside each cell.
+
+"
 struct QuadratureRulesStressDisp
-    faceu::QuadratureRule
-    cellu::QuadratureRule
-    cellσ::QuadratureRule
+    face_u::QuadratureRule
+    cell_u::QuadratureRule
+    cell_σ::QuadratureRule
 end
 
-" Get cell u quadrature rule. "
-getcelluqr(qrs::QuadratureRulesStressDisp) = qrs.cellu
-" Get face u quadrature rule. "
-getfaceuqr(qrs::QuadratureRulesStressDisp) = qrs.faceu
-" Get cell σ quadrature rule. "
-getcellσqr(qrs::QuadratureRulesStressDisp) = qrs.cellq
+"Constructor of QuadratureRulesStressDisp with heywords arguments"
+function QuadratureRulesStressDisp(; face_u=face_u, cell_u=cell_u, cell_σ=cell_σ)
+    return QuadratureRulesStressDisp(face_u, cell_u, cell_σ)
+end
 
-" Struct with the Face and Cell vector values for stress and displacements."
+" Returns the quadrature rule for integration of the displacements field u inside a cell. "
+_cell_u_qr(qrs::QuadratureRulesStressDisp) = qrs.cell_u
+
+" Returns the quadrature rule for integration of the stress field σ inside a cell. "
+_cell_σ_qr(qrs::QuadratureRulesStressDisp) = qrs.cell_σ
+
+" Returns quadrature rules for integration of the displacements field u. "
+_face_u_qr(qrs::QuadratureRulesStressDisp) = qrs.face_u
+
+" Struct with the Face and Cell vector values for stress and displacements.
+
+- `cell_val_u` -- cell vector value for u.
+- `cell_val_σ` -- cell vector value for σ.
+
+"
 struct CellFaceValsStressDisp
-    u::Tuple{CellVectorValues,FaceVectorValues}
-    σ::CellScalarValues
+    cell_val_u::Tuple{CellVectorValues,FaceVectorValues}
+    cell_val_σ::CellScalarValues
 end
 
-" Retrun displacements cell values. "
-getucellval(cfvals::CellFaceValsStressDisp) = cfvals.u[1]
+"Constructor of QuadratureRulesStressDisp with heywords arguments"
+CellFaceValsStressDisp(; cell_val_u=cvalu, cell_val_σ=cvalσ) = CellFaceValsStressDisp(cvalu, cvalσ)
+
+" Retruns displacements cell values. "
+_cell_values_u(cfvals::CellFaceValsStressDisp) = cfvals.cell_val_u[1]
+
 " Retrun displacement face values. "
-getufaceval(cfvals::CellFaceValsStressDisp) = cfvals.u[2]
+_face_values_u(cfvals::CellFaceValsStressDisp) = cfvals.cell_val_u[2]
+
 " Retrun pressure face values. "
-getσcellval(cfvals::CellFaceValsStressDisp) = cfvals.σ
+_cell_values_σ(cfvals::CellFaceValsStressDisp) = cfvals.cell_val_σ
 
 
-" Ferrite solver struct. "
-struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
+" Ferrite solver struct.
+
+## Fields
+
+- `inter_geo `   -- geometric interpolations.
+- `qrs`          -- quadrature rules.
+- `inter_dofs`   -- interpolations defined for each dof.
+- `dh`           -- ferrite `DofHandler` struct.
+- `cellfacevals` -- cells face values.
+- `nbasefuncs`   -- number of base functions
+
+"
+struct FerriteForwardSolver{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
     inter_geo::IGEO
     qrs::QRS
     inter_dofs::IDOFS
@@ -73,20 +111,20 @@ struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
     cellfacevals::CFV
     nbasefuncs::NB
 
-    "`FerriteForwardSolv` constructor with user defined interpolations. "
-    function FerriteForwardSolv(
+    "Constructor with user defined interpolations. "
+    function FerriteForwardSolver(
         fproblem::AbstractForwardProblem,
         inter_geo::IGEO,
         qrs::QRS,
         inter_dofs::IDOFS,
     ) where {IGEO,QRS,IDOFS}
+
         # extract grid, dofs  and create: dof handler, cellface vals, nbasefuncs
-        grid = getgrid(fproblem)
-        dofs = getdofs(fproblem)
-        dh = create_dofhandler(grid, dofs, inter_dofs)
-        cfv = create_values(dofs, inter_dofs, inter_geo, qrs)
+        dofs_fproblem = dofs(fproblem)
+        dh = DofHandler(grid(fproblem), dofs_fproblem, inter_dofs)
+        cfv = create_values(dofs_fproblem, inter_dofs, inter_geo, qrs)
         nbasef = NumBaseFuncStressDisp(cfv)
-        # construct
+
         new{IGEO,QRS,IDOFS,typeof(dh),typeof(cfv),typeof(nbasef)}(
             inter_geo,
             qrs,
@@ -96,12 +134,13 @@ struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
             nbasef,
         )
     end
-    "`FerriteForwardSolv` constructor with default defined interpolations. "
-    function FerriteForwardSolv(fproblem::AbstractForwardProblem)
+
+    "`FerriteForwardSolver` constructor with default defined interpolations. "
+    function FerriteForwardSolver(fproblem::AbstractForwardProblem)
         # load default elements and interpolations
         inter_geo, qrs, inter_dofs = default_elements(fproblem)
         # use the full inputs constructor
-        FerriteForwardSolv(fproblem, inter_geo, qrs, inter_dofs)
+        FerriteForwardSolver(fproblem, inter_geo, qrs, inter_dofs)
     end
 
 end
@@ -109,23 +148,22 @@ end
 "Define default ferrite elements and interpolations"
 function default_elements(fproblem)
 
-
-    # Exract u, σ and grid dimensions
-    dimu = dimension(fproblem.data.dofs.u)
-    dimσ = dimension(fproblem.data.dofs.σ)
-    dimgrid = dimension(fproblem.data.grid)
+    dimu = dimension(dofs(femdata(fproblem)).u)
+    dimσ = dimension(dofs(femdata(fproblem)).σ)
 
     # elements to use
     tetra = RefTetrahedron
+
     # define interpolations
     inter_u = Lagrange{dimu,tetra,dimu}() # dim grid, element, order
     inter_σₓ = Lagrange{dimu,tetra,dimσ}()
-    inter_dofs = InterStressDisp(u=inter_u, σ=inter_σₓ)
+    inter_dofs = InterStressDisp(itp_u=inter_u, itp_σ=inter_σₓ)
 
     # quadrature rules
     cell_qr = QuadratureRule{dimu,tetra}(3)
     face_qr = QuadratureRule{dimu - 1,tetra}(3)
-    qrs = QuadratureRulesStressDisp(faceu=face_qr, cellu=cell_qr, cellσ=cell_qr)
+    qrs = QuadratureRulesStressDisp(face_u=face_qr, cell_u=cell_qr, cell_σ=cell_qr)
+
     # geometric interpolation
     inter_geo = Lagrange{dimu,tetra,1}()
 
@@ -133,20 +171,20 @@ function default_elements(fproblem)
 
 end
 
-" Extract geometric interpolation of a ferrite forward problem solver. "
-getintgeo(ffs::FerriteForwardSolv) = ffs.inter_geo
+# " Extract geometric interpolation of a ferrite forward problem solver. "
+# getintgeo(ffs::FerriteForwardSolver) = ffs.inter_geo
 
-" Extract quadrature rules of a ferrite forward problem solver. "
-getqr(ffs::FerriteForwardSolv) = ffs.qrs
+# " Extract quadrature rules of a ferrite forward problem solver. "
+# getqr(ffs::FerriteForwardSolver) = ffs.qrs
 
-" Extract quadrature rules of a ferrite forward problem solver. "
-getintdofs(ffs::FerriteForwardSolv) = ffs.inter_dofs
+# " Extract quadrature rules of a ferrite forward problem solver. "
+# getintdofs(ffs::FerriteForwardSolver) = ffs.inter_dofs
 
 " Extract dofhandler."
-getdh(ffs::FerriteForwardSolv) = ffs.dh
+dofhandler(ffs::FerriteForwardSolver) = ffs.dh
 
-function getdh(sol::ForwardProblemSolution)
-    if (:dh  ∈ keys(sol.extra) )
+function dofhandler(sol::ForwardProblemSolution)
+    if (:dh ∈ keys(sol.extra))
         sol.extra[:dh]
     else
         throw(ArgumentError("This solution type has no dofhandler"))
@@ -154,26 +192,26 @@ function getdh(sol::ForwardProblemSolution)
 end
 
 " Extract cell face values."
-getcellfacevalues(ffs::FerriteForwardSolv) = ffs.cellfacevals
+cell_face_values(ffs::FerriteForwardSolver) = ffs.cellfacevals
 
-" Extract number of basis functions."
-getnbasesfuncs(ffs::FerriteForwardSolv) = ffs.nbasefuncs
+# " Extract number of basis functions."
+# getnbasesfuncs(ffs::FerriteForwardSolver) = ffs.nbasefuncs
 
 " Creates a Ferrite dof handler "
-function create_dofhandler(
-    grid::Grid,
+function DofHandler(
+    fgrid::FerriteStructuredGrid,
     dofs::StressDispDofs,
     inter_dofs::InterStressDisp,
 )
-    # create a dof handle
-    dh = DofHandler(grid)
-    # Push displacement into dof handler
-    push!(dh, symbol(dofs.u), dimension(dofs.u), inter_dofs.u)
-    # Push pressure into dof handler
-    push!(dh, symbol(dofs.σ), dimension(dofs.σ), inter_dofs.σ) # check why is 1
-    # Close dofhandler and return it
+    # Extract ferrite grid type and create dof handler
+    dh = DofHandler(grid(fgrid))
+
+    push!(dh, symbol(dofs.u), dimension(dofs.u), _u_itp(inter_dofs))
+    push!(dh, symbol(dofs.σ), dimension(dofs.σ), _σ_itp(inter_dofs)) # check why is 1
     close!(dh)
+
     return dh
+
 end
 
 
@@ -185,12 +223,12 @@ function create_values(
     qrs)
 
     # Cell and face values for u
-    cellvalues_u = CellVectorValues(qrs.cellu, inter_dofs.u, inter_geo)
-    facevalues_u = FaceVectorValues(qrs.faceu, inter_dofs.u, inter_geo)
+    cellvalues_u = CellVectorValues(_cell_u_qr(qrs), _u_itp(inter_dofs), inter_geo)
+    facevalues_u = FaceVectorValues(_face_u_qr(qrs), _u_itp(inter_dofs), inter_geo)
 
     # Cell values for p
     @assert dimension(dofs.σ) == 1 "TODO: Gerealize for vectorial σ dof"
-    cellvalues_p = CellScalarValues(qrs.cellσ, inter_dofs.σ, inter_geo)
+    cellvalues_p = CellScalarValues(_cell_σ_qr(qrs), _σ_itp(inter_dofs), inter_geo)
 
     # Create struct
     CellFaceValsStressDisp((cellvalues_u, facevalues_u), cellvalues_p)
@@ -201,23 +239,23 @@ struct NumBaseFuncStressDisp
     u::Int
     σ::Int
     function NumBaseFuncStressDisp(cfvals::CellFaceValsStressDisp)
-        ndof_u = getnbasefunctions(getucellval(cfvals))
-        ndof_σ = getnbasefunctions(getσcellval(cfvals))
+        ndof_u = getnbasefunctions(_cell_values_u(cfvals))
+        ndof_σ = getnbasefunctions(_cell_values_σ(cfvals))
         new(ndof_u, ndof_σ)
     end
 end
 
 "Initialize ferrite.jl forward problem solver"
-function initialize!(
+function _initialize!(
     fproblem::FP,
-    solver::FerriteForwardSolv,
+    solver::FerriteForwardSolver,
     args...;
     kwargs...
 ) where {FP<:AbstractForwardProblem}
 
     # extract bcs and dofh
-    bcs = getbcs(fproblem)
-    dh = getdh(solver)
+    bcs = boundary_conditions(fproblem)
+    dh = dofhandler(solver)
 
     # create dirichlet_bcs
     dbc = create_dirichlet_bc(dh, bcs)
@@ -248,9 +286,9 @@ function create_dirichlet_bc(
         if typeof(bcᵢ) == DirichletBC # dispatch or method to extract dirichlet bcs
             add!(
                 dbc,
-                Ferrite.Dirichlet(symbol(getdofs(bcᵢ)),
-                    getfaceset(dh.grid, string(getlabel(bcᵢ))),
-                    vals_func(bcᵢ),
+                Ferrite.Dirichlet(symbol(dofs(bcᵢ)),
+                    getfaceset(dh.grid, string(label(bcᵢ))),
+                    values_function(bcᵢ),
                     convert.(Int64, component(bcᵢ))),
             )
         end
@@ -263,25 +301,25 @@ function create_dirichlet_bc(
     return dbc
 end
 
-"Solves linear elasiticy problems with ferrite solver."
+"Solves a Linear Elasticty  problems with ferrite solver."
 function _solve(
     fproblem::LinearElasticityProblem,
-    solver::FerriteForwardSolv,
+    solver::FerriteForwardSolver,
 )
 
-    # unwarp fproblem data
-    grid = getgrid(fproblem)
-    mats = getmats(fproblem)
-    bcs = getbcs(fproblem)
-    cfv = getcellfacevalues(solver)
-    cellvalues_u = getucellval(cfv)
-    facevalues_u = getufaceval(cfv)
-    cellvalues_σ = getσcellval(cfv)
+    # extract fproblem data
+    ferrite_grid_fp = grid(grid(fproblem))
+    mats = materials(fproblem)
+    bcs = boundary_conditions(fproblem)
+    cfv = cell_face_values(solver)
+    cellvalues_u = _cell_values_u(cfv)
+    facevalues_u = _face_values_u(cfv)
+    cellvalues_σ = _cell_values_σ(cfv)
 
     dbc = fproblem.aux[:dbc]
 
     # unwarp solver
-    dh = getdh(solver)
+    dh = dofhandler(solver)
     K = create_sparsity_pattern(dh)
 
     # assamble the linear system
@@ -290,7 +328,7 @@ function _solve(
         facevalues_u,
         cellvalues_σ,
         K,
-        grid,
+        ferrite_grid_fp,
         dh,
         mats,
         bcs)
@@ -302,7 +340,14 @@ function _solve(
     u = Symmetric(K) \ f
 
     # build solution
-    sol = ForwardProblemSolution(solver, getfemdata(fproblem), mats, getdofs(fproblem), u, Dict(:dh => dh))
+    sol = ForwardProblemSolution(
+        solver,
+        femdata(fproblem),
+        mats,
+        dofs(fproblem),
+        u,
+        Dict(:dh => dh),
+    )
 
     return sol
 end
@@ -357,7 +402,7 @@ function doassemble(
         assemble!(assembler, celldofs(cell), fe, ke)
     end
     return K, f
-end;
+end
 
 " Assembles the tangent matrix and the force vector of the element "
 function assemble_up!(
@@ -377,8 +422,7 @@ function assemble_up!(
     reinit!(cellvalues_p, cell)
 
     # find material of the cell
-    matcell = getcellmat(cell, mats, grid)
-    (Gmod, Kmod) = getmatparams(matcell)
+    matcell = material_cell(cell, mats, grid)
 
     # fill ke
     fill_linear_elasticKe!(
@@ -393,6 +437,7 @@ function assemble_up!(
     applyNeumannBC!(fe, grid, bcs, cell, cellvalues_u, facevalues_u)
 
 end
+
 "Add Neumann boundary condition to the external force vector."
 function applyNeumannBC!(
     fe,
@@ -412,10 +457,10 @@ function applyNeumannBC!(
 
         if typeof(bc) == NeumannLoadBC
             # get label
-            label = string(getlabel(bc))
+            label_bc = string(label(bc))
             # iterate over each face cell
             @inbounds for face = 1:nfaces(cell)
-                if onboundary(cell, face) && (cellid(cell), face) ∈ getfaceset(grid, label)
+                if onboundary(cell, face) && (cellid(cell), face) ∈ getfaceset(grid, label_bc)
                     reinit!(facevalues_u, cell, face)
                     for q_point = 1:getnquadpoints(facevalues_u)
                         dΓ = getdetJdV(facevalues_u, q_point)
@@ -443,7 +488,7 @@ function fill_linear_elasticKe!(
     cellvalues_p)
 
     # compute G and K
-    (Gmod, Kmod) = getmatparams(matcell) #TODO move to materials interface from Hook to Bulk
+    (Gmod, Kmod) = bulk_material_params(matcell) #TODO move to materials interface from Hook to Bulk
 
     # update cell values for each dof
     n_basefuncs_u = getnbasefunctions(cellvalues_u)
@@ -484,24 +529,24 @@ function fill_linear_elasticKe!(
 end
 
 " Extract the material of a cell"
-function getcellmat(cell, mats, grid)
+function material_cell(cell, mats, grid)
     # find material of the cell
     idx_cell = cellid(cell)
     # check gird cell sets and extract first material label and then mat
     for (matlabel, matcellset) in getcellsets(grid)
         if idx_cell ∈ matcellset
             for mat in keys(mats)
-                matlabel == getlabel(mat) && return mat
+                matlabel == label(mat) && return mat
             end
         end
     end
 end
 
 " Extract svk material parameters to use with ferrite nomenclature"
-function getmatparams(svk::SVK)
+function bulk_material_params(svk::SVK)
     # Extract E and ν parameters
-    E = getval(svk[:E])
-    ν = getval(svk[:ν])
+    E = value(svk[:E])
+    ν = value(svk[:ν])
 
     # Compute Lamé parameters
     Gmod = E / 2(1 + ν)
@@ -520,16 +565,18 @@ function symmetrize_lower!(K)
 end
 
 #TODO: Add dispatch with the solver type in sol
-" Get the values  "
-function get_dof_point_values(sol::ForwardProblemSolution, vec_points::Vector{Vec{dim,T}}, dof) where {dim,T}
-    # get all dofs u value
-    dofvals = getdofsvals(sol)
-    # get dof handler
-    dh = getdh(sol)
-    # create a point handler
-    grid = getgrid(sol)
-    ph = PointEvalHandler(grid, vec_points)
-    # eval the points
-   return Ferrite.get_point_values(ph, dh, dofvals, symbol(dof))
+"Gets the values   "
+function _eval_displacements(
+    sol::ForwardProblemSolution,
+    vec_points::Vector{Vec{D,T}},
+) where {D,T}
+
+    vec_points = vec_points .+ offset
+    dofvals_sol = dofsvals(sol)
+    dh = dofhandler(sol)
+    ferrite_grid = grid(grid(sol))
+    ph = PointEvalHandler(ferrite_grid, vec_points)
+
+    return Ferrite.get_point_values(ph, dh, dofvals_sol, :u)
 
 end

@@ -37,7 +37,9 @@ The following methods are provided by the interface:
 - `num_nodes(grid)`   -- returns the number of grid nodes.
 - `start(grid)`       -- returns the grid start point.
 """
-abstract type AbstractStructuredGrid{D,T} end
+abstract type AbstractGrid{D,T} end
+
+abstract type AbstractStructuredGrid{D,T} <: AbstractGrid{D,T} end
 
 
 const ERROR_GRID = :("This method is not available for this grid type. Please implement it")
