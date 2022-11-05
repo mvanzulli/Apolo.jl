@@ -7,6 +7,7 @@ using Apolo.Geometry
 using Apolo.ForwardProblem
 
 using Test: @test, @testset
+using Statistics: mean
 
 @testset "ForwardProblem unitary tests" begin
 
@@ -133,7 +134,7 @@ end
     # region
     region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
     # load factors
-    p = 1e3 # force
+    p = 1e6 # force
     tensionΓN(t) = p
     # load direction
     dir_tensionΓN = [1, 0]
@@ -208,6 +209,6 @@ end
 
     # analytical result test based on Zerpa 2019
     JPZ_uy = 2.4e-3
-    @test isapprox(sum(uyᵥ_num) / length(uyᵥ_num), JPZ_uy, atol=1e-2)
+    @test mean(uyᵥ_num) ≈ JPZ_uy atol = 1e-2
 
 end

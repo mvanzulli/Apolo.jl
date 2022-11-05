@@ -56,9 +56,9 @@ const DCM_TO_LOAD = "./test/DICOMImages/"
     @test finish_grid(med_img) == finish(grid(med_img)) == finish_img_grid
     @test collect(length(med_img)) ≈ collect(length_img) atol = TOLERANCE
     coords = coordinates(med_img)
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
+    @test spacing_img[3] ≈ (coords[3][2] - coords[3][1]) atol = TOLERANCE
 
     @test extrema(med_img) == [
         (start_img[1], finish_img[1]),
@@ -135,8 +135,8 @@ end
     @test collect(length(f_img)) ≈ collect(length_img) atol = TOLERANCE
     coords = coordinates(f_img)
     @test coords == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
 
     @test extrema(f_img) == [(start_img[1], finish_img[1]), (start_img[2], finish_img[2])]
     @test intensity(f_img) == intensity_array
@@ -228,9 +228,9 @@ end
     @test collect(length(f_img)) ≈ collect(length_img) atol = TOLERANCE
     coords = coordinates(f_img)
     @test coords == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
+    @test spacing_img[3] ≈ (coords[3][2] - coords[3][1]) atol = TOLERANCE
 
     @test extrema(f_img) == [
         (start_img[1], finish_img[1]),
@@ -372,8 +372,8 @@ end
     coords = coordinates(vtk_img)
     @test coords[1] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[1]
     @test coords[2] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[2]
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
 
     @test extrema(vtk_img) == [
         (start_img[1], finish_img[1]),
@@ -466,9 +466,9 @@ end
     @test coords[1] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[1]
     @test coords[2] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[2]
     @test coords[3] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[3]
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
+    @test spacing_img[3] ≈ (coords[3][2] - coords[3][1]) atol = TOLERANCE
 
     @test extrema(vtk_img) == [
         (start_img[1], finish_img[1]),
