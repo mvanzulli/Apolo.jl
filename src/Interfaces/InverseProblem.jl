@@ -2,6 +2,9 @@
 # Main types and functions to solve Inverse Problems  #
 #######################################################
 
+
+using Dictionaries: Dictionary
+
 const ERROR_FUNC = "This methods is not available for this type of functional"
 
 """
@@ -38,7 +41,7 @@ function values(f::AbstractFunctional)
     end
 end
 
-"Appends a value"
+"Appends a value to the functional"
 append_value!(f::AbstractFunctional, val::Real) = append!(value(f), val)
 
 
@@ -103,22 +106,35 @@ Base.@kwdef struct MSFOpticalFlow{T,M<:AbstractMaterial,GT,HT} <:AbstractFunctio
     trials::Dict{P,Vector{T}} = Dict{Parameter,Vector{T}}()
     gradient::GT = Vector{T}(undef, 0)
     hessian::HT = Matrix{T}(undef, (0,0))
-    search_region::Dict{P,Vector{Tuple{T,T}}} = Dict{P,Vector{Tuple{T,T}}}()
+    search_region::Dictionary{P,Vector{Tuple{T,T}}} = Dict{P,Vector{Tuple{T,T}}}()
     #optim_params::NTuple{NP,Symbol} = (:no_param)
 #    params_reg::NTuple{NP,Symbol} = (:no_param) agregar aca
     done::MutableScalar{Bool} = false
 end
 
+indmin(vals):: #INDICE DEL MINIMIO DE VALS
+
+indmin(vals):: #INDICE DEL MINIMIO DE VALS
+
 admissible_ranges(::....)
 
 update!()
 
-msf(fproblem, imgs)
 
+#
 
-solve(Inv_problem) = optimize!(msf, BruteForce(), args...; kwargs...)
+invp = InvProblem(fproblem, data_measured, msf = OpticalFLow(), ROI)
 
+msf(vec_params) = _evaluate(msf, vec_params)
 
+alg = BruteForce(params)
+
+function solve(invp, alg)
+    optimize!(invp.msf, alg_optim = alg, args...; kwargs...)
+    return minimu()
+end
+
+search_region(invp)
 
 
 end
