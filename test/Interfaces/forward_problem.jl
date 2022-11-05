@@ -118,6 +118,7 @@ end
     dfs = StressDispDofs(σ=dofσ, u=dofu)
 
     # --- Boundary Conditions ---
+    # --- Displacements
     # dof name
     dof_clampedΓD = dofu
     # region function
@@ -130,7 +131,7 @@ end
     label_clampedΓD = "clamped"
     # create BC
     clamped_ΓD = DirichletBC(dof_clampedΓD, vals_calmpedΓD, dofs_clampedΓD, label_clampedΓD)
-
+    # --- Forces
     # region
     region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
     # load factors
@@ -160,7 +161,10 @@ end
     elemtype = Triangle
     fgrid = FerriteStructuredGrid(start_point, finish_point, num_elements_grid, elemtype)
 
-    # -- material -- #
+    # -- create data_fem -- #
+    data_fem_p = FEMData(fgrid, dfs, bcs)
+
+    # -- Materials --
     # reference parameters
     Eᵣ = 14e6
     νᵣ = 0.4
@@ -168,7 +172,7 @@ end
     Eₘᵢₙ = 0.2Eᵣ
     Eₘₐₓ = 9Eₘᵢₙ
     # create params
-    E = Parameter(:E, Eᵣ, (Eₘᵢₙ, Eₘₐₓ))
+    E = Parameter(:E, Eᵣ)
     ν = Parameter(:ν, νᵣ)
     # create material
     label_mat = "mat1"
@@ -177,13 +181,9 @@ end
     region_svk(x) = 0 ≤ x[1] ≤ Lᵢₛ && 0 ≤ x[2] ≤ Lⱼₛ
     mats = Dict{AbstractMaterial,Function}(svk => region_svk)
 
-    # -- create data_fem -- #
-    data_fem_p = FEMData(fgrid, dfs, bcs)
-
     # --- Forward problem formulation and grid labeled with a material ---
     fproblem = LinearElasticityProblem(data_fem_p, mats)
 
-    # --- Ferrite solver tests  ---
     # ferrite solver with some default interpolation  parameters
     solver = FerriteForwardSolver(fproblem)
     # solve a linear elasticity problem
@@ -191,7 +191,6 @@ end
         fproblem,
         solver,
     )
-
 
     # solution dof handler
     dh = sol.extra[:dh]

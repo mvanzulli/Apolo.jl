@@ -4,14 +4,13 @@
 using Test
 using Apolo.Materials
 
-@testset "Materials interface." begin
-    # Construction using a range.
+@testset "Materials unitary tests." begin
+
     E = Parameter(:E)
     Eₘᵢₙ = 12
     Eₘₐₓ = 20
     setrange!(E, Eₘᵢₙ, Eₘₐₓ)
 
-    # Cosntruction with a specified value.
     ν = Parameter(:ν)
     νval = 0.3
     ν = setval!(ν, νval)
@@ -19,7 +18,10 @@ using Apolo.Materials
     @testset "Parameters range" begin
         @test value(ν) == νval
         @test extrema(range(E)) == (Eₘᵢₙ, Eₘₐₓ)
-
+        @test hasrange(E)
+        @test !hasrange(ν)
+        @test 9Eₘᵢₙ ∉ E
+        @test Eₘᵢₙ ∈ E
         @test ismissing(E)
         @test !ismissing(ν)
     end
