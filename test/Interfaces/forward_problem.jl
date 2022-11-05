@@ -62,7 +62,7 @@ using LinearAlgebra: norm
     Lᵢₛ = 2.0
     Lⱼₛ = 1.0
     # -- grid -- #
-    start_point = (0., 0.)
+    start_point = (0.0, 0.0)
     finish_point = (Lᵢₛ, Lⱼₛ)
     num_elements_grid = (3, 2)
     elemtype = Triangle
@@ -154,7 +154,7 @@ end
     Lᵢₛ = 2.0
     Lⱼₛ = 1.0
     # -- grid -- #
-    start_point = (0., 0.)
+    start_point = (0.0, 0.0)
     finish_point = (Lᵢₛ, Lⱼₛ)
     num_elements_grid = (3, 2)
     elemtype = Triangle
@@ -180,23 +180,12 @@ end
     # -- create data_fem -- #
     data_fem_p = FEMData(fgrid, dfs, bcs)
 
-    # test methods
-    @test grid(data_fem_p) == fgrid
-    @test boundary_conditions(data_fem_p) == bcs
-    @test dofs(data_fem_p) == dfs
-
     # --- Forward problem formulation and grid labeled with a material ---
     fproblem = LinearElasticityProblem(data_fem_p, mats)
 
-    # test grid label initialize
-    ferrite_grid = grid(grid(fproblem))
-    @test haskey(ferrite_grid.cellsets, string(label_mat))
-    numcells = 12
-    @test length(ferrite_grid.cellsets[string(label_mat)]) == numcells
-
     # --- Ferrite solver tests  ---
     # ferrite solver with some default interpolation  parameters
-    solver = FerriteForwardSolv(fproblem)
+    solver = FerriteForwardSolver(fproblem)
     # solve a linear elasticity problem
     sol = solve(
         fproblem,
@@ -209,7 +198,7 @@ end
     # extract numeric solution
     y_points = [Vec((Lᵢₛ, x)) for x in range(0, Lⱼₛ, length=101)]
     # create a point handler
-    ph = PointEvalHandler(Ωₛ, y_points)
+    ph = PointEvalHandler(grid(fgrid), y_points)
     # eval
     u_points = get_point_values(ph, dh, u, :u)
     # displacement in y direction

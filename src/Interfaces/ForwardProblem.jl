@@ -297,6 +297,6 @@ end
 # =======================
 # Solvers implementations
 # ========================
-# include("FSolvers/ferritesolver.jl")
+include("./../FSolvers/ferritesolver.jl")
 
 end #end module
