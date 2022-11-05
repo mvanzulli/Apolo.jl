@@ -7,8 +7,8 @@ using ..Geometry: AbstractStructuredGrid
 using Reexport: @reexport
 
 @reexport import ..Materials: value
-@reexport import ..Geometry:  ⊂, ⊄, coordinates, cartesian_index, dimension, extrema, finish,
-grid, start
+@reexport import ..Geometry: coordinates, cartesian_index, dimension, extrema, finish,
+    grid, start
 import ..Geometry: _interpolate, _extrapolate
 
 export AbstractImage
@@ -69,7 +69,7 @@ function finish(img::AbstractImage)
     try
         return img.finish
     catch
-        return  start(img) .+ length(img)
+        return start(img) .+ length(img)
     end
 end
 
@@ -123,11 +123,11 @@ intensity_type(::AbstractImage{D,T}) where {D,T} = T
 
 " Gets the image metric dimensions"
 function Base.length(img::AbstractImage)
-        try
-            num_pixels(img) .* spacing(img)
-        catch
-            error(ERROR_IMG)
-        end
+    try
+        num_pixels(img) .* spacing(img)
+    catch
+        error(ERROR_IMG)
+    end
 end
 
 function Base.length(
@@ -219,7 +219,7 @@ function _index_is_inbounds(ndim_index::CartesianIndex{D}, img::AbstractImage{D,
 end
 
 "Checks if a point is inbounds the image "
-function ⊂(p::NTuple{D}, img::AbstractImage{D}) where {D}
+function Base.:∈(p::NTuple{D}, img::AbstractImage{D}) where {D}
 
     ex = extrema(img)
     for axis in 1:D
@@ -232,45 +232,39 @@ function ⊂(p::NTuple{D}, img::AbstractImage{D}) where {D}
 
 end
 
-"Checks if a point is outside a grid"
-⊄(p::NTuple, img::AbstractImage) = !(⊂(p, img))
-
 "Evaluation functor for a 2D AbstractImage"
-function (img::AbstractImage{2})(x::T, y::T; offset::NTuple{2,T} = Tuple(zeros(T,2))) where {T}
-    _eval_intensity((x, y), img, offset = offset)
+function (img::AbstractImage{2})(x::T, y::T; offset::NTuple{2,T}=Tuple(zeros(T, 2))) where {T}
+    _eval_intensity((x, y), img, offset=offset)
 end
 
 "Evaluation functor for a 3D AbstractImage"
-function (img::AbstractImage{3})(x::T, y::T, z::T; offset::NTuple{3,T} = Tuple(zeros(T,3))) where {T}
-    _eval_intensity((x, y, z), img, offset = offset)
+function (img::AbstractImage{3})(x::T, y::T, z::T; offset::NTuple{3,T}=Tuple(zeros(T, 3))) where {T}
+    _eval_intensity((x, y, z), img, offset=offset)
 end
 
 "Evaluation functor for a vector of points"
 function (img::AbstractImage{D})(
     vec_points::Vector{NTuple{D,T}};
-    offset::NTuple{D,T} = Tuple(zeros(T,D))
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
 ) where {D,T}
-    return _eval_intensity(vec_points, img, offset = offset)
+    return _eval_intensity(vec_points, img, offset=offset)
 end
 
 "Internal function to evaluate the image intensity at a generic point"
 function _eval_intensity(
     p::NTuple{D,T},
     img::AbstractImage{D};
-    offset::NTuple{D,T} = Tuple(zeros(T,D))
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
 ) where {D,T}
 
     p = p .+ offset
 
     # Check p is inisde the image
-    p ⊂ img ? nothing : throw(ArgumentError("p + offset = $p is not inside the img frame"))
+    p ∈ img || throw(ArgumentError("p + offset = $p is not inside the img frame"))
 
     # Check if p is inside the grid image
-    if p ⊂ grid(img)
-        intensity_p = _interpolate([p], img)
-    else
-        intensity_p = _extrapolate([p], img)
-    end
+    ifunc = p ∈ grid(img) ? _interpolate : _extrapolate
+    intensity_p = ifunc([p], img)
     return getindex(intensity_p)
 end
 
@@ -278,7 +272,7 @@ end
 function _eval_intensity(
     vec_points::Vector{NTuple{D,T}},
     img::AbstractImage{D};
-    offset::NTuple{D,T} = Tuple(zeros(T,D))
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
 ) where {D,T}
 
     intensity_vec = Vector{T}(undef, length(vec_points))
@@ -286,12 +280,9 @@ function _eval_intensity(
     # Check if p is inside the grid image
     for (num_point, p) in enumerate(vec_points)
         p = p .+ offset
-        if p ⊂ img
-            if p ⊂ grid(img)
-                intensity_p = _interpolate([p], img)
-            else
-                intensity_p = _extrapolate([p], img)
-            end
+        if p ∈ img
+            ifunc = p ∈ grid(img) ? _interpolate : _extrapolate
+            intensity_p = ifunc([p], img)
             intensity_vec[num_point] = getindex(intensity_p)
         else
             return missing
@@ -304,7 +295,7 @@ function _eval_intensity(
 end
 
 "Interpolates the image intensity in a vector of points "
-function _interpolate(vec_points::Vector{NTuple{D,T}},img::AbstractImage{D}) where {D,T}
+function _interpolate(vec_points::Vector{NTuple{D,T}}, img::AbstractImage{D}) where {D,T}
 
     grid_img = grid(img)
 

@@ -5,7 +5,7 @@
 # Import dependencies to overlead
 # external
 import LazySets: Hyperrectangle
-import Base: extrema, ∈, ∩, ∪,abs
+import Base: extrema, ∈, ∩, ∪, abs
 # Add libraries to use
 # internal
 using Apolo.ForwardProblem: ForwardProblemSolution, getdofsvals
@@ -26,9 +26,9 @@ using Images: feature_transform, distance_transform
 
 # Export interface functions and types
 export SolutionBoundary, create_rectangular_grid,
-getsides, get_boundary_points_def, get_boundary_ref,
-binary_mat_zone, get_elements, abs, jaccard,
-mesh_hyperrectangle, mean_hausdorff, geometric_simillarty, ⊂
+    getsides, get_boundary_points_def, get_boundary_ref,
+    binary_mat_zone, get_elements, abs, jaccard,
+    mesh_hyperrectangle, mean_hausdorff, geometric_simillarty
 
 
 
@@ -64,7 +64,7 @@ function create_rectangular_grid(
 {D<:VecOrTuple,T<:VecOrTuple,ET<:AbstractCell}
     # check dimensions match
     dimgrid = check_grid_dims(dimgrid, nelem, start, finish)
-    dimgrid !==2 && throw(DimensionMismatch("By the moment is only dim = 2"))
+    dimgrid !== 2 && throw(DimensionMismatch("By the moment is only dim = 2"))
     #TODO: extend the  implementation to generic dim grids
 
 
@@ -187,7 +187,7 @@ nsides(sol_boundary::SolutionBoundary) = length(get_elements(sol_boundary))
 function SolutionBoundary(
     sol::ForwardProblemSolution{FerriteForwardSolv},
     num_points_border=DEFAULT_BOUNDARY_POINTS
-    )
+)
     Ω_grid_def = get_boundary_points_def(sol, num_points_border)
     SolutionBoundary(Ω_grid_def)
 end
@@ -357,7 +357,7 @@ function binary_mat_zone(
     solution_boundary::SolutionBoundary,
     hyper_rectangle::Hyperrectangle,
     num_inter_per_axis::Int=DEFAULT_INTEGRATION_POINTS,
-    )
+)
 
     # mesh the hyper rectangle with `num_inter_per_axis` per axis
     (xᵥ, yᵥ, Δx, Δy) = mesh_hyperrectangle(hyper_rectangle, num_inter_per_axis)
@@ -381,18 +381,18 @@ function mesh_hyperrectangle(
     # Build x vector
     num_inter_per_axis_x = num_inter_per_axis
     Δx = (xₘₐₓ - xₘᵢₙ) / num_inter_per_axis
-    xᵥ = range(xₘᵢₙ + Δx/2 , xₘₐₓ - Δx/2 , length = num_inter_per_axis_x)
+    xᵥ = range(xₘᵢₙ + Δx / 2, xₘₐₓ - Δx / 2, length=num_inter_per_axis_x)
 
     # Build y vector
     # TODO: mesh with different number of pixels in x and y
     # select Δy
     Δy = Δx
     # compute the number of point to cover yₘᵢₙ
-    num_inter_per_axis_y = cld( (yₘₐₓ - Δy/2) - (yₘᵢₙ + Δy/2), Δy)
+    num_inter_per_axis_y = cld((yₘₐₓ - Δy / 2) - (yₘᵢₙ + Δy / 2), Δy)
     # compute the number of point to cover yₘᵢₙ
-    yₘₐₓ_mesh = (yₘᵢₙ + Δy/2) + num_inter_per_axis_y * Δy
+    yₘₐₓ_mesh = (yₘᵢₙ + Δy / 2) + num_inter_per_axis_y * Δy
     # build the
-    yᵥ =  (yₘᵢₙ + Δy/2) : Δy : yₘₐₓ_mesh
+    yᵥ = (yₘᵢₙ+Δy/2):Δy:yₘₐₓ_mesh
 
     return (xᵥ, yᵥ, Δx, Δy)
 end
@@ -486,10 +486,10 @@ function ∪(
     abs_sol₂ = abs(sol₂, num_points_per_border, num_inter_per_axis)
 
     # computes intersection area
-    _,intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
+    _, intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
     # return the union result
-    return ((abs_sol₁ + abs_sol₂) - intersection_area )
+    return ((abs_sol₁ + abs_sol₂) - intersection_area)
 end
 
 "Returns Jaccard's similarity number between two different solutions"
@@ -501,14 +501,14 @@ function jaccard(
 )
 
     # computes intersection area
-    _,intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
+    _, intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
     # abs of each solution
     abs_sol₁ = abs(sol₁, num_points_per_border, num_inter_per_axis)
     abs_sol₂ = abs(sol₂, num_points_per_border, num_inter_per_axis)
 
     # return Jaccard's number
-    return intersection_area / ((abs_sol₁ + abs_sol₂) - intersection_area )
+    return intersection_area / ((abs_sol₁ + abs_sol₂) - intersection_area)
 end
 
 "Returns Dice similarity number between two different solutions"
@@ -519,7 +519,7 @@ function dice(
     num_inter_per_axis::Int=DEFAULT_INTEGRATION_POINTS,
 )
     # computes intersection area
-    _,intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
+    _, intersection_area = ∩(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
     # abs of each solution
     abs_sol₁ = abs(sol₁, num_points_per_border, num_inter_per_axis)
@@ -537,7 +537,7 @@ function mean_hausdorff(
     sol₂::ForwardProblemSolution,
     num_points_per_border::Int=DEFAULT_BOUNDARY_POINTS,
     num_inter_per_axis::Int=DEFAULT_INTEGRATION_POINTS,
-    )
+)
 
     # build the hyperrectangle containing both solutions
     hyperect_solutions = Hyperrectangle(sol₁, sol₂)
@@ -551,13 +551,13 @@ function mean_hausdorff(
         solution_boundary₁,
         hyperect_solutions,
         num_inter_per_axis,
-        )
+    )
 
     intersection_mat₂, Δx₂, Δy₂ = binary_mat_zone(
         solution_boundary₂,
         hyperect_solutions,
         num_inter_per_axis,
-        )
+    )
 
     @assert Δx₁ == Δy₁ == Δx₂ == Δy₂
 
@@ -583,12 +583,12 @@ function mean_hausdorff(
     N₂ = length(sol₂_cart_index)
 
     # hausdorff distances
-    hsol₂ =  1/N₂ * sum(EDV₂[sol₁_cart_index])
-    hsol₁ =  1/N₁ * sum(EDV₁[sol₂_cart_index])
+    hsol₂ = 1 / N₂ * sum(EDV₂[sol₁_cart_index])
+    hsol₁ = 1 / N₁ * sum(EDV₁[sol₂_cart_index])
 
 
 
-    return 1/2 * (hsol₁ + hsol₂)
+    return 1 / 2 * (hsol₁ + hsol₂)
 
 end
 ""
@@ -605,7 +605,7 @@ function geometric_simillarty(
     jc = jaccard(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
     mhd = mean_hausdorff(sol₁, sol₂, num_points_per_border, num_inter_per_axis)
 
-    return log((1 - jc) *  mhd)
+    return log((1 - jc) * mhd)
 end
 
 #TODO: add compute metrix with only one build of silution boundary struct
