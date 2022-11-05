@@ -6,9 +6,8 @@ module Geometry
 import .Base: extrema, maximum, minimum
 
 # Structured grid methods
-export AbstractGrid, AbstractStructuredGrid
-
-export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, element_type,
+export AbstractStructuredGrid
+export corners, coordinates, cartesian_index, dimension, extrema, element_type,
     element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes, start
 
 # ==============
@@ -17,8 +16,8 @@ export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, elem
 """ Abstract supertype for structured grids.
 
 The following methods are provided by the interface:
-- `⊂ (p,grid)`        -- returns true if a point is inside a grid.
-- `⊄ (p,grid)`        -- returns true if a point is outside a grid.
+- `∈ (p,grid)`        -- returns true if a point is inside a grid.
+- `∉ (p,grid)`        -- returns true if a point is outside a grid.
 - `boundary(grid)`    -- returns the grid boundaries.
 - `corners(grid)`     -- returns the grid corners.
 - `coordinates(grid)` -- returns the grid coordinates.
@@ -97,7 +96,7 @@ function grid(obj::Any)
 end
 
 "Checks if a point is inside a grid"
-function ⊂(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
+function Base.:∈(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
 
     ex = extrema(grid)
 
@@ -109,9 +108,6 @@ function ⊂(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
     end
     return true
 end
-
-"Checks if a point is outside a grid"
-⊄(p::NTuple, grid::AbstractStructuredGrid) = !(⊂(p, grid))
 
 "Interpolates a generic function inside a grid "
 function _interpolate(
@@ -256,7 +252,7 @@ function _closest_point(
     fgrid::AbstractStructuredGrid{2}
 )
 
-    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
+    p ∈ fgrid && throw(ArgumentError("p = $p ∈ fgrid please use `_interpolate` method"))
 
     start_point = start(fgrid)
     finish_point = finish(fgrid)
@@ -280,7 +276,7 @@ function _closest_point(
     fgrid::AbstractStructuredGrid{3},
 )
 
-    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
+    p ∈ fgrid && throw(ArgumentError("p = $p ∈ fgrid please use `_interpolate` method"))
 
     start_point = start(fgrid)
     finish_point = finish(fgrid)

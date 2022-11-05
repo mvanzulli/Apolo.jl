@@ -20,7 +20,7 @@ struct AnalyticImage{D,T,G<:Nothing} <: AbstractImage{D,T,G}
         intensity::Function,
         start::NTuple{D,T},
         finish::NTuple{D,T},
-        ) where {D,T}
+    ) where {D,T}
 
         try
             intensity(Tuple(rand(D))...)
@@ -28,7 +28,7 @@ struct AnalyticImage{D,T,G<:Nothing} <: AbstractImage{D,T,G}
             throw(ArgumentError("The intensity function has not D nargs"))
         end
 
-        new{D,T, Nothing}(intensity, start, finish, nothing)
+        new{D,T,Nothing}(intensity, start, finish, nothing)
 
     end
 
@@ -40,11 +40,11 @@ Base.length(a_img::AnalyticImage) = finish(a_img) .- start(a_img)
 function _eval_intensity(
     p::NTuple{D,T},
     a_img::AnalyticImage{D};
-    offset::NTuple{D,T} = Tuple(zeros(T,D))
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
 ) where {D,T}
 
     p = p .+ offset
-    intensity_p = if p ⊂ a_img
+    intensity_p = if p ∈ a_img
         intensity_function = intensity(a_img)
         intensity_function(p...)
     else
@@ -58,7 +58,7 @@ end
 function _eval_intensity(
     vec_points::Vector{NTuple{D,T}},
     a_img::AnalyticImage{D};
-    offset::NTuple{D,T} = Tuple(zeros(T,D))
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
 ) where {D,T}
 
     intensity_vec = Vector{T}(undef, length(vec_points))
@@ -68,11 +68,11 @@ function _eval_intensity(
     # Check if p is inside the grid image
     for (num_point, p) in enumerate(vec_points)
         p = p .+ offset
-        if p ⊂ a_img
+        if p ∈ a_img
             intensity_vec[num_point] = intensity_function(p...)
         else
             throw(Warning("p + offset = $p is not inside the img frame"))
-            return  missing
+            return missing
         end
     end
 

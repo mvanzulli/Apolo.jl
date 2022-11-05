@@ -299,7 +299,7 @@ function _interpolate(
     fgrid::FerriteStructuredGrid{DG},
 ) where {DG,T,DM}
 
-    [p ⊄ fgrid && throw(ArgumentError("p = $p ⊄ the grid domain")) for p in vec_points]
+    [p ∉ fgrid && throw(ArgumentError("p = $p ∉ the grid domain")) for p in vec_points]
     DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
 
     # make the magnitude compatible with ferrite grids
@@ -335,8 +335,8 @@ function _extrapolate(
     fgrid::FerriteStructuredGrid{DG}
 ) where {DG,T,DM}
 
-    [p ⊂ fgrid &&
-        throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
+    [p ∈ fgrid &&
+        throw(ArgumentError("p = $p ∈ fgrid please use `_interpolate` method"))
      for p in vec_points]
     DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
 
