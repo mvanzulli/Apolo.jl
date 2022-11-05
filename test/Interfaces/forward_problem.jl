@@ -1,14 +1,10 @@
 ##########################
 # Forward problem tests #
 ##########################
-# Using internal packages to test
+using Test, LinearAlgebra
 using Apolo.ForwardProblem
 
-# Using external packages to test
-using Test: @test, @testset
-
 using Ferrite: Grid, generate_grid, Triangle, Vec, PointEvalHandler, get_point_values
-using LinearAlgebra: norm
 
 @testset "ForwardProblem unitary tests" begin
 

@@ -1,19 +1,17 @@
 ################
 # Images tests #
 ################
-using Apolo.Images
-
+using Test
 using Apolo.Geometry: _convert_to_ferrite_nomenclature
+using Apolo.Images
 using Apolo.Images: _total_num_pixels, _index_is_inbounds, _eval_intensity,
     _interpolate, _extrapolate
 using Apolo: vtk_structured_write, load_vtk_img
 
-using Test: @test, @testset
 # using AutoHashEquals
 # using HistogramThresholding: build_histogram
 # using Statistics: var, mean
 # using DICOM: @tag_str
-
 
 const INTERVAL_START = LinRange(-10.0, 10.0, 20)
 const INTERVAL_POS = LinRange(1.0, 10.0, 20)
@@ -21,10 +19,9 @@ const INTERVAL_OFFSET = LinRange(-10.0, -1.0, 20)
 const TOLERANCE = 1e-3
 const DCM_TO_LOAD = "./test/DICOMImages/"
 
-
 @testset "DICOM 3D image unitary tests" begin
 
-    # Define vtk image properties
+    # Define VTK image properties
     intensity_function(x, y, z) = 2x - 3y + 4z
 
     start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
@@ -322,7 +319,7 @@ end
 
 @testset "VTK 2D image unitary tests" begin
 
-    # Define vtk image properties
+    # Define VTK image properties
     intensity_function(x, y) = 2x + 2y
 
     start_img = (0.0, 0.0)
@@ -341,7 +338,7 @@ end
 
     intensity_array = [intensity_function(x, y) for x in xc for y in yc]
 
-    # Write a vtk image
+    # Write a VTK image
     path_img = tempname()
     @info "Writing VTK 2D image in $path_img"
     vtk_structured_write(coords, intensity_function, :intensity, path_img)
@@ -354,7 +351,7 @@ end
     )
     @test path(vtk_img) == path_img
 
-    # Read a vtk image
+    # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
 
     # Test written and red images are the same
@@ -416,7 +413,7 @@ end
 
 @testset "VTK 3D image unitary tests" begin
 
-    # Define vtk image properties
+    # Define VTK image properties
     intensity_function(x, y, z) = 2x - 3y + 4z
 
     start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
@@ -437,7 +434,7 @@ end
     intensity_array = [intensity_function(x, y, z) for x in xc for y in yc for z in zc]
     intensity_array = reshape(intensity_array, num_pixels_img)
 
-    # Write a vtk image (structured grids only)
+    # Write a VTK image (structured grids only)
     path_img = tempname()
     @info "Writing VTK 3D image in $path_img"
     vtk_structured_write(coords, intensity_function, :intensity, path_img)
@@ -448,7 +445,7 @@ end
         intensity_array, spacing_img, start_img, path_img, ferrite_grid=true
     )
 
-    # Read a vtk image
+    # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
 
     # Test written and red images are the same

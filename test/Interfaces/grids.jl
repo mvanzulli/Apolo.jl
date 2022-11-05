@@ -1,14 +1,12 @@
 ##############
 # Grid tests #
 ##############
-
+using Test
 using Apolo.Geometry
 using Apolo.Geometry: _convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid,
     _which_border, _corners, _borders, _boundary_indexes, _interpolate, _closest_point, _extrapolate
 
 using Ferrite: Quadrilateral, Hexahedron, Grid, Set, FaceIndex, Vec
-
-using Test: @test, @testset
 
 const INTERVAL_START = LinRange(-10.0, 10.0, 20)
 const INTERVAL_LENGTH = LinRange(1.0, 10.0, 20)
@@ -288,7 +286,7 @@ end
         start_point[1] + (finish_point[1] - start_point[1]) / 2,
         finish_point[2] + 1.0,
         start_point[3] + (finish_point[3] - start_point[3]) / 2,
-     )
+    )
     out_bottom = (
         start_point[1] + (finish_point[1] - start_point[1]) / 2,
         start_point[2] - 1.0,
