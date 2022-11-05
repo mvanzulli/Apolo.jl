@@ -32,7 +32,7 @@ function vtk_structured_write(
     filename::String="generic"
 )
     # Check dimensions.
-    mapreduce(length, isequal, coords) || throw(ArgumentError("Check dimensions"))
+    length.(coords) == size(fieldarray) || throw(ArgumentError("Check dimensions"))
 
     # Generate a VTK file.
     vtk_grid(filename, coords...) do vtk
