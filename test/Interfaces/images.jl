@@ -1,12 +1,11 @@
 ################
 # Images tests #
 ################
-using Test
+using Apolo, Test
 using Apolo.Geometry: _convert_to_ferrite_nomenclature
 using Apolo.Images
 using Apolo.Images: _total_num_pixels, _index_is_inbounds, _eval_intensity,
     _interpolate, _extrapolate
-using Apolo: vtk_structured_write, load_vtk_img
 
 # using AutoHashEquals
 # using HistogramThresholding: build_histogram
