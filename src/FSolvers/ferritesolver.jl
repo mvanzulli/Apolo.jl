@@ -3,68 +3,103 @@
 # Main types for Ferrite.jl solver #
 ####################################
 
-# Import dependencies to overlead
 import Apolo.ForwardProblem: _solve, _initialize!
 
-# Add libraries to use
-# Internal
 using Apolo.Materials: SVK
-using Apolo.ForwardProblem: ForwardProblemSolution, getfemdata, getmats, getdofsvals
-# External
+using Apolo.ForwardProblem: ForwardProblemSolution, femdata, materials, dofsvals
+
 using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC
 using LinearAlgebra: Symmetric
 using Ferrite
 
 # Export interface functions
-export InterStressDisp, getuinter, getσinter,
+export InterStressDisp,
     QuadratureRulesStressDisp, getcellqr, getfaceqr,
     CellFaceValsStressDisp, getucellval, getufaceval, getσcellval,
     FerriteForwardSolv, getdh, getintgeo, getintdofs, create_dirichlet_bc,
     create_values, get_dof_point_values,
-    Grid
 
-" Struct with the interpolations for stress and displacements."
+
+"""
+"""
+""" Struct with the interpolations for stress and displacements.
+
+## Fields
+
+- `itp_u` -- interpolation for displacement field u.
+- `itp_σ` -- interpolation for stress σ field σ.
+"""
 struct InterStressDisp
-    u::Interpolation
-    σ::Interpolation
+    itp_u::Interpolation
+    itp_σ::Interpolation
 end
 
-" get u interpolation. "
-getuinter(ints::InterStressDisp) = ints.u
+InterStressDisp(; uint = u_itp, σint = σ_itp) = InterStressDisp(uint, σint)
 
-" get σ interpolation. "
-getσinter(ints::InterStressDisp) = ints.σ
+" Returns u interpolation. "
+_u_itp(ints::InterStressDisp) = ints.u
 
-" Struct with the quadrature rules for stress and displacements." # Is assumed that the same qrule is used for face cell
+" Returns σ interpolation. "
+_σ_itp(ints::InterStressDisp) = ints.σ
+
+" Struct with the quadrature rules for stress and displacements.
+
+## Fields
+
+- `face_u` -- quadrature rule for displacement field u across each face.
+- `cell_u` -- quadrature rule for displacement field u inside each cell.
+- `cell_σ` -- quadrature rule for stress field σ inside each cell.
+
+"
 struct QuadratureRulesStressDisp
-    faceu::QuadratureRule
-    cellu::QuadratureRule
-    cellσ::QuadratureRule
+    face_u::QuadratureRule
+    cell_u::QuadratureRule
+    cell_σ::QuadratureRule
 end
 
-" Get cell u quadrature rule. "
-getcelluqr(qrs::QuadratureRulesStressDisp) = qrs.cellu
-" Get face u quadrature rule. "
-getfaceuqr(qrs::QuadratureRulesStressDisp) = qrs.faceu
-" Get cell σ quadrature rule. "
-getcellσqr(qrs::QuadratureRulesStressDisp) = qrs.cellq
+" Returns the quadrature rule for integration of the displacements field u inside a cell. "
+cell_u_qr(qrs::QuadratureRulesStressDisp) = qrs.cell_u
 
-" Struct with the Face and Cell vector values for stress and displacements."
+" Returns the quadrature rule for integration of the stress field σ inside a cell. "
+cell_σ_qr(qrs::QuadratureRulesStressDisp) = qrs.face_u
+
+" Returns quadrature rules for integration of the displacements field u. "
+face_u_qr(qrs::QuadratureRulesStressDisp) = qrs.cell_σ
+
+" Struct with the Face and Cell vector values for stress and displacements.
+
+- `cell_val_u` -- cell vector value for u.
+- `cell_val_σ` -- cell vector value for σ.
+
+"
 struct CellFaceValsStressDisp
-    u::Tuple{CellVectorValues,FaceVectorValues}
-    σ::CellScalarValues
+    cell_val_u::Tuple{CellVectorValues,FaceVectorValues}
+    cell_val_σ::CellScalarValues
 end
 
-" Retrun displacements cell values. "
-getucellval(cfvals::CellFaceValsStressDisp) = cfvals.u[1]
+" Retruns displacements cell values. "
+_cell_values_u(cfvals::CellFaceValsStressDisp) = cfvals.u[1]
+
 " Retrun displacement face values. "
-getufaceval(cfvals::CellFaceValsStressDisp) = cfvals.u[2]
+_face_values_u(cfvals::CellFaceValsStressDisp) = cfvals.u[2]
+
 " Retrun pressure face values. "
-getσcellval(cfvals::CellFaceValsStressDisp) = cfvals.σ
+_face_cell_values_σ(cfvals::CellFaceValsStressDisp) = cfvals.σ
 
 
-" Ferrite solver struct. "
+" Ferrite solver struct.
+
+## Fields
+
+- `inter_geo ` -- geometric interpolations.
+- `qrs`        -- quadrature rules.
+- `inter_dofs` -- interpolations defined for each dof.
+- `dh`         -- ferrite `DofHandler` struct.
+- `cellfacevals` -- cells face values.
+- `nbasefuncs` -- number of base functions
+
+"
 struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
     inter_geo::IGEO
     qrs::QRS
@@ -73,7 +108,7 @@ struct FerriteForwardSolv{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
     cellfacevals::CFV
     nbasefuncs::NB
 
-    "`FerriteForwardSolv` constructor with user defined interpolations. "
+    "Constructor with user defined interpolations. "
     function FerriteForwardSolv(
         fproblem::AbstractForwardProblem,
         inter_geo::IGEO,
