@@ -24,7 +24,7 @@ function vtk_structured_write(
     vtk_structured_write(coords, fieldarray, fieldname, filename)
 end
 
-"Write a vtk structured grid given a 3D scalar array"
+"Write a vtk structured grid given a 3D scalar array."
 function vtk_structured_write(
     coords::Vector{<:AbstractRange},
     fieldarray::Array,
