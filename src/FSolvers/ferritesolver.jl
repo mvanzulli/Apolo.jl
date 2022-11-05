@@ -9,17 +9,11 @@ import Ferrite.DofHandler
 using Apolo.Materials: SVK, value
 using Apolo.ForwardProblem: ForwardProblemSolution, femdata, materials, dofsvals, label
 
+using Reexport: @reexport
+@reexport using Ferrite
 using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC
-using LinearAlgebra: Symmetric
-using Ferrite
-
-# Export interface functions
-# export InterStressDisp,
-#     QuadratureRulesStressDisp, getcellqr, getfaceqr,
-#     CellFaceValsStressDisp, getucellval, getufaceval, getσcellval,
-#     FerriteForwardSolver, getdh, getintgeo, getintdofs, create_dirichlet_bc,
-#     create_values, get_dof_point_values,
+using LinearAlgebra: Symmetric, norm
 
 export FerriteForwardSolver
 
@@ -572,15 +566,17 @@ end
 
 #TODO: Add dispatch with the solver type in sol
 " Get the values  "
-function get_dof_point_values(sol::ForwardProblemSolution, vec_points::Vector{Vec{dim,T}}, dof) where {dim,T}
-    # get all dofs u value
+function _eval_displacements(
+    sol::ForwardProblemSolution,
+    vec_points::Vector{Vec{D,T}},
+) where {D,T}
+
+    vec_points = vec_points .+ offset
     dofvals_sol = dofsvals(sol)
-    # get dof handler
     dh = dofhandler(sol)
-    # create a point handler
-    grid_s = grid(sol)
-    ph = PointEvalHandler(grid_s, vec_points)
-    # eval the points
-    return Ferrite.get_point_values(ph, dh, dofvals_sol, symbol(dof))
+    ferrite_grid = grid(grid(sol))
+    ph = PointEvalHandler(ferrite_grid, vec_points)
+
+    return Ferrite.get_point_values(ph, dh, dofvals_sol, :u)
 
 end

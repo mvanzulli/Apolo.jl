@@ -217,15 +217,25 @@ function label_solid_grid!(
 
 end
 
-# Forward problem solvers
-#--------------------------
 " Abstract supertype for all Forward problem solvers. "
 abstract type AbstractForwardProbSolver end
 
-# Forward problem solution
-#--------------------------
 " Abstract supertype for all Forward problem solution. "
 abstract type AbstractForwardProblemSolution end
+
+" Abstract functor for a forward problem solution. "
+function (fsol::AbstractForwardProblemSolution)(
+    vec_points::Vector{NTuple{D,T}};
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
+) where {D,T}
+    return _eval_displacements(fsol, vec_points, offset=offset)
+end
+
+
+function (img::AbstractForwardProblemSolution)(x::T, y::T; offset::NTuple{2,T}=Tuple(zeros(T, 2))) where {T}
+    _eval_intensity((x, y), img, offset=offset)
+end
+
 
 """ Forward Problem solution struct
 ### Fields:
@@ -259,10 +269,8 @@ dofs(fpsol::ForwardProblemSolution) = dofs(femdata(fpsol))
 "Returns degrees of freedom values"
 dofsvals(fpsol::ForwardProblemSolution) = fpsol.valdofs
 
-
 "Returns forward problem boundary conditions"
 boundary_conditions(fpsol::ForwardProblemSolution) = boundary_conditions(femdata(fpsol))
-
 
 """ Solve a generic problem.
 Each solver implemented should overlead this function.

@@ -6,6 +6,7 @@ using Reexport
 # Geometry
 # ==============
 include("Interfaces/Geometry.jl")
+# include("geometry.jl") # TODO: Fix Volumetric Functionals
 @reexport using .Geometry
 
 # ==============
@@ -21,20 +22,11 @@ include("Interfaces/Materials.jl")
 include("Interfaces/ForwardProblem.jl")
 @reexport using .ForwardProblem
 
-
-# # ==============
-# # Geometry
-# # ==============
-# include("geometry.jl")
-
-
 # ==============
 # Images
 # ==============
 include("Interfaces/Images.jl")
 @reexport using .Images
-
-
 
 # ==============
 # VTK
