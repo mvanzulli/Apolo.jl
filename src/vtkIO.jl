@@ -40,9 +40,7 @@ function vtk_structured_write(
     end
 end
 
-"""
-Reads a .VTK image with an structured grid.
-"""
+""" Reads a .VTK image with an structured grid. """
 function load_vtk_img(path_img::String)
     # Check if it has the .vti extension and if not add it.
     path_with_extension = if occursin(".vti", path_img)

@@ -1,23 +1,20 @@
-#################################################
-# Main types and functions to define Materials  #
-#################################################
+########################################################
+# Main types and functions to solve the ForwardProblem #
+########################################################
 module ForwardProblem
 
-# Import dependencies to overlead
 import ..Geometry: dimension, grid
-import ..Materials: label
+import ..Materials: label, setval!
 
-# Add libraries to use
 using ..Materials: AbstractMaterial
 using ..Geometry: AbstractGrid, FerriteStructuredGrid
 using Ferrite: Grid, addfaceset!, addcellset!
 
-
-# Export interface functions and types
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
     AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProbSolver, ForwardProblemSolution
 
-export symbol, dofs, boundary_conditions, dofsvals, values_function, solve, _solve, component
+export boundary_conditions, component, dofs, dofsvals, materials, values_function,
+    solve, _solve, symbol, set_materials_params!
 
 """ Abstract supertype that includes degrees of freedom  information.
 
@@ -27,10 +24,10 @@ The following methods are provided by the interface
 """
 abstract type AbstractDof{D} end
 
-" Return the `dof` symbol. "
+"Returns the `dof` symbol."
 symbol(dof::AbstractDof{D}) where {D} = dof.symbol
 
-" Return the dof dimension. "
+"Returns the dof dimension."
 dimension(::AbstractDof{D}) where {D} = D
 
 """ Degree of freedom struct.
@@ -55,7 +52,7 @@ struct StressDispDofs{dimσ,dimu}
     u::Dof{dimu}
 end
 
-"Constructor with σ and u keyword arguments "
+"Constructor with σ and u keyword arguments."
 StressDispDofs(; σ=dimσ, u=dimu) = StressDispDofs(σ, u)
 
 """ Abstract supertype that includes boundary conditions information.
@@ -69,13 +66,13 @@ The following methods are provided by the interface:
 """
 abstract type AbstractBoundaryCondition end
 
-" Extract degrees of freedom. "
+"Extract degrees of freedom."
 dofs(bc::AbstractBoundaryCondition) = bc.dof
 
-" Return the function values of an boundary condition `bc`. "
+"Return the function values of an boundary condition `bc`."
 values_function(bc::AbstractBoundaryCondition) = bc.vals_func
 
-"Returns the boundary condition label"
+"Returns the boundary condition label."
 label(bc::AbstractBoundaryCondition) = bc.label
 
 """ Struct that contains the info of a Dirichlet boundary condition
@@ -164,6 +161,34 @@ dofs(fp::AbstractForwardProblem) = dofs(femdata(fp))
 "Extracts Forward Problem boundary conditions. "
 boundary_conditions(fp::AbstractForwardProblem) = boundary_conditions(femdata(fp))
 
+"Sets material values to a forward problem."
+function set_materials_params!(fp::AbstractForwardProblem, params_to_set::Dict)
+
+    # Extract all the forward problem materials
+    fp_materials = materials(fp)
+
+    # Iterate over each material and find into the list of params
+    for mat in keys(fp_materials)
+        # Find the material whose parameter is going to be modified
+        material_symbol = Symbol(label(mat))
+
+        # Find all the paremeters that going to be set
+        mat_params_to_set = params_to_set[material_symbol]
+
+        # iterate over all of different params and set them
+        if mat_params_to_set isa Pair # only one parameter to change
+            setval!(mat[Symbol(mat_params_to_set.first)], mat_params_to_set.second)
+        elseif mat_params_to_set isa Tuple
+            for p in mat_params_to_set
+                setval!(mat[Symbol(p.first)], p.second)
+            end
+        end
+
+    end
+
+end
+
+
 """ Linear elasticity problem
 ### Fields:
 - `data`-- FEM information including boundary conditions , degrees of freedom and the gird.
@@ -174,14 +199,14 @@ boundary_conditions(fp::AbstractForwardProblem) = boundary_conditions(femdata(fp
 struct LinearElasticityProblem{FEMData,MAT} <: AbstractForwardProblem
     data::FEMData
     materials::MAT
-    aux::Dict{Symbol,Any} # General dictionary to add specific stuff for each particular solver
+    aux::Dict{Symbol,Any} # General Dict to add specific stuff for each particular solver
     function LinearElasticityProblem(data, materials)
         _initialize!(grid(data), boundary_conditions(data), materials)
         new{typeof(data),typeof(materials)}(data, materials, Dict())
     end
 end
 
-"Built-in function to initlize the forward problem"
+"Built-in function to initlize the forward problem."
 function _initialize!(grid::AbstractGrid, bcs, materials)
     # add bcs to facesets
     label_solid_grid!(grid, bcs)
@@ -189,8 +214,10 @@ function _initialize!(grid::AbstractGrid, bcs, materials)
     label_solid_grid!(grid, materials)
 end
 
-" Add boundary conditions labels to the grid. "
-function label_solid_grid!(fgrid::FerriteStructuredGrid, bcs::Dict{AbstractBoundaryCondition,Function})
+" Add boundary conditions labels to the grid."
+function label_solid_grid!(
+    fgrid::FerriteStructuredGrid,
+    bcs::Dict{AbstractBoundaryCondition,Function})
 
     # Extract ferrite type grid to use ferrite methods
     ferrite_grid = grid(fgrid)
@@ -217,7 +244,7 @@ function label_solid_grid!(
 
 end
 
-" Abstract supertype for all Forward problem solvers. "
+""" Abstract supertype for all Forward problem solvers. """
 abstract type AbstractForwardProbSolver end
 
 " Abstract supertype for all Forward problem solution. "
@@ -235,7 +262,6 @@ end
 function (img::AbstractForwardProblemSolution)(x::T, y::T; offset::NTuple{2,T}=Tuple(zeros(T, 2))) where {T}
     _eval_intensity((x, y), img, offset=offset)
 end
-
 
 """ Forward Problem solution struct
 ### Fields:
@@ -272,11 +298,18 @@ dofsvals(fpsol::ForwardProblemSolution) = fpsol.valdofs
 "Returns forward problem boundary conditions"
 boundary_conditions(fpsol::ForwardProblemSolution) = boundary_conditions(femdata(fpsol))
 
-""" Solve a generic problem.
-Each solver implemented should overlead this function.
-"""
+""" Solve a generic problem. Each solver implemented should overlead this function."""
 function _solve(fp::FP, solv::SOL, args...; kwargs...) where
 {FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
+end
+
+""" Solve a generic forward problem for a given parameters. """
+function solve(fp::FP, solv::SOL, params::Dict, args...; kwargs...) where
+{FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
+
+    set_materials_params!(fp::AbstractForwardProblem, params::Dict)
+
+    return solve(fp, solv, args...; kwargs...)
 end
 
 
