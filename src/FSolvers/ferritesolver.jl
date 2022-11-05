@@ -301,7 +301,7 @@ function create_dirichlet_bc(
     return dbc
 end
 
-"Solves linear elasiticy problems with ferrite solver."
+"Solves a Linear Elasticty  problems with ferrite solver."
 function _solve(
     fproblem::LinearElasticityProblem,
     solver::FerriteForwardSolver,
@@ -402,7 +402,7 @@ function doassemble(
         assemble!(assembler, celldofs(cell), fe, ke)
     end
     return K, f
-end;
+end
 
 " Assembles the tangent matrix and the force vector of the element "
 function assemble_up!(
@@ -423,7 +423,6 @@ function assemble_up!(
 
     # find material of the cell
     matcell = material_cell(cell, mats, grid)
-    (Gmod, Kmod) = bulk_material_params(matcell)
 
     # fill ke
     fill_linear_elasticKe!(
@@ -438,6 +437,7 @@ function assemble_up!(
     applyNeumannBC!(fe, grid, bcs, cell, cellvalues_u, facevalues_u)
 
 end
+
 "Add Neumann boundary condition to the external force vector."
 function applyNeumannBC!(
     fe,
@@ -565,7 +565,7 @@ function symmetrize_lower!(K)
 end
 
 #TODO: Add dispatch with the solver type in sol
-" Get the values  "
+"Gets the values   "
 function _eval_displacements(
     sol::ForwardProblemSolution,
     vec_points::Vector{Vec{D,T}},

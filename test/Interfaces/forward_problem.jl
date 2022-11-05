@@ -2,7 +2,9 @@
 # Forward problem tests #
 ##########################
 
+using Apolo.Materials
 using Apolo.Geometry
+
 using Apolo.ForwardProblem
 
 using Test: @test, @testset
