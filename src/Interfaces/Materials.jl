@@ -15,7 +15,8 @@ using AutoHashEquals: @auto_hash_equals
 # Export interface functions and types
 export AbstractMaterial, Parameter, SVK
 
-export name, isname, label, value, setval!, setrange!, parameter_index, set!, setval!, model, parameters
+export name, isname, label, value, setval!, hasrange,
+    setrange!, parameter_index, set!, setval!, model, parameters
 
 """ Abstract supertype for material parameters.
 
@@ -63,22 +64,38 @@ Base.ismissing(p::AbstractParameter) = ismissing(p.val)
 
 " Return the parameter `p` value. "
 value(p::AbstractParameter) =
-    !ismissing(p) ? p.val : throw(ArgumentError("the value of $(name(p)) is unknown"))
+    !ismissing(p) ? p.val : throw(ArgumentError("The value of $(name(p)) is unknown"))
 
-" Return the parameter `p` range "
+
+" Checks if the parameter `p` has a constrainted range defined. "
+hasrange(p::AbstractParameter) = any(!, isinf.(p.range))
+
+"Return the parameter `p` range."
 Base.range(p::AbstractParameter,
     num_p::Int=DEFAULT_NUMBER_OF_PARAMS_RANGE) =
-    p.range == REALS ?
-    throw(ArgumentError("The range is not specified for $(name(p))")) : LinRange(p.range[1], p.range[2], num_p)
+    !hasrange(p) ?
+    throw(
+        ArgumentError(
+            "The range is not specified for $(name(p))"
+        )
+    ) : LinRange(p.range[1], p.range[2], num_p)
 
-" Set the value `val` to the parameter `p`. "
+"Checks if a value is into the range of feaseable parameters."
+Base.:∈(val::Number, p::Parameter) = p.range[1] ≤ val ≤ p.range[2]
+
+"Checks if a value is outside the range of feaseable parameters."
+Base.:∉(val::Number, p::Parameter) = !(val ∈ p)
+
+"Sets the value `val` to the parameter `p`."
 function setval!(p::AbstractParameter, val::Number)
+    val ∉ p && throw(ArgumentError("The value $val is not inside the parameter range = $(p.range)"))
     p.val = val
     return p
 end
-" Set the range (`p₁`, `p₂`) to the parameter `p`. "
-function setrange!(p::AbstractParameter, p₁::Number, p₂::Number)
-    p.range = (p₁, p₂)
+
+"Sets the range (`pₘᵢₙ`, `pₘₐₓ`) to the parameter `p`."
+function setrange!(p::AbstractParameter, pₘᵢₙ::Number, pₘₐₓ::Number)
+    p.range = (pₘᵢₙ, pₘₐₓ)
     return p
 end
 
@@ -164,8 +181,27 @@ Base.ismissing(m::AbstractMaterial, pname::Symbol) = ismissing(m[pname])
         return new(E, ν, Symbol(label))
     end
 end
+"Returns SVK material model name."
 model(::SVK) = "SVK"
+
+"Returns SVK parameters tuple."
 parameters(m::SVK) = (m.E, m.ν)
+
+"Returns SVK label"
 label(m::SVK) = string(m.label)
+
+" Extract svk material parameters to use with ferrite nomenclature"
+function lamé_params(svk::SVK)
+    # Extract E and ν parameters
+    E = value(svk[:E])
+    ν = value(svk[:ν])
+
+    # Compute Lamé parameters λ and μ (μ = G)
+    μ = E / 2(1 + ν)
+    λ = E * ν / ((1 + ν) * (1 - 2ν))
+
+    return μ, λ
+end
+
 
 end # end module

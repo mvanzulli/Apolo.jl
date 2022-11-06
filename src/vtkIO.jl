@@ -24,7 +24,7 @@ function vtk_structured_write(
     vtk_structured_write(coords, fieldarray, fieldname, filename)
 end
 
-"Write a vtk structured grid given a 3D scalar array"
+"Write a vtk structured grid given a 3D scalar array."
 function vtk_structured_write(
     coords::Vector{<:AbstractRange},
     fieldarray::Array,
@@ -40,9 +40,7 @@ function vtk_structured_write(
     end
 end
 
-"""
-Reads a .VTK image with an structured grid.
-"""
+""" Reads a .VTK image with an structured grid. """
 function load_vtk_img(path_img::String)
     # Check if it has the .vti extension and if not add it.
     path_with_extension = if occursin(".vti", path_img)

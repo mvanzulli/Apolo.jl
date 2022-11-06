@@ -11,7 +11,6 @@ using Statistics: mean
 
 @testset "ForwardProblem unitary tests" begin
 
-    # --- Dofs ---
     symbol_u = :u
     dim = 2
     dofu = Dof{dim}(symbol_u)
@@ -102,6 +101,31 @@ using Statistics: mean
     numcells = 12
     @test length(ferrite_grid.cellsets[string(label_mat)]) == numcells
 
+    # --- Set a new material parameters combination to the builded forward problem
+    Eₙ = 10e6
+    νₙ = 0.7
+    mat_to_set_params = svk
+    params_to_set_both = Dict(Symbol(label(mat_to_set_params)) => (:E => Eₙ, :ν => νₙ))
+    set_materials_params!(fproblem, params_to_set_both)
+    @test value(svk[:E]) == Eₙ
+    @test value(svk[:ν]) == νₙ
+    # --- Set back νᵣ value
+    νᵣ = 0.4
+    params_to_set_ν = Dict(Symbol(label(mat_to_set_params)) => (:ν => νᵣ))
+    set_materials_params!(fproblem, params_to_set_ν)
+    @test value(svk[:ν]) == νᵣ
+    # --- Set multiple parameters for the same material
+    Eₙ₂ = 2e6
+    νₙ₂ = 0.6
+    multiple_params_to_set = Dict(
+        # Symbol(label(mat_to_set_params)) => (:E => Eᵣ, :ν => νᵣ),
+        Symbol(label(mat_to_set_params)) => (:E => Eₙ₂),
+        Symbol(label(mat_to_set_params)) => (:ν => νₙ₂)
+    )
+    set_materials_params!(fproblem, multiple_params_to_set)
+    @test value(svk[:E]) == Eₙ₂ skip = true   # Only one value is admited to the same key
+    @test value(svk[:ν]) == νₙ₂
+
 end
 
 @testset "Ferrite solver end-to-end 2D case" begin
@@ -118,6 +142,7 @@ end
     dfs = StressDispDofs(σ=dofσ, u=dofu)
 
     # --- Boundary Conditions ---
+    # --- Displacements
     # dof name
     dof_clampedΓD = dofu
     # region function
@@ -130,7 +155,7 @@ end
     label_clampedΓD = "clamped"
     # create BC
     clamped_ΓD = DirichletBC(dof_clampedΓD, vals_calmpedΓD, dofs_clampedΓD, label_clampedΓD)
-
+    # --- Forces
     # region
     region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
     # load factors
@@ -160,38 +185,44 @@ end
     elemtype = Triangle
     fgrid = FerriteStructuredGrid(start_point, finish_point, num_elements_grid, elemtype)
 
-    # -- material -- #
+    # -- create data_fem -- #
+    data_fem_p = FEMData(fgrid, dfs, bcs)
+
+    # -- Materials --
     # reference parameters
     Eᵣ = 14e6
     νᵣ = 0.4
     # range where E lives
     Eₘᵢₙ = 0.2Eᵣ
     Eₘₐₓ = 9Eₘᵢₙ
-    # create params
-    E = Parameter(:E, Eᵣ, (Eₘᵢₙ, Eₘₐₓ))
-    ν = Parameter(:ν, νᵣ)
+    # create defined params
+    # E = Parameter(:E, Eᵣ)
+    # ν = Parameter(:ν, νᵣ)
+    # create empty params
+    E = Parameter(:E)
+    ν = Parameter(:ν)
     # create material
     label_mat = "mat1"
     svk = SVK(E, ν, label_mat)
     # vector of materials to identify
     region_svk(x) = 0 ≤ x[1] ≤ Lᵢₛ && 0 ≤ x[2] ≤ Lⱼₛ
     mats = Dict{AbstractMaterial,Function}(svk => region_svk)
-
-    # -- create data_fem -- #
-    data_fem_p = FEMData(fgrid, dfs, bcs)
+    # parameters to be set
+    params_to_set = Dict(
+        Symbol(label(svk)) => (:E => Eᵣ, :ν => νᵣ),
+    )
 
     # --- Forward problem formulation and grid labeled with a material ---
     fproblem = LinearElasticityProblem(data_fem_p, mats)
 
-    # --- Ferrite solver tests  ---
     # ferrite solver with some default interpolation  parameters
     solver = FerriteForwardSolver(fproblem)
     # solve a linear elasticity problem
     sol = solve(
         fproblem,
         solver,
+        params_to_set,
     )
-
 
     # solution dof handler
     dh = sol.extra[:dh]
