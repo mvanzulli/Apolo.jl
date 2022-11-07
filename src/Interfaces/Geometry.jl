@@ -87,13 +87,7 @@ num_elements(::AbstractStructuredGrid) = error(ERROR_GRID)
 start(::AbstractStructuredGrid) = error(ERROR_GRID)
 
 "Returns the grid of an object"
-function grid(obj::Any)
-    try
-        obj.grid
-    catch
-        ERROR_GRID
-    end
-end
+grid(obj::Any) = obj.grid
 
 "Checks if a point is inside a grid"
 function Base.:∈(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
