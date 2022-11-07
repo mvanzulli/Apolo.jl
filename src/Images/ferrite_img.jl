@@ -62,8 +62,8 @@ struct FerriteImage{D,T,G<:FSG} <: AbstractImage{D,T,G}
     # Cash the Ferrite.Grid into grid field of MedicalImage
     function FerriteImage(
         intensity_array::Array{T,D},
-        spacing_img::NTuple{D,T} = Tuple(ones(T,D)),
-        start_img::NTuple{D,T} = Tuple(zeros(T,D))
+        spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
+        start_img::NTuple{D,T}=Tuple(zeros(T, D))
     ) where {T,D}
 
         num_pixels = size(intensity_array)
@@ -76,7 +76,7 @@ struct FerriteImage{D,T,G<:FSG} <: AbstractImage{D,T,G}
         fgrid = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels)
 
         # convert intensity to ferrite nomenclature
-        intensity= FerriteIntensity(intensity_array, fgrid)
+        intensity = FerriteIntensity(intensity_array, fgrid)
 
         # instantiate generic grid
         new{D,T,FerriteStructuredGrid}(intensity, num_pixels, start_img, spacing_img, fgrid)
@@ -149,7 +149,7 @@ end
 function _interpolate(
     vec_points::Vector{NTuple{D,T}},
     img::AbstractImage{D,T,<:FerriteStructuredGrid},
-    ) where {D,T}
+) where {D,T}
 
     fgrid = grid(img).grid # ferrite grid
 
@@ -162,7 +162,7 @@ function _interpolate(
 
     # create a point evaluation handler
     eval_points = Vector{Vec{D,T}}()
-    [push!(eval_points, Vec(p)) for p in vec_points ]
+    [push!(eval_points, Vec(p)) for p in vec_points]
     ph = PointEvalHandler(fgrid, eval_points)
 
     # evaluate magnitude at point p

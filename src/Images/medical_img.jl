@@ -39,12 +39,12 @@ end
 "VTKImage constructor"
 function MedicalImage(
     intensity_array::Array{<:Real,D},
-    spacing_img::NTuple{D,T} = Tuple(ones(Int,D)),
-    start_img::NTuple{D,T} = Tuple(zeros(T,D)),
-    path_dicom::String = "";
-    orientation::Vector{Symbol} = [:sagital, :coronal, :axial],
-    hyp_params::Any = nothing,
-    ferrite_grid::Bool = true,
+    spacing_img::NTuple{D,T}=Tuple(ones(Int, D)),
+    start_img::NTuple{D,T}=Tuple(zeros(T, D)),
+    path_dicom::String="";
+    orientation::Vector{Symbol}=[:sagital, :coronal, :axial],
+    hyp_params::Any=nothing,
+    ferrite_grid::Bool=true
 ) where {T,D}
 
     # convert spacing to a vector
@@ -62,13 +62,13 @@ function MedicalImage(
     fgrid = create_ferrite_img_fgrid(start_img, spacing_img_num, length_img, num_pixels)
 
     # convert intensity to ferrite nomenclature
-    fintensity= FerriteIntensity(intensity_array, fgrid)
+    fintensity = FerriteIntensity(intensity_array, fgrid)
 
     # instantiate generic grid
     return MedicalImage(
         fintensity, num_pixels, start_img, spacing_img,
         orientation, hyp_params, fgrid, path_dicom,
-        )
+    )
 
 end
 
@@ -158,9 +158,9 @@ function load_medical_img(dir::String)
         spacing_img,
         start_img,
         dir,
-        orientation = [:sagital, :coronal, :axial],
-        hyp_params = dcm,
-        ferrite_grid = true)
+        orientation=[:sagital, :coronal, :axial],
+        hyp_params=dcm,
+        ferrite_grid=true)
 
     return med_img
 end

@@ -65,70 +65,35 @@ end
 dimension(::AbstractImage{D,T}) where {D,T} = D
 
 " Gets the image finish point"
-function finish(img::AbstractImage)
-    try
-        return img.finish
-    catch
-        return start(img) .+ length(img)
-    end
-end
+finish(img::AbstractImage) = start(img) .+ length(img)
 
 " Gets the image finish point"
-function finish(
+finish(
     start_img::NTuple{D,<:Real},
     num_pixels::NTuple{D,<:Integer},
     spacing_img::NTuple{D,<:Real},
-) where {D}
-
-    return start_img .+ num_pixels .* spacing_img
-end
+) where {D} = start_img .+ num_pixels .* spacing_img
 
 " Gets the final point"
-function finish_grid(img::AbstractImage)
-    try
-        finish(grid(img))
-    catch
-        finish(img) .- spacing(img) ./ 2
-    end
-end
+finish_grid(img::AbstractImage) = finish(img) .- spacing(img) ./ 2
 
 "Computes the grid final point."
-function finish_grid(
+finish_grid(
     finish_img::NTuple{D,<:Real},
     spacing_img::NTuple{D,<:Real}
-) where {D}
-    return finish_img .- spacing_img ./ 2
-end
+) where {D} = finish_img .- spacing_img ./ 2
 
 " Gets the image grid"
-function grid(img::AbstractImage)
-    try
-        img.grid
-    catch
-        error(ERROR_IMG)
-    end
-end
+grid(img::AbstractImage) = img.grid
 
 " Gets the image intensity array"
-function intensity(img::AbstractImage)
-    try
-        img.intensity
-    catch
-        error(ERROR_IMG)
-    end
-end
+intensity(img::AbstractImage) = img.intensity
 
 " Gets the image intensity array data type"
 intensity_type(::AbstractImage{D,T}) where {D,T} = T
 
 " Gets the image metric dimensions"
-function Base.length(img::AbstractImage)
-    try
-        num_pixels(img) .* spacing(img)
-    catch
-        error(ERROR_IMG)
-    end
-end
+Base.length(img::AbstractImage) = num_pixels(img) .* spacing(img)
 
 function Base.length(
     start_img::NTuple{D,<:Real},
@@ -138,13 +103,7 @@ function Base.length(
 end
 
 " Gets the image dimensions in voxels"
-function num_pixels(img::AbstractImage)
-    try
-        img.num_pixels
-    catch
-        error(ERROR_IMG)
-    end
-end
+num_pixels(img::AbstractImage) = img.num_pixels
 
 "Computes the grid number of elements."
 function _grid_num_elements(
@@ -154,31 +113,14 @@ function _grid_num_elements(
 end
 
 " Gets the image spacing between pixels"
-function spacing(img::AbstractImage)
-    try
-        img.spacing
-    catch
-        error(ERROR_IMG)
-    end
-end
+spacing(img::AbstractImage) = img.spacing
 
 " Gets the image start point"
-function start(img::AbstractImage)
-    try
-        img.start
-    catch
-        error(ERROR_IMG)
-    end
-end
+start(img::AbstractImage) = img.start
 
 " Gets the image grid origin"
-function start_grid(img::AbstractImage)
-    try
-        start(grid(img))
-    catch
-        start(img) .+ spacing(img) ./ 2
-    end
-end
+start_grid(img::AbstractImage) = start(img) .+ spacing(img) ./ 2
+
 
 "Computes the grid start point."
 function start_grid(
@@ -189,13 +131,7 @@ function start_grid(
 end
 
 "Gets the image path if corresponds "
-function path(img::AbstractImage)
-    try
-        img.path
-    catch
-        error(ERROR_IMG)
-    end
-end
+path(img::AbstractImage) = img.path
 
 " Gets the total number of pixels"
 _total_num_pixels(img::AbstractImage) = prod(num_pixels(img))
@@ -334,13 +270,7 @@ The following methods are provided by the interface:
 abstract type AbstractIntensity{T} end
 
 " Gets the intensity array value"
-function value(int::AbstractIntensity)
-    try
-        int.value
-    catch
-        error(ERROR_IMG)
-    end
-end
+value(int::AbstractIntensity) = int.value
 
 "Computes the maximum intensity"
 maximum(I::AbstractIntensity) = maximum(value(I))
@@ -363,8 +293,6 @@ include("../Images/ferrite_img.jl")
 include("../Images/analytic_img.jl")
 include("../Images/vtk_img.jl")
 include("../Images/medical_img.jl")
-
-
 
 
 end
