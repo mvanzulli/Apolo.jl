@@ -1,6 +1,7 @@
 ###########################################################
 # Main types and functions to handle with analytic images #
 ###########################################################
+import Apolo.Images: finish
 
 export AnalyticImage
 
@@ -34,6 +35,10 @@ struct AnalyticImage{D,T,G<:Nothing} <: AbstractImage{D,T,G}
 
 end
 
+"Returns the final point of an analytic"
+finish(a_img::AnalyticImage) = a_img.finish
+
+"Returns the length of an analytic image"
 Base.length(a_img::AnalyticImage) = finish(a_img) .- start(a_img)
 
 "Internal function to evaluate the image intensity at a generic point"

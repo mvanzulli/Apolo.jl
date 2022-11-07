@@ -177,11 +177,15 @@ function set_materials_params!(fp::AbstractForwardProblem, params_to_set::Dict)
 
         # iterate over all of different params and set them
         if mat_params_to_set isa Pair # only one parameter to change
+
             setval!(mat[Symbol(mat_params_to_set.first)], mat_params_to_set.second)
+
         elseif mat_params_to_set isa Tuple
+
             for p in mat_params_to_set
                 setval!(mat[Symbol(p.first)], p.second)
             end
+
         end
 
     end
