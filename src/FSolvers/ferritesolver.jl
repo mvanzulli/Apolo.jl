@@ -3,11 +3,11 @@
 # Main types for Ferrite.jl solver #
 ####################################
 
-import Apolo.ForwardProblem: _solve, _initialize!
 import Ferrite.DofHandler
 
-using Apolo.Materials: SVK, value
+using Apolo.Materials: SVK, value, lamé_params
 using Apolo.ForwardProblem: ForwardProblemSolution, femdata, materials, dofsvals, label
+import Apolo.ForwardProblem: _solve, _initialize!
 
 using Reexport: @reexport
 @reexport using Ferrite
@@ -488,7 +488,7 @@ function fill_linear_elasticKe!(
     cellvalues_p)
 
     # compute G and K
-    (Gmod, Kmod) = bulk_material_params(matcell) #TODO move to materials interface from Hook to Bulk
+    Gmod, Kmod = lamé_params(matcell) #TODO move to materials interface from Hook to Bulk
 
     # update cell values for each dof
     n_basefuncs_u = getnbasefunctions(cellvalues_u)
@@ -542,19 +542,6 @@ function material_cell(cell, mats, grid)
     end
 end
 
-" Extract svk material parameters to use with ferrite nomenclature"
-function bulk_material_params(svk::SVK)
-    # Extract E and ν parameters
-    E = value(svk[:E])
-    ν = value(svk[:ν])
-
-    # Compute Lamé parameters
-    Gmod = E / 2(1 + ν)
-    Kmod = E * ν / ((1 + ν) * (1 - 2ν))
-
-    return Gmod, Kmod
-end
-
 " Simetrize the tangent matrix"
 function symmetrize_lower!(K)
     for i = 1:size(K, 1)
@@ -565,18 +552,23 @@ function symmetrize_lower!(K)
 end
 
 #TODO: Add dispatch with the solver type in sol
-"Gets the values   "
+"Gets the displacements values for a given vector of tuples and offset."
 function _eval_displacements(
-    sol::ForwardProblemSolution,
-    vec_points::Vector{Vec{D,T}},
-) where {D,T}
+    sol::ForwardProblemSolution{S},
+    vec_points::Vector{NTuple{D,T}},
+    offset::NTuple{D,T}
+) where {S<:FerriteForwardSolver,D,T}
 
-    vec_points = vec_points .+ offset
+    # Create a vector of Vec adding an offset
+    vec_points = [Vec(vec .+ offset) for vec in vec_points]
+    # Extract the dofs values according to ferrites nomenclature
     dofvals_sol = dofsvals(sol)
+
+    # Create and eval the dof handler
     dh = dofhandler(sol)
     ferrite_grid = grid(grid(sol))
     ph = PointEvalHandler(ferrite_grid, vec_points)
 
-    return Ferrite.get_point_values(ph, dh, dofvals_sol, :u)
+    return Ferrite.get_point_values(ph, dh, dofvals_sol, symbol(sol.dofs.u))
 
 end

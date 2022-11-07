@@ -5,6 +5,7 @@
 using Apolo.Materials
 using Apolo.Geometry
 using Apolo.ForwardProblem
+using Apolo.ForwardProblem: _eval_displacements
 
 using Test: @test, @testset
 using Statistics: mean
@@ -224,22 +225,15 @@ end
         params_to_set,
     )
 
-    # solution dof handler
-    dh = sol.extra[:dh]
-    # u vals
-    u = sol.valdofs
-    # extract numeric solution
-    y_points = [Vec((Lᵢₛ, x)) for x in range(0, Lⱼₛ, length=101)]
-    # create a point handler
-    ph = PointEvalHandler(grid(fgrid), y_points)
-    # eval
-    u_points = get_point_values(ph, dh, u, :u)
-    # displacement in y direction
-    yᵥ = getindex.(u_points, 2)
-    uyᵥ_num = getindex.(u_points, 2)
+    # left points to evaluate the solution
+    y_points = [(Lᵢₛ, x) for x in range(0, Lⱼₛ, length=101)]
 
-    # analytical result test based on Zerpa 2019
+    # test the internal forward solution functor
+    @test _eval_displacements(sol, y_points) == sol(y_points)
+    uyᵥ_num = getindex.(sol(y_points), 2)
+
+    # test it with Prez Zerpa 2019, CMAME
     JPZ_uy = 2.4e-3
-    @test mean(uyᵥ_num) ≈ JPZ_uy atol = 1e-2
+    @test mean(uyᵥ_num) ≈ JPZ_uy atol = 0.005
 
 end

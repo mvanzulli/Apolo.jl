@@ -66,7 +66,6 @@ Base.ismissing(p::AbstractParameter) = ismissing(p.val)
 value(p::AbstractParameter) =
     !ismissing(p) ? p.val : throw(ArgumentError("The value of $(name(p)) is unknown"))
 
-
 " Checks if the parameter `p` has a constrainted range defined. "
 hasrange(p::AbstractParameter) = any(!, isinf.(p.range))
 
@@ -120,6 +119,7 @@ The following methods are provided by the interface:
 abstract type AbstractMaterial end
 
 model(::Type{T}) where {T<:AbstractMaterial} = string(T)
+
 function parameters(m::T) where {T<:AbstractMaterial}
     Tuple([getfield(f, n) for n in fieldnames(T) if fieldtype(T, n) isa Parameter])
 end
