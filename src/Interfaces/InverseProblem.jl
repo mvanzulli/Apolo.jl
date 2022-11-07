@@ -2,10 +2,7 @@
 # Main types and functions to solve Inverse Problems  #
 #######################################################
 
-
 using Dictionaries: Dictionary
-
-const ERROR_FUNC = "This methods is not available for this type of functional"
 
 """
 Module defining image properties and features.
