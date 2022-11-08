@@ -76,8 +76,8 @@ using Statistics: mean
     Eₘᵢₙ = 0.2Eᵣ
     Eₘₐₓ = 9Eₘᵢₙ
     # create params
-    E = Parameter(:E, Eᵣ, (Eₘᵢₙ, Eₘₐₓ))
-    ν = Parameter(:ν, νᵣ)
+    E = ConstitutiveParameter(:E, Eᵣ, (Eₘᵢₙ, Eₘₐₓ))
+    ν = ConstitutiveParameter(:ν, νᵣ)
     # create material
     label_mat = "mat1"
     svk = SVK(E, ν, label_mat)
@@ -196,12 +196,9 @@ end
     # range where E lives
     Eₘᵢₙ = 0.2Eᵣ
     Eₘₐₓ = 9Eₘᵢₙ
-    # create defined params
-    # E = Parameter(:E, Eᵣ)
-    # ν = Parameter(:ν, νᵣ)
     # create empty params
-    E = Parameter(:E)
-    ν = Parameter(:ν)
+    E = ConstitutiveParameter(:E)
+    ν = ConstitutiveParameter(:ν)
     # create material
     label_mat = "mat1"
     svk = SVK(E, ν, label_mat)
