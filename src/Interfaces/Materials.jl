@@ -68,7 +68,7 @@ getval(p::AbstractParameter) =
 
 " Return the parameter `p` range "
 getrange(p::AbstractParameter,
-        num_p::Int = DEFAULT_NUMBER_OF_PARAMS_RANGE) =
+    num_p::Int=DEFAULT_NUMBER_OF_PARAMS_RANGE) =
     p.range == REALS ?
     throw(ArgumentError("The range is not specified for $(name(p))")) : LinRange(p.range[1], p.range[2], num_p)
 
