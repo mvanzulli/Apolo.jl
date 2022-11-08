@@ -1,14 +1,12 @@
 ##############
 # Grid tests #
 ##############
-
+using Test
 using Apolo.Geometry
 using Apolo.Geometry: _convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid,
     _which_border, _corners, _borders, _boundary_indexes, _interpolate, _closest_point, _extrapolate
 
 using Ferrite: Quadrilateral, Hexahedron, Grid, Set, FaceIndex, Vec
-
-using Test: @test, @testset
 
 const INTERVAL_START = LinRange(-10.0, 10.0, 20)
 const INTERVAL_LENGTH = LinRange(1.0, 10.0, 20)
@@ -65,9 +63,9 @@ const TOLERANCE = 1e-3
     @test cartesian_to_test == cartesian_index_bench_to_test
 
     # test ∈
-    @test start_point ⊂ fgrid && finish_point ⊂ fgrid &&
-          (finish_point .+ start_point) ./ 2 ⊂ fgrid
-    @test finish_point .+ (1.0, 1.0) ⊄ fgrid
+    @test start_point ∈ fgrid && finish_point ∈ fgrid &&
+          (finish_point .+ start_point) ./ 2 ∈ fgrid
+    @test finish_point .+ (1.0, 1.0) ∉ fgrid
 
 
     # test border functions with ferrite
@@ -132,10 +130,10 @@ const TOLERANCE = 1e-3
     out_finish = finish_point .+ (1.0, 1.0)
     out_consecutive_x = consecutive_x .- (0.0, 1.0)
     out_consecutive_y = consecutive_y .- (1.0, 0.0)
-    @test out_start ⊄ fgrid
-    @test out_finish ⊄ fgrid
-    @test out_consecutive_x ⊄ fgrid
-    @test out_consecutive_y ⊄ fgrid
+    @test out_start ∉ fgrid
+    @test out_finish ∉ fgrid
+    @test out_consecutive_x ∉ fgrid
+    @test out_consecutive_y ∉ fgrid
 
     points_to_test = [out_start, out_finish, out_consecutive_x, out_consecutive_y]
 
@@ -213,9 +211,9 @@ end
     @test cartesian_to_test == cartesian_index_bench_to_test
 
     # test ∈
-    @test start_point ⊂ fgrid && finish_point ⊂ fgrid &&
-          (finish_point .+ start_point) ./ 2 ⊂ fgrid
-    @test (finish_point .+ (1.0, 1.0, 1.0)) ⊄ fgrid
+    @test start_point ∈ fgrid && finish_point ∈ fgrid &&
+          (finish_point .+ start_point) ./ 2 ∈ fgrid
+    @test (finish_point .+ (1.0, 1.0, 1.0)) ∉ fgrid
 
     # test border functions with ferrite
     borders_bench = ["top", "bottom", "left", "right", "back", "front"]
@@ -288,20 +286,20 @@ end
         start_point[1] + (finish_point[1] - start_point[1]) / 2,
         finish_point[2] + 1.0,
         start_point[3] + (finish_point[3] - start_point[3]) / 2,
-     )
+    )
     out_bottom = (
         start_point[1] + (finish_point[1] - start_point[1]) / 2,
         start_point[2] - 1.0,
         start_point[3] + (finish_point[3] - start_point[3]) / 2,
     )
 
-    @test out_start ⊄ fgrid
-    @test out_finish ⊄ fgrid
-    @test out_top ⊄ fgrid
-    @test out_bottom ⊄ fgrid
-    @test out_consecutive_x ⊄ fgrid
-    @test out_consecutive_y ⊄ fgrid
-    @test out_consecutive_z ⊄ fgrid
+    @test out_start ∉ fgrid
+    @test out_finish ∉ fgrid
+    @test out_top ∉ fgrid
+    @test out_bottom ∉ fgrid
+    @test out_consecutive_x ∉ fgrid
+    @test out_consecutive_y ∉ fgrid
+    @test out_consecutive_z ∉ fgrid
 
     # test borders labels
     @test _which_border(out_consecutive_x, start_point, finish_point) == :bottom_front

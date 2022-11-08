@@ -7,7 +7,7 @@ import .Base: extrema, maximum, minimum
 
 # Structured grid methods
 export AbstractStructuredGrid
-export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, element_type,
+export corners, coordinates, cartesian_index, dimension, extrema, element_type,
     element_size, finish, grid, maximum, minimum, node_type, num_elements, num_nodes, start
 
 # ==============
@@ -16,8 +16,8 @@ export ⊂, ⊄, corners, coordinates, cartesian_index, dimension, extrema, elem
 """ Abstract supertype for structured grids.
 
 The following methods are provided by the interface:
-- `⊂ (p,grid)`        -- returns true if a point is inside a grid.
-- `⊄ (p,grid)`        -- returns true if a point is outside a grid.
+- `∈ (p,grid)`        -- returns true if a point is inside a grid.
+- `∉ (p,grid)`        -- returns true if a point is outside a grid.
 - `boundary(grid)`    -- returns the grid boundaries.
 - `corners(grid)`     -- returns the grid corners.
 - `coordinates(grid)` -- returns the grid coordinates.
@@ -37,7 +37,9 @@ The following methods are provided by the interface:
 - `num_nodes(grid)`   -- returns the number of grid nodes.
 - `start(grid)`       -- returns the grid start point.
 """
-abstract type AbstractStructuredGrid{D,T} end
+abstract type AbstractGrid{D,T} end
+
+abstract type AbstractStructuredGrid{D,T} <: AbstractGrid{D,T} end
 
 
 const ERROR_GRID = :("This method is not available for this grid type. Please implement it")
@@ -85,16 +87,10 @@ num_elements(::AbstractStructuredGrid) = error(ERROR_GRID)
 start(::AbstractStructuredGrid) = error(ERROR_GRID)
 
 "Returns the grid of an object"
-function grid(obj::Any)
-    try
-        obj.grid
-    catch
-        ERROR_GRID
-    end
-end
+grid(obj::Any) = obj.grid
 
 "Checks if a point is inside a grid"
-function ⊂(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
+function Base.:∈(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
 
     ex = extrema(grid)
 
@@ -106,9 +102,6 @@ function ⊂(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T}
     end
     return true
 end
-
-"Checks if a point is outside a grid"
-⊄(p::NTuple, grid::AbstractStructuredGrid) = !(⊂(p, grid))
 
 "Interpolates a generic function inside a grid "
 function _interpolate(
@@ -253,7 +246,7 @@ function _closest_point(
     fgrid::AbstractStructuredGrid{2}
 )
 
-    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
+    p ∈ fgrid && throw(ArgumentError("p = $p ∈ fgrid please use `_interpolate` method"))
 
     start_point = start(fgrid)
     finish_point = finish(fgrid)
@@ -277,7 +270,7 @@ function _closest_point(
     fgrid::AbstractStructuredGrid{3},
 )
 
-    p ⊂ fgrid && throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
+    p ∈ fgrid && throw(ArgumentError("p = $p ∈ fgrid please use `_interpolate` method"))
 
     start_point = start(fgrid)
     finish_point = finish(fgrid)

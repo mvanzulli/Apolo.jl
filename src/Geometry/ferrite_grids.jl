@@ -5,15 +5,13 @@
 
 # TODO: Fix coordinates function overlead
 import Apolo.Geometry: corners, coordinates, cartesian_index, dimension, extrema,
-element_type, element_size, finish, grid, maximum, minimum, node_type, num_nodes,
-num_elements, start
 
 import Apolo.Geometry: _interpolate
 
 using Apolo.Geometry: AbstractStructuredGrid
 using Ferrite: generate_grid, getcoordinates, getfaceset, getnodes, get_point_values, close!
 using Ferrite: AbstractCell, CellIterator, DofHandler, FaceIndex, Grid, Lagrange,
-    PointEvalHandler, Set, RefCube , Vec, Quadrilateral, Hexahedron
+    PointEvalHandler, Set, RefCube, Vec, Quadrilateral, Hexahedron
 
 export FerriteStructuredGrid, border_points, set_coordinates
 
@@ -142,7 +140,7 @@ function _create_ferrite_rectangular_grid(
     # extract start and finish borders accordring to generate_grid ferrite function
     # the end -1 entry corresponds to the right ferrite nomenclature
     left = grid_corners[1]
-    right = grid_corners[end - 1]
+    right = grid_corners[end-1]
 
     # return corners to add into FerriteGrid.vertices
     return generate_grid(element, num_elements, left, right), grid_corners
@@ -300,7 +298,7 @@ function _interpolate(
     fgrid::FerriteStructuredGrid{DG},
 ) where {DG,T,DM}
 
-    [p ⊄ fgrid && throw(ArgumentError("p = $p ⊄ the grid domain")) for p in vec_points]
+    [p ∉ fgrid && throw(ArgumentError("p = $p ∉ the grid domain")) for p in vec_points]
     DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
 
     # make the magnitude compatible with ferrite grids
@@ -312,8 +310,8 @@ function _interpolate(
     close!(dh)
 
     # create a point evaluation handler
-    eval_points = Vector{Vec{DG, T}}()
-    [push!(eval_points, Vec(p)) for p in vec_points ]
+    eval_points = Vector{Vec{DG,T}}()
+    [push!(eval_points, Vec(p)) for p in vec_points]
     ph = PointEvalHandler(fgrid, eval_points)
 
     # evaluate magnitude at point p
@@ -336,9 +334,9 @@ function _extrapolate(
     fgrid::FerriteStructuredGrid{DG}
 ) where {DG,T,DM}
 
-    [p ⊂ fgrid &&
-    throw(ArgumentError("p = $p ⊂ fgrid please use `_interpolate` method"))
-    for p in vec_points]
+    [p ∈ fgrid &&
+        throw(ArgumentError("p = $p ∈ fgrid please use `_interpolate` method"))
+     for p in vec_points]
     DM > 3 && throw(ArgumentError("magnitude dimension cannot exceed 3"))
 
     # make the magnitude compatible with ferrite grids
@@ -349,9 +347,9 @@ function _extrapolate(
     close!(dh)
 
     # create a point evaluation handler
-    eval_points = Vector{Vec{DG, T}}()
+    eval_points = Vector{Vec{DG,T}}()
 
-    [push!(eval_points, Vec(_closest_point(p, fgrid))) for p in vec_points ]
+    [push!(eval_points, Vec(_closest_point(p, fgrid))) for p in vec_points]
     ph = PointEvalHandler(fgrid, eval_points)
 
     # evaluate magnitude at point p

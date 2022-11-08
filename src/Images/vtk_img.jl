@@ -30,10 +30,10 @@ end
 "VTKImage constructor given an intensity array"
 function VTKImage(
     intensity_array::Array{T,D},
-    spacing_img::NTuple{D,T} = Tuple(ones(T,D)),
-    start_img::NTuple{D,T} = Tuple(zeros(T,D)),
-    path_img::String = "";
-    ferrite_grid::Bool = true,
+    spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
+    start_img::NTuple{D,T}=Tuple(zeros(T, D)),
+    path_img::String="";
+    ferrite_grid::Bool=true
 ) where {T,D}
 
     ferrite_grid == false && throw(ArgumentError("The grid must be a ferrite subtype"))
@@ -49,7 +49,7 @@ function VTKImage(
     fgrid = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels)
 
     # convert intensity to ferrite nomenclature
-    fintensity= FerriteIntensity(intensity_array, fgrid)
+    fintensity = FerriteIntensity(intensity_array, fgrid)
 
     # instantiate generic grid
     return VTKImage(fintensity, num_pixels, start_img, spacing_img, fgrid, path_img)

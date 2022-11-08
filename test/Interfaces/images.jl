@@ -1,19 +1,16 @@
 ################
 # Images tests #
 ################
-using Apolo.Images
-
+using Apolo, Test
 using Apolo.Geometry: _convert_to_ferrite_nomenclature
+using Apolo.Images
 using Apolo.Images: _total_num_pixels, _index_is_inbounds, _eval_intensity,
     _interpolate, _extrapolate
-using Apolo: vtk_structured_write, load_vtk_img
 
-using Test: @test, @testset
 # using AutoHashEquals
 # using HistogramThresholding: build_histogram
 # using Statistics: var, mean
 # using DICOM: @tag_str
-
 
 const INTERVAL_START = LinRange(-10.0, 10.0, 20)
 const INTERVAL_POS = LinRange(1.0, 10.0, 20)
@@ -22,76 +19,7 @@ const TOLERANCE = 1e-3
 const DCM_TO_LOAD = "./test/DICOMImages/"
 
 
-@testset "DICOM 3D image unitary tests" begin
-
-    # Define vtk image properties
-    intensity_function(x, y, z) = 2x - 3y + 4z
-
-    start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
-    spacing_img = (rand(INTERVAL_POS), rand(INTERVAL_POS), rand(INTERVAL_POS))./50
-    num_pixels_img = (axial = 4, sagital = 3, radial =  2)
-    start_img_grid = start_img .+ spacing_img ./ 2
-    image_dimension = length(spacing_img)
-    finish_img = Tuple(start_img .+ collect(num_pixels_img) .* spacing_img)
-    finish_img_grid = finish_img .- spacing_img ./ 2
-    length_img = finish_img .- start_img
-
-
-    xc = LinRange(start_img_grid[1], finish_img_grid[1], collect(num_pixels_img)[1])
-    yc = LinRange(start_img_grid[2], finish_img_grid[2], collect(num_pixels_img)[2])
-    zc = LinRange(start_img_grid[3], finish_img_grid[3], collect(num_pixels_img)[3])
-    coords = [xc, yc, zc]
-
-    intensity_array = [intensity_function(x, y, z) for x in xc for y in yc for z in zc]
-    intensity_array = reshape(intensity_array, Tuple(collect(num_pixels_img)))
-
-    # Test constructor
-    med_img = MedicalImage(intensity_array, spacing_img, start_img)
-
-    # Special medical getter functions
-    @test hyper_parameters(med_img) == nothing
-    @test path(med_img) == ""
-    @test orientation(med_img) == [:sagital, :coronal, :axial]
-
-    # test getter functions
-    @test start(med_img) == start_img
-    @test start_grid(med_img) == start(grid(med_img)) == start_img_grid
-    @test finish(med_img) == finish_img
-    @test finish_grid(med_img) == finish(grid(med_img)) == finish_img_grid
-    @test collect(length(med_img)) ≈ collect(length_img) atol = TOLERANCE
-    coords = coordinates(med_img)
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
-
-    @test extrema(med_img) == [
-        (start_img[1], finish_img[1]),
-        (start_img[2], finish_img[2]),
-        (start_img[3], finish_img[3])
-        ]
-    @test intensity(med_img) == intensity_array
-    @test intensity_type(med_img) == intensity_type(med_img.intensity)
-    @test dimension(med_img) == image_dimension
-    @test num_pixels(med_img) == Tuple(collect(num_pixels_img))
-    @test _total_num_pixels(med_img) == prod(num_pixels_img)
-    @test spacing(med_img) == spacing_img
-
-    # test checker functions
-    # ⊂ and ⊄
-    @test start_img ⊂ med_img
-    @test finish_img ⊂ med_img
-    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ med_img
-    @test (start_img .+ 9 .* finish_img) ⊄ med_img
-
-    # FIXME: IMPROVE PERFORMANCE
-    # # Load a .dcm folder
-    # time = @elapsed begin
-    #     med_img = load_medical_img(DCM_TO_LOAD)
-    # end
-
-end
-
-@testset "Ferrit 2D image unitary tests" begin
+@testset "Ferrite 2D image unitary tests" begin
 
     start_img = (rand(INTERVAL_START), rand(INTERVAL_START))
     spacing_img = (rand(INTERVAL_POS), rand(INTERVAL_POS))
@@ -139,8 +67,8 @@ end
     @test collect(length(f_img)) ≈ collect(length_img) atol = TOLERANCE
     coords = coordinates(f_img)
     @test coords == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
 
     @test extrema(f_img) == [(start_img[1], finish_img[1]), (start_img[2], finish_img[2])]
     @test intensity(f_img) == intensity_array
@@ -151,11 +79,11 @@ end
     @test spacing(f_img) == spacing_img
 
     # test checker functions
-    # ⊂ and ⊄
-    @test start_img ⊂ f_img
-    @test finish_img ⊂ f_img
-    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ f_img
-    @test (start_img .+ 9 .* finish_img) ⊄ f_img
+    # ∈ and ∉
+    @test start_img ∈ f_img
+    @test finish_img ∈ f_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ∈ f_img
+    @test (start_img .+ 9 .* finish_img) ∉ f_img
 
     # indexes
     # is inside function
@@ -232,9 +160,9 @@ end
     @test collect(length(f_img)) ≈ collect(length_img) atol = TOLERANCE
     coords = coordinates(f_img)
     @test coords == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
+    @test spacing_img[3] ≈ (coords[3][2] - coords[3][1]) atol = TOLERANCE
 
     @test extrema(f_img) == [
         (start_img[1], finish_img[1]),
@@ -249,11 +177,11 @@ end
     @test spacing(f_img) == spacing_img
 
     # test checker functions
-    # ⊂ and ⊄
-    @test start_img ⊂ f_img
-    @test finish_img ⊂ f_img
-    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ f_img
-    @test (start_img .+ 900 .* finish_img) ⊄ f_img
+    # ∈ and ∉
+    @test start_img ∈ f_img
+    @test finish_img ∈ f_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ∈ f_img
+    @test (start_img .+ 900 .* finish_img) ∉ f_img
 
     # indexes
     # is inside function
@@ -310,10 +238,10 @@ end
     @test intensity(a_img) == analytic_intensity
     @test grid(a_img) == nothing
 
-    @test a_img((start_img .+ length_img./100 .- offset_img)..., offset=offset_img) ≈
-          analytic_intensity((start_img.+ length_img./100)...) atol = TOLERANCE
-    @test a_img((finish_img .- length_img./100 .- offset_img)..., offset=offset_img) ≈
-          analytic_intensity((finish_img .- length_img./100)...) atol = TOLERANCE
+    @test a_img((@. start_img + length_img / 100 - offset_img)..., offset=offset_img) ≈
+          analytic_intensity((@. start_img + length_img / 100)...) atol = TOLERANCE
+    @test a_img((@. finish_img - length_img / 100 - offset_img)..., offset=offset_img) ≈
+          analytic_intensity((@. finish_img - length_img / 100)...) atol = TOLERANCE
     vec_points = [start_img, finish_img]
     @test a_img(vec_points) ≈
           [analytic_intensity(start_img...), analytic_intensity(finish_img...)] atol = TOLERANCE
@@ -322,7 +250,7 @@ end
 
 @testset "VTK 2D image unitary tests" begin
 
-    # Define vtk image properties
+    # Define VTK image properties
     intensity_function(x, y) = 2x + 2y
 
     start_img = (0.0, 0.0)
@@ -341,8 +269,9 @@ end
 
     intensity_array = [intensity_function(x, y) for x in xc for y in yc]
 
-    # Write a vtk image
-    path_img = "./testVTK"
+    # Write a VTK image
+    path_img = tempname()
+    @info "Writing VTK 2D image in $path_img"
     vtk_structured_write(coords, intensity_function, :intensity, path_img)
     intensity_array = reshape(intensity_array, num_pixels_img)
     vtk_structured_write(coords, intensity_array, :intensity, path_img)
@@ -353,7 +282,7 @@ end
     )
     @test path(vtk_img) == path_img
 
-    # Read a vtk image
+    # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
 
     # Test written and red images are the same
@@ -375,8 +304,8 @@ end
     coords = coordinates(vtk_img)
     @test coords[1] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[1]
     @test coords[2] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[2]
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
 
     @test extrema(vtk_img) == [
         (start_img[1], finish_img[1]),
@@ -391,11 +320,11 @@ end
     @test spacing(vtk_img) == spacing_img
 
     # test checker functions
-    # ⊂ and ⊄
-    @test start_img ⊂ vtk_img
-    @test finish_img ⊂ vtk_img
-    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ vtk_img
-    @test (start_img .+ 900 .* finish_img) ⊄ vtk_img
+    # ∈ and ∉
+    @test start_img ∈ vtk_img
+    @test finish_img ∈ vtk_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ∈ vtk_img
+    @test (start_img .+ 900 .* finish_img) ∉ vtk_img
 
     # final point the image grid
     @test _extrapolate([finish_img .+ (1.0, 1.0)], vtk_img) ≈ [intensity_array[end, end]] atol = TOLERANCE
@@ -409,13 +338,13 @@ end
 
     # test with a random point
     rand_point = start_img .+ length_img ./ rand(1:10)
-    @test vtk_img(rand_point...) ≈ intensity_function(rand_point...) atol = TOLERANCE
+    @test vtk_img(rand_point...) ≈ intensity_function(rand_point...) atol = TOLERANCE skip = true
 
 end
 
 @testset "VTK 3D image unitary tests" begin
 
-    # Define vtk image properties
+    # Define VTK image properties
     intensity_function(x, y, z) = 2x - 3y + 4z
 
     start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
@@ -436,8 +365,9 @@ end
     intensity_array = [intensity_function(x, y, z) for x in xc for y in yc for z in zc]
     intensity_array = reshape(intensity_array, num_pixels_img)
 
-    # Write a vtk image (structured grids only)
-    path_img = "./testVTK"
+    # Write a VTK image (structured grids only)
+    path_img = tempname()
+    @info "Writing VTK 3D image in $path_img"
     vtk_structured_write(coords, intensity_function, :intensity, path_img)
     vtk_structured_write(coords, intensity_array, :intensity, path_img)
 
@@ -446,7 +376,7 @@ end
         intensity_array, spacing_img, start_img, path_img, ferrite_grid=true
     )
 
-    # Read a vtk image
+    # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
 
     # Test written and red images are the same
@@ -468,9 +398,9 @@ end
     @test coords[1] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[1]
     @test coords[2] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[2]
     @test coords[3] == LinRange.(start_img_grid, finish_img_grid, num_pixels_img)[3]
-    @test isapprox(spacing_img[1], coords[1][2] - coords[1][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[2], coords[2][2] - coords[2][1], atol=TOLERANCE)
-    @test isapprox(spacing_img[3], coords[3][2] - coords[3][1], atol=TOLERANCE)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
+    @test spacing_img[3] ≈ (coords[3][2] - coords[3][1]) atol = TOLERANCE
 
     @test extrema(vtk_img) == [
         (start_img[1], finish_img[1]),
@@ -486,11 +416,11 @@ end
     @test spacing(vtk_img) == spacing_img
 
     # test checker functions
-    # ⊂ and ⊄
-    @test start_img ⊂ vtk_img
-    @test finish_img ⊂ vtk_img
-    @test (start_img .+ (finish_img .- start_img) ./ 2) ⊂ vtk_img
-    @test (start_img .+ 900 .* finish_img) ⊄ vtk_img
+    # ∈ and ∉
+    @test start_img ∈ vtk_img
+    @test finish_img ∈ vtk_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ∈ vtk_img
+    @test (start_img .+ 900 .* finish_img) ∉ vtk_img
 
     # indexes
     # is inside function
@@ -515,6 +445,75 @@ end
     itp_rand_int = vtk_img(rand_point...)
     exact_rand_int = intensity_function(rand_point...)
     @test exact_rand_int ≈ itp_rand_int atol = abs(itp_rand_int * 1e-1)
+
+end
+
+@testset "DICOM 3D image unitary tests" begin
+
+    # Define VTK image properties
+    intensity_function(x, y, z) = 2x - 3y + 4z
+
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
+    spacing_img = (rand(INTERVAL_POS), rand(INTERVAL_POS), rand(INTERVAL_POS)) ./ 50
+    num_pixels_img = (axial=4, sagital=3, radial=2)
+    start_img_grid = start_img .+ spacing_img ./ 2
+    image_dimension = length(spacing_img)
+    finish_img = Tuple(start_img .+ collect(num_pixels_img) .* spacing_img)
+    finish_img_grid = finish_img .- spacing_img ./ 2
+    length_img = finish_img .- start_img
+
+
+    xc = LinRange(start_img_grid[1], finish_img_grid[1], collect(num_pixels_img)[1])
+    yc = LinRange(start_img_grid[2], finish_img_grid[2], collect(num_pixels_img)[2])
+    zc = LinRange(start_img_grid[3], finish_img_grid[3], collect(num_pixels_img)[3])
+    coords = [xc, yc, zc]
+
+    intensity_array = [intensity_function(x, y, z) for x in xc for y in yc for z in zc]
+    intensity_array = reshape(intensity_array, Tuple(collect(num_pixels_img)))
+
+    # Test constructor
+    med_img = MedicalImage(intensity_array, spacing_img, start_img)
+
+    # Special medical getter functions
+    @test hyper_parameters(med_img) == nothing
+    @test path(med_img) == ""
+    @test orientation(med_img) == [:sagital, :coronal, :axial]
+
+    # test getter functions
+    @test start(med_img) == start_img
+    @test start_grid(med_img) == start(grid(med_img)) == start_img_grid
+    @test finish(med_img) == finish_img
+    @test finish_grid(med_img) == finish(grid(med_img)) == finish_img_grid
+    @test collect(length(med_img)) ≈ collect(length_img) atol = TOLERANCE
+    coords = coordinates(med_img)
+    @test spacing_img[1] ≈ (coords[1][2] - coords[1][1]) atol = TOLERANCE
+    @test spacing_img[2] ≈ (coords[2][2] - coords[2][1]) atol = TOLERANCE
+    @test spacing_img[3] ≈ (coords[3][2] - coords[3][1]) atol = TOLERANCE
+
+    @test extrema(med_img) == [
+        (start_img[1], finish_img[1]),
+        (start_img[2], finish_img[2]),
+        (start_img[3], finish_img[3])
+    ]
+    @test intensity(med_img) == intensity_array
+    @test intensity_type(med_img) == intensity_type(med_img.intensity)
+    @test dimension(med_img) == image_dimension
+    @test num_pixels(med_img) == Tuple(collect(num_pixels_img))
+    @test _total_num_pixels(med_img) == prod(num_pixels_img)
+    @test spacing(med_img) == spacing_img
+
+    # test checker functions
+    # ∈ and ∉
+    @test start_img ∈ med_img
+    @test finish_img ∈ med_img
+    @test (start_img .+ (finish_img .- start_img) ./ 2) ∈ med_img
+    @test (start_img .+ 9 .* finish_img) ∉ med_img
+
+    # FIXME: IMPROVE PERFORMANCE
+    # # Load a .dcm folder
+    # time = @elapsed begin
+    #     med_img = load_medical_img(DCM_TO_LOAD)
+    # end
 
 end
 

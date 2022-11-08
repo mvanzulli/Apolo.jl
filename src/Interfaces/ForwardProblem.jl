@@ -1,44 +1,39 @@
-#################################################
-# Main types and functions to define Materials  #
-#################################################
+########################################################
+# Main types and functions to solve the ForwardProblem #
+########################################################
 module ForwardProblem
 
-# Import dependencies to overlead
-import ..Materials: getlabel
-import ..Geometry: dimension
+import ..Geometry: dimension, grid
+import ..Materials: label, setval!
 
-# Add libraries to use
 using ..Materials: AbstractMaterial
+using ..Geometry: AbstractGrid, FerriteStructuredGrid
 using Ferrite: Grid, addfaceset!, addcellset!
 
-
-# Export interface functions and types
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
-AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProbSolver, ForwardProblemSolution,
-getsym, getdofs, getgrid, getbcs, getdofsvals, vals_func, solve, _solve, component
+    AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProbSolver, ForwardProblemSolution
 
-" Return the dimenssion of a grid. "
-dimension(::Grid{Dim}) where {Dim} = Dim
+export boundary_conditions, component, dofs, dofsvals, materials, values_function,
+    solve, _solve, symbol, set_materials_params!
 
 """ Abstract supertype that includes degrees of freedom  information.
 
 The following methods are provided by the interface
-- `getsym(dof)` -- return the symbol of the degree of freedom `dof`.
+- `symbol(dof)` -- return the symbol of the degree of freedom `dof`.
 - `dimension(dof)` -- return the dimension of the degree of freedom `dof`.
 """
-abstract type AbstractDof{dim} end
+abstract type AbstractDof{D} end
 
-" Return the `dof` symbol. "
-getsym(dof::AbstractDof{Dim}) where {Dim} = dof.symbol
+"Returns the `dof` symbol."
+symbol(dof::AbstractDof{D}) where {D} = dof.symbol
 
-" Return the dof dimension. "
-dimension(::AbstractDof{Dim}) where {Dim} = Dim
-
+"Returns the dof dimension."
+dimension(::AbstractDof{D}) where {D} = D
 
 """ Degree of freedom struct.
 
 ### Fields:
-- `sym` -- dof symbol
+- `symbol` -- dof symbol
 
 """
 struct Dof{dim} <: AbstractDof{dim}
@@ -57,24 +52,28 @@ struct StressDispDofs{dimσ,dimu}
     u::Dof{dimu}
 end
 
+"Constructor with σ and u keyword arguments."
+StressDispDofs(; σ=dimσ, u=dimu) = StressDispDofs(σ, u)
+
 """ Abstract supertype that includes boundary conditions information.
 
 The following methods are provided by the interface:
 
-- `getdofs(bc)`       -- return the degree of freedom symbol where the bc is prescribed.
-- `vals_func(bc)` -- return the value of the bc function.
-- `getlabel(bc)`  -- return the value the bc label.
+- `dofs(bc)`      -- returns the degree of freedom symbol where the bc is prescribed.
+- `values_function(bc)` -- return the value of the bc function.
+- `label(bc)`  -- return the value the bc label.
 
 """
 abstract type AbstractBoundaryCondition end
 
-" Extract degrees of freedom. "
-getdofs(bc::AbstractBoundaryCondition) = bc.dof
+"Extract degrees of freedom."
+dofs(bc::AbstractBoundaryCondition) = bc.dof
 
-" Return the function values of an boundary condition `bc`. "
-vals_func(bc::AbstractBoundaryCondition) = bc.vals_func
+"Return the function values of an boundary condition `bc`."
+values_function(bc::AbstractBoundaryCondition) = bc.vals_func
 
-getlabel(bc::AbstractBoundaryCondition) = bc.label
+"Returns the boundary condition label."
+label(bc::AbstractBoundaryCondition) = bc.label
 
 """ Struct that contains the info of a Dirichlet boundary condition
 
@@ -119,43 +118,80 @@ end
 
 ### Fields:
 `grid` -- solid grid
-`dofs` -- degrees of freedom
+`dfs` -- degrees of freedom
 `bcs`  -- boundary conditions
 
 """
 struct FEMData{G,D,BC}
     grid::G
-    dofs::D
+    dfs::D
     bcs::BC
 end
 
 " Extract the grid. "
-getgrid(data::FEMData) = data.grid
+grid(data::FEMData) = data.grid
 
-getdofs(data::FEMData) = data.dofs
+dofs(data::FEMData) = data.dfs
 
 " Extract boundary conditions. "
-getbcs(data::FEMData) = data.bcs
+boundary_conditions(data::FEMData) = data.bcs
 
 """ Abstract supertype that defines the Forward problem formulation
 
 The following methods are provided by the interface:
 
-- `getfemdata(fproblem)` -- return FEM data struct.
-- `getmats(fproblem)`    -- return materials dict info.
+- `femdata(fproblem)` -- return FEM data struct.
+- `materials(fproblem)`    -- return materials dict info.
 
 """
 abstract type AbstractForwardProblem end
 
 " Extract materials data. "
-getmats(fp::AbstractForwardProblem) = fp.materials
+materials(fp::AbstractForwardProblem) = fp.materials
 
 " Extract FEM model data. "
-getfemdata(fp::AbstractForwardProblem) = fp.data
+femdata(fp::AbstractForwardProblem) = fp.data
 
-getgrid(fp::AbstractForwardProblem) = getgrid(getfemdata(fp))
-getdofs(fp::AbstractForwardProblem) = getdofs(getfemdata(fp))
-getbcs(fp::AbstractForwardProblem) = getbcs(getfemdata(fp))
+"Extracts Forward Problem grid. "
+grid(fp::AbstractForwardProblem) = grid(femdata(fp))
+
+"Extracts Forward Problem dofs. "
+dofs(fp::AbstractForwardProblem) = dofs(femdata(fp))
+
+"Extracts Forward Problem boundary conditions. "
+boundary_conditions(fp::AbstractForwardProblem) = boundary_conditions(femdata(fp))
+
+"Sets material values to a forward problem."
+function set_materials_params!(fp::AbstractForwardProblem, params_to_set::Dict)
+
+    # Extract all the forward problem materials
+    fp_materials = materials(fp)
+
+    # Iterate over each material and find into the list of params
+    for mat in keys(fp_materials)
+        # Find the material whose parameter is going to be modified
+        material_symbol = Symbol(label(mat))
+
+        # Find all the paremeters that going to be set
+        mat_params_to_set = params_to_set[material_symbol]
+
+        # iterate over all of different params and set them
+        if mat_params_to_set isa Pair # only one parameter to change
+
+            setval!(mat[Symbol(mat_params_to_set.first)], mat_params_to_set.second)
+
+        elseif mat_params_to_set isa Tuple
+
+            for p in mat_params_to_set
+                setval!(mat[Symbol(p.first)], p.second)
+            end
+
+        end
+
+    end
+
+end
+
 
 """ Linear elasticity problem
 ### Fields:
@@ -167,44 +203,73 @@ getbcs(fp::AbstractForwardProblem) = getbcs(getfemdata(fp))
 struct LinearElasticityProblem{FEMData,MAT} <: AbstractForwardProblem
     data::FEMData
     materials::MAT
-    aux::Dict{Symbol,Any} # General dictionary to add specific stuff for each particular solver
+    aux::Dict{Symbol,Any} # General Dict to add specific stuff for each particular solver
     function LinearElasticityProblem(data, materials)
-        initialize!(getgrid(data), getbcs(data), materials)
+        _initialize!(grid(data), boundary_conditions(data), materials)
         new{typeof(data),typeof(materials)}(data, materials, Dict())
     end
 end
 
-function initialize!(grid::Grid, bcs, materials)
+"Built-in function to initlize the forward problem."
+function _initialize!(grid::AbstractGrid, bcs, materials)
     # add bcs to facesets
     label_solid_grid!(grid, bcs)
     # add materials to cellsets
     label_solid_grid!(grid, materials)
 end
 
-" Add boundary conditions labels to the grid. "
-function label_solid_grid!(grid::Grid, bcs::Dict{AbstractBoundaryCondition,Function})
+" Add boundary conditions labels to the grid."
+function label_solid_grid!(
+    fgrid::FerriteStructuredGrid,
+    bcs::Dict{AbstractBoundaryCondition,Function})
+
+    # Extract ferrite type grid to use ferrite methods
+    ferrite_grid = grid(fgrid)
+
     for (bc, region) in bcs
         :label ∉ fieldnames(typeof(bc)) && throw(ArgumentError("$bc has no label field"))
-        addfaceset!(grid, string(getlabel(bc)), region)
+        addfaceset!(ferrite_grid, string(label(bc)), region)
     end
+
 end
 
 " Add materials labels to the grid. "
-function label_solid_grid!(grid::Grid, materials::Dict{AbstractMaterial,Function}) #  interfaces should not  be related?
+function label_solid_grid!(
+    fgrid::FerriteStructuredGrid,
+    materials::Dict{AbstractMaterial,Function}
+) #  interfaces should not  be related?
+
+    # Extract ferrite type grid to use ferrite methods
+    ferrite_grid = grid(fgrid)
+
     for (mat, region) in materials
-        addcellset!(grid, getlabel(mat), region)
+        addcellset!(ferrite_grid, label(mat), region)
     end
+
 end
 
-# Forward problem solvers
-#--------------------------
-" Abstract supertype for all Forward problem solvers. "
+""" Abstract supertype for all Forward problem solvers. """
 abstract type AbstractForwardProbSolver end
 
-# Forward problem solution
-#--------------------------
 " Abstract supertype for all Forward problem solution. "
 abstract type AbstractForwardProblemSolution end
+
+" Abstract functor for a forward problem solution. "
+function (fsol::AbstractForwardProblemSolution)(
+    vec_points::Vector{NTuple{D,T}},
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
+) where {D,T}
+    return _eval_displacements(fsol, vec_points, offset)
+end
+
+" Internal function to evaluate displacements of a forward problem solution. This function
+must be overlead for each forward solver. "
+function _eval_displacements(
+    sol::AbstractForwardProblemSolution,
+    vec_points::Vector{NTuple{D,T}},
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
+) where {D,T} end
+
 
 """ Forward Problem solution struct
 ### Fields:
@@ -223,22 +288,36 @@ struct ForwardProblemSolution{FSOLVER<:AbstractForwardProbSolver,FEMData,M,D,VD,
     extra::Dict{Symbol,T} # Extra Dict to add specific solver structs
 end
 
-getmats(fpsol::ForwardProblemSolution) = fpsol.data_mats
-getfemdata(fpsol::ForwardProblemSolution) = fpsol.dat_fem
-getgrid(fpsol::ForwardProblemSolution) = getgrid(getfemdata(fpsol))
-getdofs(fpsol::ForwardProblemSolution) = getdofs(getfemdata(fpsol))
+"Returns forward problem materials"
+materials(fpsol::ForwardProblemSolution) = fpsol.data_mats
 
-" Extract degrees of freedom values"
-getdofsvals(fpsol::ForwardProblemSolution) = fpsol.valdofs
+"Returns FEM data to solve the forward problem"
+femdata(fpsol::ForwardProblemSolution) = fpsol.dat_fem
+"
+Returns the forward problem grid"
+grid(fpsol::ForwardProblemSolution) = grid(femdata(fpsol))
 
-getbcs(fpsol::ForwardProblemSolution) = getbcs(getfemdata(fpsol))
+"Returns the forward problem degrees of freedom"
+dofs(fpsol::ForwardProblemSolution) = dofs(femdata(fpsol))
 
+"Returns degrees of freedom values"
+dofsvals(fpsol::ForwardProblemSolution) = fpsol.valdofs
 
-""" Solve a generic problem.
-Each solver implemented should overlead this function.
-"""
+"Returns forward problem boundary conditions"
+boundary_conditions(fpsol::ForwardProblemSolution) = boundary_conditions(femdata(fpsol))
+
+""" Solve a generic problem. Each solver implemented should overlead this function."""
 function _solve(fp::FP, solv::SOL, args...; kwargs...) where
 {FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
+end
+
+""" Solve a generic forward problem for a given parameters. """
+function solve(fp::FP, solv::SOL, params::Dict, args...; kwargs...) where
+{FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
+
+    set_materials_params!(fp::AbstractForwardProblem, params::Dict)
+
+    return solve(fp, solv, args...; kwargs...)
 end
 
 
@@ -257,11 +336,16 @@ function solve(
     args...;
     kwargs...
 ) where {FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
-    # init forward problem
-    initialize!(fp, solv, args; kwargs)
-    # return solution
-    return _solve(fp, solv, args...; kwargs...) # change the output for direct solution
+
+    _initialize!(fp, solv, args; kwargs)
+
+    return _solve(fp, solv, args...; kwargs...)
 end
 
+
+# =======================
+# Solvers implementations
+# ========================
+include("./../FSolvers/ferritesolver.jl")
 
 end #end module
