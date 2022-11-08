@@ -2,115 +2,138 @@
 # Main types and function sto solve a Forward Problem  #
 #######################################################
 
-#TODO: add Iterator for materials for params in p
-
 """
 Module defining the materials interface. Each material consists of a data type with one or more `Parameter` fields.
 """
 module Materials
 
-# Add libraries to use
 using AutoHashEquals: @auto_hash_equals
 
-# Export interface functions and types
-export AbstractMaterial, Parameter, SVK
 
-export name, isname, label, value, setval!, hasrange,
+export AbstractMaterial, ConstitutiveParameter, SVK
+export material, setmaterial!, has_material, label, value, setval!, has_range,
     setrange!, parameter_index, set!, setval!, model, parameters
+
+const REALS = (-Inf, Inf) # Tuple to check if (v₁, v₂) ∈ (-∞, +∞)
+const DEFAULT_NUMBER_OF_PARAMS_RANGE = 10 # Default number of parameters when a range is created in a LinRange
 
 """ Abstract supertype for material parameters.
 
 The following methods are provided by the interface:
 
-- `name(p)`                 -- return the name of the parameter `p`.
-- `isname(p, pname)`        -- return `true` if name of the parameter `p` and `pname` match.
-- `ismissing(p)`            -- return `true` if the value of parameter `p` is missing.
-- `value(p)`               -- return the parameter `p` value.
-- `range(p)`             -- return the parameter `p` range.
-- `setval!(p, val)`         -- set the value `val` to the parameter `p`.
-- `setrange!(p, range)`     -- set the range (`p₁`, `p₂`) to the parameter `p`
+- `material(p)`             -- returns the parmeter's material.
+- `has_material(p)`         -- returns `true` if material of the parameter is assigned.
+- `label(p)`                -- returns the label of the parameter `p`.
+- `ismissing(p)`            -- returns `true` if the value of parameter `p` is missing.
+- `value(p)`                -- returns the parameter `p` value.
+- `range(p)`                -- returns the parameter `p` range.
+- `has_range(p)`            -- returns the parameter `p` range.
+- `setval!(p, val)`         -- sets the value `val` to the parameter `p`.
+- `setrange!(p, range)`     -- sets the range (`p₁`, `p₂`) to the parameter `p`.
+- `setmaterial!(p, mlabel)` -- sets a material label for a the paretmer.
 """
 abstract type AbstractParameter end
 
-# Constant variables or types
-const REALS = (-Inf, Inf) # Tuple to check if (v₁, v₂) ∈ (-∞, +∞)
-const DEFAULT_NUMBER_OF_PARAMS_RANGE = 10 # Default number of parameters when a range is created in a LinRange
-""" Parameter struct.
-### Fields:
+"Checks if the parameter `p` has a constrainted range defined."
+has_range(p::AbstractParameter) = any(!, isinf.(p.range))
 
-- `name`     -- name
-- `val`      -- value
-- `range`    -- parameter guess range
+"Returns the label of the parameter `p`."
+label(p::AbstractParameter) = Symbol(p.label)
 
-"""
-@auto_hash_equals mutable struct Parameter <: AbstractParameter
-    name::Symbol
-    val::Union{Number,Missing}
-    range::Union{NTuple{2,Number},Missing}
-    function Parameter(name, val=missing, range=REALS)
-        new(Symbol(name), val, range)
-    end
-end
+"Returns the material label of the parameter `p`."
+material(p::AbstractParameter) = Symbol(p.material)
 
-## Methods for abstract parameters:
-" Return the name of the parameter `p`. "
-name(p::AbstractParameter) = Symbol(p.name)
+"Checks if the parameter `p` has a constrainted range defined."
+has_material(p::AbstractParameter) = material(p) ≠ :no_assigned
 
-" Return `true` if name of the parameter `p` and `pname` match. "
-isname(p::AbstractParameter, pname::Symbol) = name(p) == pname
+"Returns `true` if label of the parameter `p` and `plabel` match."
+_islabel(p::AbstractParameter, plabel::Symbol) = label(p) == plabel
 
-" Return `true` if the value of parameter `p` is missing. "
+"Returns `true` if the value of parameter `p` is missing."
 Base.ismissing(p::AbstractParameter) = ismissing(p.val)
 
-" Return the parameter `p` value. "
+"Returns the parameter `p` value."
 value(p::AbstractParameter) =
-    !ismissing(p) ? p.val : throw(ArgumentError("The value of $(name(p)) is unknown"))
-
-" Checks if the parameter `p` has a constrainted range defined. "
-hasrange(p::AbstractParameter) = any(!, isinf.(p.range))
+    !ismissing(p) ? p.val : throw(ArgumentError("The value of $(label(p)) is unknown"))
 
 "Return the parameter `p` range."
 Base.range(p::AbstractParameter,
     num_p::Int=DEFAULT_NUMBER_OF_PARAMS_RANGE) =
-    !hasrange(p) ?
+    !has_range(p) ?
     throw(
         ArgumentError(
-            "The range is not specified for $(name(p))"
+            "The range is not specified for $(label(p))"
         )
     ) : LinRange(p.range[1], p.range[2], num_p)
 
 "Checks if a value is into the range of feaseable parameters."
-Base.:∈(val::Number, p::Parameter) = p.range[1] ≤ val ≤ p.range[2]
+Base.:∈(val::Number, p::AbstractParameter) = p.range[1] ≤ val ≤ p.range[2]
 
 "Checks if a value is outside the range of feaseable parameters."
-Base.:∉(val::Number, p::Parameter) = !(val ∈ p)
+Base.:∉(val::Number, p::AbstractParameter) = !(val ∈ p)
 
 "Sets the value `val` to the parameter `p`."
 function setval!(p::AbstractParameter, val::Number)
+
     val ∉ p && throw(ArgumentError("The value $val is not inside the parameter range = $(p.range)"))
+
     p.val = val
+
     return p
+
 end
 
 "Sets the range (`pₘᵢₙ`, `pₘₐₓ`) to the parameter `p`."
 function setrange!(p::AbstractParameter, pₘᵢₙ::Number, pₘₐₓ::Number)
+
     p.range = (pₘᵢₙ, pₘₐₓ)
+
     return p
+
+end
+
+"Sets the material label `mlabel` to the parameter `p`."
+function setmaterial!(p::AbstractParameter, mlabel::Symbol)
+
+    has_material(p) && @warn("The paramter's material has been overwritten")
+    p.material = mlabel
+
+    return p
+
+end
+
+""" Material parameter struct.
+### Fields:
+
+- `label`     -- label
+- `val`      -- value
+- `range`    -- parameter guess range
+- `material` -- material
+
+"""
+@auto_hash_equals mutable struct ConstitutiveParameter <: AbstractParameter
+    label::Symbol
+    val::Union{Number,Missing}
+    range::Union{NTuple{2,Number},Missing}
+    material::Symbol
+    function ConstitutiveParameter(label, val=missing, range=REALS, mat=:no_assigned)
+        new(Symbol(label), val, range, Symbol(mat))
+    end
 end
 
 """ Abstract supertype for a material.
 
 The following methods are provided by the interface:
 
-- `model(m)`              -- return a string with the material model (defaults to the materials' type name)
+- `model(m)`              -- return a string with the material model (defaults to the materials' type label)
 - `parameters(m)`         -- return a tuple with the material parameters (defaults to the materials' fields which are of type `Parameter`)
 - `label(m)`           -- return material label
-- `getindex(m, pname)`    -- return the index of the parameter with name `pname` into the list of material `m` parameters.
+- `getindex(m, plabel)`    -- return the index of the parameter with label `plabel` into the list of material `m` parameters.
 - `get(m, p)` or `m[:p]`  -- return the parameter `p` of the material `m`.
-- `value(m, pname)`      -- return the value of the material parameter with name `pname`.
-- `range(m, pname)`    -- return the range of the material parameter with name `pname`.
+- `value(m, plabel)`      -- return the value of the material parameter with label `plabel`.
+- `range(m, plabel)`    -- return the range of the material parameter with label `plabel`.
 - `set!(m, p)`            -- set parameter `p` into material `m`.
-- `setval!(m, p, pval)`   -- set value `pval` to parameter named `pname` into material `m`.
+- `setval!(m, p, pval)`   -- set value `pval` to parameter labeld `plabel` into material `m`.
 - `range(p)`           -- return the parameter `p` range.
 - `set_val(p, val)`       -- set the val `val` to the parameter `p`.
 - `set_range(p, range)`   -- set the range `range` to the parameter `p`.
@@ -121,44 +144,51 @@ abstract type AbstractMaterial end
 model(::Type{T}) where {T<:AbstractMaterial} = string(T)
 
 function parameters(m::T) where {T<:AbstractMaterial}
-    Tuple([getfield(f, n) for n in fieldnames(T) if fieldtype(T, n) isa Parameter])
+    Tuple([getfield(f, n) for n in fieldlabels(T) if fieldtype(T, n) isa Parameter])
 end
 
-" Return label. "
+"Returns label."
 label(m::AbstractMaterial) = ""
 
-" Return the index of the parameter with name `pname` into the list of material `m` parameters. "
-function parameter_index(m::AbstractMaterial, pname::Symbol)
-    index_param = findall(isname.(parameters(m), pname))
+"Returns the index of the parameter with label `plabel` into the list of material `m` parameters."
+function parameter_index(m::AbstractMaterial, plabel::Symbol)
+    index_param = findall(_islabel.(parameters(m), plabel))
     length(index_param) !== 1 ?
-    throw(ArgumentError("parameter $pname ∉ mat $m or is not unique")) : first(index_param)
+    throw(ArgumentError("parameter $plabel ∉ mat $m or is not unique")) : first(index_param)
 end
 
-" Return the parameter `p` of the material `m`. "
-Base.getindex(m::AbstractMaterial, pname::Symbol) = getfield(m, pname)
+"Returns the parameter `p` of the material `m`."
+Base.getindex(m::AbstractMaterial, plabel::Symbol) = getfield(m, plabel)
 
-" Return the value of the material parameter with name `pname`. "
-value(m::AbstractMaterial, pname::Symbol) = value(getindex(m, pname))
+"Returns the value of the material parameter with label `plabel`."
+value(m::AbstractMaterial, plabel::Symbol) = value(getindex(m, plabel))
 
-" Return the range of the material parameter with name `pname`. "
-Base.range(m::AbstractMaterial, pname::Symbol) = range(m[pname])
+"Returns the range of the material parameter with label `plabel`."
+Base.range(m::AbstractMaterial, plabel::Symbol) = range(m[plabel])
 
-" Set parameter `p` into material `m`. "
+" Set parameter `p` into material `m`."
 function Base.replace!(m::AbstractMaterial, pair::Pair{Symbol,<:AbstractParameter})
+
     @assert ismutable(m) && hasfield(typeof(m), pair[1])
+    mat_name = Symbol(label(m))
+    mat_name != material(pair[2]) && setmaterial!(pair[2], mat_name)
     setfield!(m, pair[1], pair[2])
+
+    return m
+
+end
+
+" Set value `pval` to parameter labeld `plabel` into a material `m`."
+function setval!(m::AbstractMaterial, plabel::Symbol, pval::Number)
+
+    @assert hasfield(typeof(m), plabel)
+    setval!(m[plabel], pval)
+
     return m
 end
 
-" Set value `pval` to parameter named `pname` into a material `m`. "
-function setval!(m::AbstractMaterial, pname::Symbol, pval::Number)
-    @assert hasfield(typeof(m), pname)
-    setval!(m[pname], pval)
-    return m
-end
-
-" Return [`true`](@ref) if the parameter with name `pname` is [`missing`](@ref) into material `m`. "
-Base.ismissing(m::AbstractMaterial, pname::Symbol) = ismissing(m[pname])
+"Returns [`true`](@ref) if the parameter with label `plabel` is [`missing`](@ref) into material `m`."
+Base.ismissing(m::AbstractMaterial, plabel::Symbol) = ismissing(m[plabel])
 
 # ==============================
 # Concrete implementations
@@ -174,14 +204,28 @@ Base.ismissing(m::AbstractMaterial, pname::Symbol) = ismissing(m[pname])
 
 """
 @auto_hash_equals mutable struct SVK <: AbstractMaterial
-    E::Parameter
-    ν::Parameter
+    E::ConstitutiveParameter
+    ν::ConstitutiveParameter
     label::Symbol
-    function SVK(E, ν, label="")
-        return new(E, ν, Symbol(label))
+    function SVK(E, ν, label=:no_assigned)
+
+        setmaterial!(E, label)
+        setmaterial!(ν, label)
+
+        return new(E, ν, label)
     end
 end
-"Returns SVK material model name."
+"Constructor with a string label for SVK amaterial."
+function SVK(E, ν, label::String)
+
+    label = Symbol(label)
+    setmaterial!(E, label)
+    setmaterial!(ν, label)
+
+    return SVK(E, ν, label)
+end
+
+"Returns SVK material model label."
 model(::SVK) = "SVK"
 
 "Returns SVK parameters tuple."
@@ -192,7 +236,7 @@ label(m::SVK) = string(m.label)
 
 " Extract svk material parameters to use with ferrite nomenclature"
 function lamé_params(svk::SVK)
-    # Extract E and ν parameters
+
     E = value(svk[:E])
     ν = value(svk[:ν])
 
