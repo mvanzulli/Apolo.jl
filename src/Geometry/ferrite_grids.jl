@@ -5,6 +5,8 @@
 
 # TODO: Fix coordinates function overlead
 import Apolo.Geometry: corners, coordinates, cartesian_index, dimension, extrema,
+    element_type, element_size, finish, maximum, minimum, node_type, num_nodes, num_elements,
+    start
 
 import Apolo.Geometry: _interpolate
 
