@@ -1,6 +1,6 @@
-##################
-# Material tests #
-##################
+#############################
+# Materials interface tests #
+#############################
 using Test
 using Apolo.Materials
 
@@ -9,7 +9,7 @@ using Apolo.Materials
     E = ConstitutiveParameter(:E)
     Eₘᵢₙ = 12
     Eₘₐₓ = 20
-    setrange!(E, Eₘᵢₙ, Eₘₐₓ)
+    set_feasible_region!(E, Eₘᵢₙ, Eₘₐₓ)
 
     ν = ConstitutiveParameter(:ν)
     νval = 0.3
@@ -31,11 +31,13 @@ using Apolo.Materials
 
         @test label(E) == :E
         @test value(ν) == νval
-        @test extrema(range(E)) == (Eₘᵢₙ, Eₘₐₓ)
-        @test has_range(E)
-        @test !has_range(ν)
+        @test feasible_region(E) == (Eₘᵢₙ, Eₘₐₓ)
+        @test has_feasible_region(E)
+        set_feasible_region!(E, 2Eₘᵢₙ, 2Eₘₐₓ )
+        @test feasible_region(E) == 2 .* (Eₘᵢₙ, Eₘₐₓ) == extrema(range(E))
+        @test !has_feasible_region(ν)
         @test 9Eₘᵢₙ ∉ E
-        @test Eₘᵢₙ ∈ E
+        @test 3Eₘᵢₙ ∈ E
         @test ismissing(E)
         @test !ismissing(ν)
 
@@ -48,12 +50,11 @@ using Apolo.Materials
         material(ν) == material(E) == material_name
         @test svk1[:ν] == ConstitutiveParameter(:ν, 0.3, (-Inf, Inf), material_name)
         @test value(svk1, :ν) == νval
-        @test extrema(range(svk1, :E)) == (Eₘᵢₙ, Eₘₐₓ)
+        @test extrema(range(svk1, :E)) == 2 .* (Eₘᵢₙ, Eₘₐₓ)
         @test !ismissing(svk1, :ν)
         @test ismissing(svk1, :E)
-        setval!(svk1, :E, Eₘᵢₙ)
-
-        @test value(svk1, :E) == Eₘᵢₙ
+        setval!(svk1, :E, 2Eₘᵢₙ)
+        @test value(svk1, :E) == value(E)
         svk_to_test = replace!(
             svk1,
             :E => ConstitutiveParameter(:E, 4.0, (12, 200)),
@@ -67,5 +68,6 @@ using Apolo.Materials
         @test label(svk1) == String(material_name) ==
               string(material(svk_to_test[:E])) ==
               string(material(svk_to_test[:ν]))
+
     end
 end

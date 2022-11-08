@@ -11,8 +11,8 @@ using AutoHashEquals: @auto_hash_equals
 
 
 export AbstractMaterial, ConstitutiveParameter, SVK
-export material, setmaterial!, has_material, label, value, setval!, has_range,
-    setrange!, parameter_index, set!, setval!, model, parameters
+export material, setmaterial!, has_material, label, value, setval!, feasible_region,
+    has_feasible_region, set_feasible_region!, parameter_index, set!, setval!, model, parameters
 
 const REALS = (-Inf, Inf) # Tuple to check if (v₁, v₂) ∈ (-∞, +∞)
 const DEFAULT_NUMBER_OF_PARAMS_RANGE = 10 # Default number of parameters when a range is created in a LinRange
@@ -21,21 +21,25 @@ const DEFAULT_NUMBER_OF_PARAMS_RANGE = 10 # Default number of parameters when a 
 
 The following methods are provided by the interface:
 
-- `material(p)`             -- returns the parmeter's material.
-- `has_material(p)`         -- returns `true` if material of the parameter is assigned.
-- `label(p)`                -- returns the label of the parameter `p`.
-- `ismissing(p)`            -- returns `true` if the value of parameter `p` is missing.
-- `value(p)`                -- returns the parameter `p` value.
-- `range(p)`                -- returns the parameter `p` range.
-- `has_range(p)`            -- returns the parameter `p` range.
-- `setval!(p, val)`         -- sets the value `val` to the parameter `p`.
-- `setrange!(p, range)`     -- sets the range (`p₁`, `p₂`) to the parameter `p`.
-- `setmaterial!(p, mlabel)` -- sets a material label for a the paretmer.
+- `material(p)`                     -- returns the parmeter's material.
+- `has_material(p)`                 -- returns `true` if material of the parameter is assigned.
+- `label(p)`                        -- returns the label of the parameter `p`.
+- `ismissing(p)`                    -- returns `true` if the value of parameter `p` is missing.
+- `value(p)`                        -- returns the parameter `p` value.
+- `range(p)`                        -- returns the parameter `p` range.
+- `has_feasible_region(p)`          -- returns `true` if the parameter `p` has a constrained range defined.
+- `feasible_region(p)`              -- returns the feasible region for the parameter `p`.
+- `setval!(p, val)`                 -- sets the value `val` to the parameter `p`.
+- `set_feasible_region!(p, range)`  -- sets the limits (`p₁`, `p₂`) to the parameter `p`.
+- `setmaterial!(p, mlabel)`         -- sets a material label for a the paretmer.
 """
 abstract type AbstractParameter end
 
-"Checks if the parameter `p` has a constrainted range defined."
-has_range(p::AbstractParameter) = any(!, isinf.(p.range))
+"Checks if the parameter `p` has a constrainted region defined."
+has_feasible_region(p::AbstractParameter) = any(!, isinf.(feasible_region(p)))
+
+"Returns the paramter `p`` bounds."
+feasible_region(p::AbstractParameter) = p.fregion
 
 "Returns the label of the parameter `p`."
 label(p::AbstractParameter) = Symbol(p.label)
@@ -59,23 +63,25 @@ value(p::AbstractParameter) =
 "Return the parameter `p` range."
 Base.range(p::AbstractParameter,
     num_p::Int=DEFAULT_NUMBER_OF_PARAMS_RANGE) =
-    !has_range(p) ?
+    !has_feasible_region(p) ?
     throw(
         ArgumentError(
             "The range is not specified for $(label(p))"
         )
-    ) : LinRange(p.range[1], p.range[2], num_p)
+    ) : LinRange(feasible_region(p)[1], feasible_region(p)[2], num_p)
 
-"Checks if a value is into the range of feaseable parameters."
-Base.:∈(val::Number, p::AbstractParameter) = p.range[1] ≤ val ≤ p.range[2]
+"Checks if a value is into the range of feasible parameters."
+Base.:∈(val::Number, p::AbstractParameter) = feasible_region(p)[1] ≤ val ≤ feasible_region(p)[2]
 
-"Checks if a value is outside the range of feaseable parameters."
+"Checks if a value is outside the range of feasible parameters."
 Base.:∉(val::Number, p::AbstractParameter) = !(val ∈ p)
 
 "Sets the value `val` to the parameter `p`."
 function setval!(p::AbstractParameter, val::Number)
 
-    val ∉ p && throw(ArgumentError("The value $val is not inside the parameter range = $(p.range)"))
+    val ∉ p && throw(ArgumentError(
+        "The value $val is not inside the parameter range = $(feasible_region(p))"
+        ))
 
     p.val = val
 
@@ -84,9 +90,12 @@ function setval!(p::AbstractParameter, val::Number)
 end
 
 "Sets the range (`pₘᵢₙ`, `pₘₐₓ`) to the parameter `p`."
-function setrange!(p::AbstractParameter, pₘᵢₙ::Number, pₘₐₓ::Number)
+function set_feasible_region!(p::AbstractParameter, pₘᵢₙ::Number, pₘₐₓ::Number)
 
-    p.range = (pₘᵢₙ, pₘₐₓ)
+    has_feasible_region(p) && @warn(
+        "The feasilbe region of p is being modified ($(feasible_region(p)) => ($pₘᵢₙ, $pₘₐₓ))"
+        )
+    p.fregion = (pₘᵢₙ, pₘₐₓ)
 
     return p
 
@@ -102,22 +111,22 @@ function setmaterial!(p::AbstractParameter, mlabel::Symbol)
 
 end
 
-""" Material parameter struct.
+""" Constitutive parameter struct.
 ### Fields:
 
-- `label`     -- label
-- `val`      -- value
-- `range`    -- parameter guess range
-- `material` -- material
+- `label`             -- label
+- `val`               -- value
+- `feasible_region`   -- parameter guess feasible_region
+- `material`          -- material symbol
 
 """
 @auto_hash_equals mutable struct ConstitutiveParameter <: AbstractParameter
     label::Symbol
     val::Union{Number,Missing}
-    range::Union{NTuple{2,Number},Missing}
+    fregion::Union{NTuple{2,Number},Missing}
     material::Symbol
-    function ConstitutiveParameter(label, val=missing, range=REALS, mat=:no_assigned)
-        new(Symbol(label), val, range, Symbol(mat))
+    function ConstitutiveParameter(label, val=missing, fregion=REALS, mat=:no_assigned)
+        new(Symbol(label), val, fregion, Symbol(mat))
     end
 end
 
