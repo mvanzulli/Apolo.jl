@@ -256,16 +256,20 @@ abstract type AbstractForwardProblemSolution end
 
 " Abstract functor for a forward problem solution. "
 function (fsol::AbstractForwardProblemSolution)(
-    vec_points::Vector{NTuple{D,T}};
+    vec_points::Vector{NTuple{D,T}},
     offset::NTuple{D,T}=Tuple(zeros(T, D))
 ) where {D,T}
-    return _eval_displacements(fsol, vec_points, offset=offset)
+    return _eval_displacements(fsol, vec_points, offset)
 end
 
+" Internal function to evaluate displacements of a forward problem solution. This function
+must be overlead for each forward solver. "
+function _eval_displacements(
+    sol::AbstractForwardProblemSolution,
+    vec_points::Vector{NTuple{D,T}},
+    offset::NTuple{D,T}=Tuple(zeros(T, D))
+) where {D,T} end
 
-function (img::AbstractForwardProblemSolution)(x::T, y::T; offset::NTuple{2,T}=Tuple(zeros(T, 2))) where {T}
-    _eval_intensity((x, y), img, offset=offset)
-end
 
 """ Forward Problem solution struct
 ### Fields:
