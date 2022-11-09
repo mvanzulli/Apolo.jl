@@ -128,6 +128,9 @@ struct FEMData{G,D,BC}
     bcs::BC
 end
 
+"Constructor with no boundary conditions"
+FEMData(grid, dfs) = FEMData(grid, dfs, nothing)
+
 " Extract the grid. "
 grid(data::FEMData) = data.grid
 
@@ -217,6 +220,14 @@ function _initialize!(grid::AbstractGrid, bcs, materials)
     # add materials to cellsets
     label_solid_grid!(grid, materials)
 end
+
+"Built-in function to initlize the forward problem with no boundary conditions."
+function _initialize!(grid::AbstractGrid, ::Nothing, materials)
+        # add materials to cellsets
+        label_solid_grid!(grid, materials)
+end
+
+
 
 " Add boundary conditions labels to the grid."
 function label_solid_grid!(
