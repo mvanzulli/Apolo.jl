@@ -1,19 +1,21 @@
 #######################################################
 # Main types and functions to solve Inverse Problems  #
 #######################################################
-
-
 """
 Module defining image properties and features.
 """
 module InverseProblem
 
-import ..Utils: ScalarWrapper
-import ..Materials: AbstractParameter
-using Dictionaries: Dictionary
+import ..Materials: parameters
+
+using ..Materials: AbstractParameter
+using ..ForwardProblem: AbstractForwardProblem
+using ..Images: AbstractImage
+using ..Utils: ScalarWrapper
+# using Dictionaries: Dictionary
 
 export MSDOpticalFlow
-export append_value!, expression, optim_done, trials, feaseble_reagion, set_search_region
+export append_value!, expression, optim_done, trials, feaseble_reagion, search_region ,set_search_region
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
 The following methods are provided by the interface:
@@ -38,7 +40,7 @@ abstract type AbstractFunctional end
 Base.values(f::AbstractFunctional) = f.vals
 
 "Appends a value to the functional"
-append_value!(f::AbstractFunctional, val::Real) = append!(value(f), val)
+append_value!(f::AbstractFunctional, val::Real) = append!(values(f), val)
 
 "Returns the functional expression "
 expression(f::AbstractFunctional) = f.expression
@@ -52,11 +54,14 @@ Base.maximum(f::AbstractFunctional) = maximum(values(f))
 "Returns the functional minimum value explored so far"
 Base.minimum(f::AbstractFunctional) = minimum(values(f))
 
-"Returns the trials for each parameter"
+"Returns the trial value for each parameter"
 trials(f::AbstractFunctional) = f.trials
 
-"Returns the parameters is being explored"
-function optim_paramters(::AbstractFunctional) end
+"Returns the trial value for each parameter"
+parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
+
+"Returns the parameters explored region"
+search_region(f::AbstractFunctional) = f.search_region
 
 "Returns the parameters is being explored"
 function feseble_region(::AbstractFunctional) end
@@ -85,31 +90,57 @@ function evaluate(::AbstractFunctional, args...) end
 Base.@kwdef struct MSDOpticalFlow{T,P<:AbstractParameter,GT,HT} <:AbstractFunctional
     vals::Vector{T} = Vector{Float64}(undef, 0)
     trials::Dict{P,Vector{T}} = Dict{AbstractParameter,Vector{Float64}}()
-    search_region::Dict{P,Vector{Tuple{T,T}}} = Dict{AbstractParameter,Vector{Tuple{Float64,Float64}}}()
+    search_region::Dict{P,Tuple{T,T}} = Dict{AbstractParameter,Tuple{Float64,Float64}}()
     optim_done::ScalarWrapper{Bool} = ScalarWrapper(false)
     gradient::GT = Vector{Float64}(undef, 0)
     hessian::HT = Matrix{Float64}(undef, (0,0))
     expression::Expr = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
 end
 
-#=
-
-"Constructor with a search region"
+"Constructor with a search region."
 function MSDOpticalFlow(
-    search_region::Dict{P,Vector{Tuple{T,T}}},
+    search_region::Dict{P,Tuple{T,T}},
     vals::Vector{T} = Vector{Float64}(undef, 0),
-    trials::Dict{P,Vector{T}} = Dict{AbstractParameter,Vector{Float64}}(),
     optim_done::ScalarWrapper{Bool} = ScalarWrapper(false),
     gradient::GT = Vector{Float64}(undef, 0),
     hessian::HT = Matrix{Float64}(undef, (0,0)),
-) where {T<:Real,P<:AbstractParameter}
+    ) where {T<:Real,P<:AbstractParameter, GT,HT}
 
-    expression::Expr = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
+    expression = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
+    # create an empty trials dict with search_region input
+    trials = Dict{P,Vector{T}}()
+    for key in keys(search_region)
+        trials[key] = Vector{T}(undef, 0)
+    end
 
-    return MSDOpticalFlow{T,P,GT,HT}(vals, trials, search_region, optim_done, gradient, hessian, expression)
+    return MSDOpticalFlow(
+        vals, trials, search_region, optim_done, gradient, hessian, expression
+        )
+end
+
+"Computes the functional value."
+function evaluates(
+    oflow::MSDOpticalFlow,
+    roi::Function,
+    # data_measured::DM,
+    vec_img::Vector{I},
+    fproblem::FP,
+    candidate_params::Dict{P,T},
+    ) where {P<:AbstractParameter, T<:Real, I<:AbstractImage, FP<:AbstractForwardProblem}
+
+    # Extract number of time steps
+    n_times = length(vec_img)
+
+
+
+
+
 
 end
 
+
+
+#=
 indmin(vals):: #INDICE DEL MINIMIO DE VALS
 
 indmin(vals):: #INDICE DEL MINIMIO DE VALS

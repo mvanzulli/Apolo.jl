@@ -13,7 +13,6 @@ using Apolo.InverseProblem
     E = ConstitutiveParameter(:E, Eᵣ ,(Eₘᵢₙ, Eₘₐₓ))
     νₘᵢₙ = .3; νᵣ = .34; νₘₐₓ = .5
     ν = ConstitutiveParameter(:ν, νᵣ ,(νₘᵢₙ, νₘₐₓ))
-
     svk = SVK(E, ν, :material_to_test)
 
     @testset "MSFOpticalFlow" begin
@@ -29,6 +28,24 @@ using Apolo.InverseProblem
             E => (1.1Eₘᵢₙ, .9Eₘᵢₙ),
             ν => (1.1νₘᵢₙ, .9νₘᵢₙ),
             )
+
+        param_msf = MSDOpticalFlow(param_search_region)
+
+        @test param_search_region == search_region(param_msf)
+        @test Float64[] == values(param_msf)
+        trials_to_test = Dict(
+            E => [],
+            ν => [],
+            )
+        @test trials_to_test == trials(param_msf)
+        @test  E ∈ parameters(param_msf) && ν ∈ parameters(param_msf)
+        val_to_add = rand(Float64)
+        append_value!(param_msf, val_to_add)
+        @test values(param_msf)[end] == val_to_add
+        @test optim_done(default_msf)[] == false
+
+
+
     end
 
 
