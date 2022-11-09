@@ -103,7 +103,7 @@ _cell_values_σ(cfvals::CellFaceValsStressDisp) = cfvals.cell_val_σ
 - `nbasefuncs`   -- number of base functions
 
 "
-struct FerriteForwardSolver{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
+struct FerriteForwardSolver{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProblemSolver
     inter_geo::IGEO
     qrs::QRS
     inter_dofs::IDOFS
@@ -455,7 +455,7 @@ function applyNeumannBC!(
     # Add NeumannLoadBC to the problem
     for bc in keys(bcs)
 
-        if typeof(bc) == NeumannLoadBC
+        if bc isa NeumannLoadBC
             # get label
             label_bc = string(label(bc))
             # iterate over each face cell
