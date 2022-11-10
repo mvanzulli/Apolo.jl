@@ -285,7 +285,6 @@ struct ScalarIntensity{T} <: AbstractIntensity{T}
     value::Array{T}
 end
 
-
 # ====================
 # Images implementations
 # ====================
@@ -293,6 +292,43 @@ include("../Images/ferrite_img.jl")
 include("../Images/analytic_img.jl")
 include("../Images/vtk_img.jl")
 include("../Images/medical_img.jl")
+
+
+##########################
+# Abstract data measured #
+##########################
+
+abstract type AbstractDataMeasured{T} end
+
+"Gets the grid where the data is measured"
+grid(datam::AbstractDataMeasured) = datam.grid
+
+"Gets the region where the data is measured"
+roi(datam::AbstractDataMeasured) = datam.roi
+
+"Gets the time where the data is measured"
+measured_time(datam::AbstractDataMeasured) = datam.time
+
+""" Image data struct.
+### Fields:
+
+- `vec_img`      -- vector of images
+- `roi`          -- region of interest
+- `grid`         -- region of interest
+"""
+struct ImageData{Img<:AbstractImage, R, G<:AbstractStructuredGrid} <:AbstractDataMeasured{Img}
+    vec_img::AbstractVector{Img}
+    roi::R
+    grid::G
+    time::AbstractRange
+end
+
+"Returns the reference image."
+reference_img(img_data::ImageData) = img_data.vec_img[begin]
+
+"Returns deformed images."
+deformed_imgs(img_data::ImageData) = img_data.vec_img[2:end]
+
 
 
 end
