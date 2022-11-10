@@ -2,7 +2,7 @@
 # Main types and functions to handle with .VTK images #
 #######################################################
 
-using ..Geometry: AbstractStructuredGrid
+using ..Geometry: AbstractStructuredGrid, FerriteStructuredGrid
 using ..Images: AbstractImage, AbstractIntensity
 using ..Images: create_ferrite_img_fgrid
 
@@ -47,6 +47,25 @@ function VTKImage(
 
     # create grid
     fgrid = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels)
+
+    # convert intensity to ferrite nomenclature
+    fintensity = FerriteIntensity(intensity_array, fgrid)
+
+    # instantiate generic grid
+    return VTKImage(fintensity, num_pixels, start_img, spacing_img, fgrid, path_img)
+
+end
+
+function VTKImage(
+    intensity_array::Array{T,D},
+    fgrid::FerriteStructuredGrid,
+    spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
+    start_img::NTuple{D,T}=Tuple(zeros(T, D)),
+    path_img::String="";
+) where {T,D}
+
+    # number of pixels
+    num_pixels = size(intensity_array)
 
     # convert intensity to ferrite nomenclature
     fintensity = FerriteIntensity(intensity_array, fgrid)
