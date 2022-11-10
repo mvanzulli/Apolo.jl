@@ -291,9 +291,9 @@ end
 
     # Build a VTK image with a given grid
     # vtk_img_grid = grid(vtk_img)
-    # vtk_img = VTKImage(
-        # intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
-        # )
+    vtk_img = VTKImage(
+        intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
+        )
     # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
 
@@ -388,10 +388,10 @@ end
         intensity_array, spacing_img, start_img, path_img, ferrite_grid=true
     )
     # Build a VTK image with a given grid
-    # vtk_img_grid = grid(vtk_img)
-    # vtk_img = VTKImage(
-        # intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
-        # )
+    vtk_img_grid = grid(vtk_img)
+    vtk_img = VTKImage(
+        intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
+        )
 
     # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
@@ -488,18 +488,31 @@ end
 
     intensity_array = [intensity_function(var...) for var in Iterators.product(vars...)]
 
-    temmpdir = tempname()
-    @info "Writing VTK 3D sequence in $temmpdir"
-    vtk_structured_write_sequence(coords, intensity_array, :intensity, temmpdir, "")
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, temmpdir, "")
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, temmpdir, "")
+    # Write the VTK sequence of images
+    tempdir = tempname()
+    tempdir = "./foo"
+    folder_path = "./"
+    @info "Writing VTK 3D sequence in $tempdir"
+    vtk_structured_write_sequence(coords, intensity_array, :intensity, tempdir, "")
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, tempdir, "")
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, tempdir, "")
 
-    # vtk_img_red = load_vtk_img(sequence_path)
+    # Read the VTK sequence in a vector of images
+    imgs = load_vtk_sequence_imgs(folder_path)
 
+    # Check that every image have the same grid on memory
+    randtime = rand(1:length(time))
+    rand_img = imgs[randtime]
+    @test grid(imgs[1]) === grid(rand_img)
+    rand_point_1 = start_img_grid .+ (length_img ./ rand(2:10))
+    int_rand_1 = intensity_function(rand_point_1...,time[randtime])
+    rand_point_2 = start_img_grid .+ (length_img ./ rand(2:10))
+    int_rand_2 = intensity_function(rand_point_2...,time[randtime])
+
+    ints_loaded = rand_img([rand_point_1, rand_point_2])
+    @test [int_rand_1, int_rand_2] ≈ ints_loaded atol = 1e-1
 
 end
-
-
 
 @testset "DICOM 3D image unitary tests" begin
 
