@@ -279,9 +279,9 @@ end
     # Write a VTK image
     path_img = tempname()
     @info "Writing VTK 2D image in $path_img"
-    vtk_structured_write(coords, intensity_function, :intensity, path_img)
+    vtk_structured_write(coords, intensity_function, :intensity, path_img, "")
     intensity_array = reshape(intensity_array, num_pixels_img)
-    vtk_structured_write(coords, intensity_array, :intensity, path_img)
+    vtk_structured_write(coords, intensity_array, :intensity, path_img, "")
 
     # Test VTK image features
     vtk_img = VTKImage(
@@ -380,8 +380,8 @@ end
     # Write a VTK image (structured grids only)
     path_img = tempname()
     @info "Writing VTK 3D image in $path_img"
-    vtk_structured_write(coords, intensity_function, :intensity, path_img)
-    vtk_structured_write(coords, intensity_array, :intensity, path_img)
+    vtk_structured_write(coords, intensity_function, :intensity, path_img, "")
+    vtk_structured_write(coords, intensity_array, :intensity, path_img, "")
 
     # Test VTK image features
     vtk_img = VTKImage(
@@ -489,12 +489,12 @@ end
     intensity_array = [intensity_function(var...) for var in Iterators.product(vars...)]
 
     temmpdir = tempname()
-    @info "Writing VTK 3D sequence in $path_img"
-    vtk_structured_write_sequence(coords, intensity_array, :intensity, filename,temmpdir)
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, filename,temmpdir)
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, filename,temmpdir)
+    @info "Writing VTK 3D sequence in $temmpdir"
+    vtk_structured_write_sequence(coords, intensity_array, :intensity, temmpdir, "")
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, temmpdir, "")
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, temmpdir, "")
 
-    vtk_img_red = load_vtk_img(sequence_path)
+    # vtk_img_red = load_vtk_img(sequence_path)
 
 
 end
