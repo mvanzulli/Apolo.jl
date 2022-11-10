@@ -542,6 +542,18 @@ function material_cell(cell, mats, grid)
     end
 end
 
+" Extract the material of a cell"
+function material_cell(idx_cell::Int, mats, grid)
+    # check gird cell sets and extract first material label and then mat
+    for (matlabel, matcellset) in getcellsets(grid)
+        if idx_cell ∈ matcellset
+            for mat in keys(mats)
+                matlabel == label(mat) && return mat
+            end
+        end
+    end
+end
+
 " Simetrize the tangent matrix"
 function symmetrize_lower!(K)
     for i = 1:size(K, 1)

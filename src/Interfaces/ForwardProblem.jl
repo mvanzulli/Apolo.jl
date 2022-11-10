@@ -13,8 +13,8 @@ using Ferrite: Grid, addfaceset!, addcellset!
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
     AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProblemSolver, ForwardProblemSolution
 
-export boundary_conditions, component, dofs, dofsvals, materials, values_function,
-    solve, _solve, symbol, set_materials_params!
+export boundary_conditions, component, dofs, dofsvals, materials, materials_params_values,
+ values_function, solve, _solve, symbol, set_materials_params!
 
 """ Abstract supertype that includes degrees of freedom  information.
 
@@ -131,12 +131,12 @@ end
 "Constructor with no boundary conditions"
 FEMData(grid, dfs) = FEMData(grid, dfs, nothing)
 
-" Extract the grid. "
+"Returns the grid. "
 grid(data::FEMData) = data.grid
 
 dofs(data::FEMData) = data.dfs
 
-" Extract boundary conditions. "
+"Returns boundary conditions. "
 boundary_conditions(data::FEMData) = data.bcs
 
 """ Abstract supertype that defines the Forward problem formulation
@@ -149,10 +149,37 @@ The following methods are provided by the interface:
 """
 abstract type AbstractForwardProblem end
 
-" Extract materials data. "
+"Returns materials data. "
 materials(fp::AbstractForwardProblem) = fp.materials
 
-" Extract FEM model data. "
+"Returns material parameter values. "
+function materials_params_values(fp::AbstractForwardProblem)
+
+    mats = materials(fp)
+
+     # Get material parameter values
+    mats_param_values = Dict{Symbol,Number}()
+    for mat in keys(mats)
+
+        mat_params = parameters(mat)
+
+        for param in mat_params
+
+            @assert has_material(param) && !ismissing(param)
+            pvalue = value(param)
+            plabel = label(param)
+            plabel ∈ keys(mats_param_values) && pvalue == mats_param_values[plabel] &&
+            throw(
+                ArgumentError("Two different parameters has the same label but different value")
+                )
+            mats_param_values[plabel] = pvalue
+
+        end
+    end
+    return mats_param_values
+end
+
+"Returns FEM model data. "
 femdata(fp::AbstractForwardProblem) = fp.data
 
 "Extracts Forward Problem grid. "
@@ -167,7 +194,7 @@ boundary_conditions(fp::AbstractForwardProblem) = boundary_conditions(femdata(fp
 "Sets material values to a forward problem."
 function set_materials_params!(fp::AbstractForwardProblem, params_to_set::Dict)
 
-    # Extract all the forward problem materials
+    #Returns all the forward problem materials
     fp_materials = materials(fp)
 
     # Iterate over each material and find into the list of params
@@ -234,7 +261,7 @@ function label_solid_grid!(
     fgrid::FerriteStructuredGrid,
     bcs::Dict{AbstractBoundaryCondition,Function})
 
-    # Extract ferrite type grid to use ferrite methods
+    #Returns ferrite type grid to use ferrite methods
     ferrite_grid = grid(fgrid)
 
     for (bc, region) in bcs
@@ -250,7 +277,7 @@ function label_solid_grid!(
     materials::Dict{AbstractMaterial,Function}
 ) #  interfaces should not  be related?
 
-    # Extract ferrite type grid to use ferrite methods
+    #Returns ferrite type grid to use ferrite methods
     ferrite_grid = grid(fgrid)
 
     for (mat, region) in materials

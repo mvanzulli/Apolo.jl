@@ -5,68 +5,91 @@
 using Apolo.Materials
 using Apolo.Geometry
 using Apolo.ForwardProblem
-using Apolo.ForwardProblem: _eval_displacements
+using Apolo.ForwardProblem: _eval_displacements, _eval_asol
 
 using Test: @test, @testset
 using Statistics: mean
 
-# @testset "Analytic solver unitary tests" begin
+@testset "Analytic solver unitary tests" begin
 
-#     symbol_u = :u
-#     dim = 1
-#     dofu = Dof{dim}(symbol_u)
-#     # test getter functions
-#     @test symbol(dofu) == symbol_u
-#     @test dimension(dofu) == dim
-#     dofu = Dof{1}(:u)
-#     dofσ = Dof{1}(:p)
-#     dfs = StressDispDofs(σ=dofσ, u=dofu)
+    symbol_u = :u
+    dim = 1
+    dofu = Dof{dim}(symbol_u)
+    # test getter functions
+    @test symbol(dofu) == symbol_u
+    @test dimension(dofu) == dim
+    dofu = Dof{1}(:u)
+    dofσ = Dof{1}(:p)
+    dfs = StressDispDofs(σ=dofσ, u=dofu)
 
-#     # --- FEM Data ---
-#     # Ωₛ length
-#     Lᵢₛ = 2.0
-#     Lⱼₛ = 1.0
-#     # -- grid -- #
-#     start_point = (0.0, 0.0)
-#     finish_point = (Lᵢₛ, Lⱼₛ)
-#     num_elements_grid = (3, 2)
-#     elemtype = Triangle
-#     fgrid = FerriteStructuredGrid(start_point, finish_point, num_elements_grid, elemtype)
+    # --- FEM Data ---
+    # Ωₛ length
+    Lᵢₛ = 2.0
+    Lⱼₛ = 1.0
+    # -- grid -- #
+    start_point = (0.0, 0.0)
+    finish_point = (Lᵢₛ, Lⱼₛ)
+    num_elements_grid = (3, 2)
+    elemtype = Triangle
+    fgrid = FerriteStructuredGrid(start_point, finish_point, num_elements_grid, elemtype)
 
-#     # -- material -- #
-#     # reference parameters
-#     Eᵣ = 14e6
-#     νᵣ = 0.4
-#     # create params
-#     E = ConstitutiveParameter(:E, Eᵣ)
-#     ν = ConstitutiveParameter(:ν, νᵣ)
-#     # create material
-#     label_mat = "mat1"
-#     svk = SVK(E, ν, label_mat)
-#     # vector of materials to identify
-#     region_svk(x) = 0 ≤ x[1] ≤ Lᵢₛ && 0 ≤ x[2] ≤ Lⱼₛ
-#     mats = Dict{AbstractMaterial,Function}(svk => region_svk)
+    # -- material -- #
+    # reference parameters
+    Eᵣ = 14e6
+    νᵣ = 0.4
+    # create params
+    E = ConstitutiveParameter(:E, Eᵣ)
+    ν = ConstitutiveParameter(:ν, νᵣ)
+    # create material
+    label_mat = "mat1"
+    svk = SVK(E, ν, label_mat)
+    # vector of materials to identify
+    region_svk(x) = 0 ≤ x[1] ≤ Lᵢₛ && 0 ≤ x[2] ≤ Lⱼₛ
+    mats = Dict{AbstractMaterial,Function}(svk => region_svk)
 
-#     # -- create data_fem -- #
-#     data_fem_p = FEMData(fgrid, dfs)
+    # -- create data_fem -- #
+    data_fem_p = FEMData(fgrid, dfs)
 
-#     # test methods
-#     @test grid(data_fem_p) == fgrid
-#     @test boundary_conditions(data_fem_p) == nothing
-#     @test dofs(data_fem_p) == dfs
+    @test grid(data_fem_p) == fgrid
+    @test boundary_conditions(data_fem_p) == nothing
+    @test dofs(data_fem_p) == dfs
 
-#     # --- Forward problem formulation and grid labeled with a material ---
-#     fproblem = LinearElasticityProblem(data_fem_p, mats)
+    # --- Forward problem formulation and grid labeled with a material ---
+    fproblem = LinearElasticityProblem(data_fem_p, mats)
 
-#     analytic_solution = :(
-#         p * (1 -ν -2ν^2) / (1 -ν) *
-#         [x₀[1], 0, 0] / E
-#         )
-#     constans = Dict(p => p(t) = .2*t, ν =.4)
+    # Extract material parameter values
+    mats_params_vals = materials_params_values(fproblem)
+    @test mats_params_vals == Dict(label(E) => value(E), label(ν) => value(ν))
+
+    function analytic_solution(; x₀=x₀, E=E, p=p, ν=ν)
+        C = p * (1 - ν - 2ν^2) / (1 - ν)
+        return C / E * [x₀[1], 0]
+    end
+
+    constants_expr = Dict(:p => 0.2, :ν => value(ν))
+    variables_to_solve = [:x₀, :E]
+    solved_dofs = [dofu]
+
+    asolver = AnalyticForwardSolver(analytic_solution, solved_dofs, variables_to_solve, constants_expr)
+
+    @test analytic_sol(asolver) == analytic_solution
+    @test constants(asolver) == constants_expr
+    @test domain(asolver)(rand(2)) == true
+    @test dofs(asolver) == solved_dofs
+    @test variables(asolver) == variables_to_solve
 
 
+    variables_to_eval = Dict(:E => value(E), :x₀ => rand(Float64, 3))
+    @test analytic_solution(
+        x₀=variables_to_eval[:x₀],
+        E=variables_to_eval[:E],
+        p=constants_expr[:p],
+        ν=constants_expr[:ν]
+    ) == _eval_asol(asolver, variables_to_eval)
 
-# end
+    vec_u = _solve(fproblem, asolver)
+
+end
 
 @testset "Ferrite solver unitary tests" begin
 
