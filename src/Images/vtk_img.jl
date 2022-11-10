@@ -27,7 +27,7 @@ struct VTKImage{D,T,I<:AbstractIntensity,G<:AbstractStructuredGrid} <: AbstractI
     path::String
 end
 
-"VTKImage constructor given an intensity array"
+"VTKImage constructor given an intensity array."
 function VTKImage(
     intensity_array::Array{T,D},
     spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
@@ -56,6 +56,8 @@ function VTKImage(
 
 end
 
+
+"VTKImage constructor given an intensity array and a grid."
 function VTKImage(
     intensity_array::Array{T,D},
     fgrid::FerriteStructuredGrid,
