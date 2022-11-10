@@ -27,7 +27,7 @@ struct VTKImage{D,T,I<:AbstractIntensity,G<:AbstractStructuredGrid} <: AbstractI
     path::String
 end
 
-"VTKImage constructor given an intensity array"
+"VTKImage constructor given an intensity array."
 function VTKImage(
     intensity_array::Array{T,D},
     spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
@@ -47,6 +47,26 @@ function VTKImage(
 
     # create grid
     fgrid = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels)
+
+    # convert intensity to ferrite nomenclature
+    fintensity = FerriteIntensity(intensity_array, fgrid)
+
+    # instantiate generic grid
+    return VTKImage(fintensity, num_pixels, start_img, spacing_img, fgrid, path_img)
+
+end
+
+"VTKImage constructor given an intensity array and a grid."
+function VTKImage(
+    intensity_array::Array{T,D},
+    fgrid::FerriteStructuredGrid,
+    spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
+    start_img::NTuple{D,T}=Tuple(zeros(T, D)),
+    path_img::String="";
+) where {T,D}
+
+    # number of pixels
+    num_pixels = size(intensity_array)
 
     # convert intensity to ferrite nomenclature
     fintensity = FerriteIntensity(intensity_array, fgrid)
