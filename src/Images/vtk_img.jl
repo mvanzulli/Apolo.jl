@@ -2,7 +2,7 @@
 # Main types and functions to handle with .VTK images #
 #######################################################
 
-using ..Geometry: AbstractStructuredGrid
+using ..Geometry: AbstractStructuredGrid, FerriteStructuredGrid
 using ..Images: AbstractImage, AbstractIntensity
 using ..Images: create_ferrite_img_fgrid
 
@@ -55,6 +55,7 @@ function VTKImage(
     return VTKImage(fintensity, num_pixels, start_img, spacing_img, fgrid, path_img)
 
 end
+
 
 "VTKImage constructor given an intensity array and a grid."
 function VTKImage(
