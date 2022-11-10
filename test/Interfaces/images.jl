@@ -290,7 +290,7 @@ end
     @test path(vtk_img) == path_img
 
     # Build a VTK image with a given grid
-    # vtk_img_grid = grid(vtk_img)
+    vtk_img_grid = grid(vtk_img)
     vtk_img = VTKImage(
         intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
         )
@@ -489,16 +489,19 @@ end
     intensity_array = [intensity_function(var...) for var in Iterators.product(vars...)]
 
     # Write the VTK sequence of images
-    tempdir = tempname()
-    tempdir = "./foo"
-    folder_path = "./"
+    tdir = joinpath(tempdir(),"temp")
+    mkdir(tdir)
+    tname = splitpath(tempname())[end]
+    tempfile = joinpath(tdir, tname)
+    root_name_sequence = "temp"
+
     @info "Writing VTK 3D sequence in $tempdir"
-    vtk_structured_write_sequence(coords, intensity_array, :intensity, tempdir, "")
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, tempdir, "")
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, tempdir, "")
+    vtk_structured_write_sequence(coords, intensity_array, :intensity, tname, tdir)
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, tname, tdir)
 
     # Read the VTK sequence in a vector of images
-    imgs = load_vtk_sequence_imgs(folder_path)
+    imgs = load_vtk_sequence_imgs(joinpath(tdir))
+    rm(tdir, recursive = true, force = true)
 
     # Check that every image have the same grid on memory
     randtime = rand(1:length(time))

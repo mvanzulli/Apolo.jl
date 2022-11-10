@@ -21,11 +21,12 @@ function vtk_structured_write(
     filename::String="generic",
     filedir::String="./",
 ) where {FA<:Union{AbstractArray{<:Number,3}, AbstractArray{<:Number,2}}}
+
     # Check dimensions.
     prod(length.(coords)) == length(fieldarray) || throw(ArgumentError("Check dimensions"))
 
     # Generate a VTK file.
-    vtk_grid(filedir * filename, coords...) do vtk
+    vtk_grid(joinpath(filedir, filename), coords...) do vtk
         vtk[String(fieldname), VTKPointData()] = fieldarray
     end
 end
@@ -55,7 +56,6 @@ function vtk_structured_write_sequence(
     for iseq in 1:size(fieldarray,D)
         # add the current time to the filename
         filename_slice = filename * "_" *string(iseq)
-
         #create a variable colomn argumets
         colums_aux = Vector{Function}(undef, D-1)
         fill!(colums_aux,:)
@@ -165,6 +165,7 @@ function load_vtk_sequence_imgs(folder_path::String)
     # Extract.vti list
     files = readdir(folder_path)
     vtkfiles = sort(files[endswith.(files, r".vti|vtk")], lt = natural)
+    vtkfiles = joinpath.(folder_path, vtkfiles)
 
     # Load reference image
     ref_img = load_vtk_img(vtkfiles[1])
@@ -176,6 +177,7 @@ function load_vtk_sequence_imgs(folder_path::String)
         def_img = load_vtk_img(def_img_fname, images_grid)
         push!(imgs, def_img)
     end
+
 
     return imgs
 end
