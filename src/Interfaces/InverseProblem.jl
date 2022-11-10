@@ -9,13 +9,13 @@ module InverseProblem
 import ..Materials: parameters
 
 using ..Materials: AbstractParameter
-using ..ForwardProblem: AbstractForwardProblem
+using ..ForwardProblem: AbstractForwardProblem, AbstractFowardSolver
 using ..Images: AbstractImage
 using ..Utils: ScalarWrapper
 # using Dictionaries: Dictionary
 
 export MSDOpticalFlow
-export append_value!, expression, optim_done, trials, feaseble_reagion, search_region ,set_search_region
+export append_value!, expression, optim_done, trials, feaseble_reagion, parameters, search_region,set_search_region
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
 The following methods are provided by the interface:
@@ -119,23 +119,45 @@ function MSDOpticalFlow(
 end
 
 "Computes the functional value."
-function evaluates(
+function evaluate(
     oflow::MSDOpticalFlow,
-    roi::Function,
-    # data_measured::DM,
-    vec_img::Vector{I},
+    img_data::ID,
     fproblem::FP,
+    fsolver::FSOL,
     candidate_params::Dict{P,T},
-    ) where {P<:AbstractParameter, T<:Real, I<:AbstractImage, FP<:AbstractForwardProblem}
-
-    # Extract number of time steps
-    n_times = length(vec_img)
+    ) where {P<:AbstractParameter, T<:Real, ID<:AbstractDataMeasured, FP<:AbstractForwardProblem, FSOL<:AbstractFowardSolver}
 
 
+    # Extract data measured info
+    img_gird = grid(img_data)
+    img_ref = reference_img(img_data)
+    img_defs = deformed_imgs(img_data)
+    roi_coords = roi_points(img_data)
+    spacing = _roi_int_data(img_data)
+    t = time_vec(img_data)
 
+    # Integrate the functional for each time
+    int_ref_roi = img_ref(roi_coords)
+    f_value = .0
 
+    for (indexₜ,tᵢ) in enumerate(t)
 
+        # deformed image at time tᵢ
+        img_def_t = img_defs[indexₜ]
 
+        # roi displacements and deformed positions
+        fsol = solve(fproblem, fsolver, candidate_params, tᵢ)
+        u_roi = fsol(roi_coords)
+        x_def = roi_coords .+ u_roi
+
+        # deformed intesnities
+        int_def_roi = img_def_t(x_def)
+
+        # intensity values
+        f_value += reduce(+,(int_def_roi .- img_def_t).^2)
+    end
+
+    return f_value * prod(spacing)
 end
 
 
