@@ -468,7 +468,7 @@ end
 @testset "VTK 3D sequence" begin
 
     # Define VTK image properties
-    intensity_function(x, y, z, t) = 2t * (9x - 1y + 7z)
+    intensity_function(x, y, z, t) = 2*sin(t) * cos(9x - 1y + 7z)
 
     start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
     spacing_img = (rand(INTERVAL_POS), rand(INTERVAL_POS), rand(INTERVAL_POS)) ./ 100
@@ -478,7 +478,7 @@ end
     finish_img = start_img .+ num_pixels_img .* spacing_img
     finish_img_grid = finish_img .- spacing_img ./ 2
     length_img = finish_img .- start_img
-    time = rand(INTERVAL_POS):rand(INTERVAL_POS)/2: 3*rand(INTERVAL_POS)
+    time = rand(INTERVAL_POS):rand(INTERVAL_POS)/6: 3*rand(INTERVAL_POS)
 
     xc = LinRange(start_img_grid[1], finish_img_grid[1], num_pixels_img[1])
     yc = LinRange(start_img_grid[2], finish_img_grid[2], num_pixels_img[2])
@@ -488,10 +488,14 @@ end
 
     intensity_array = [intensity_function(var...) for var in Iterators.product(vars...)]
 
-    path_img = tempname()
+    temmpdir = tempname()
     @info "Writing VTK 3D sequence in $path_img"
-    vtk_structured_write_sequence(coords, intensity_array, :intensity, path_img)
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, path_img)
+    vtk_structured_write_sequence(coords, intensity_array, :intensity, filename,temmpdir)
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, filename,temmpdir)
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, filename,temmpdir)
+
+    vtk_img_red = load_vtk_img(sequence_path)
+
 
 end
 

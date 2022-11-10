@@ -9,35 +9,37 @@ using ReadVTK: VTKFile, get_whole_extent, get_origin, get_spacing, get_point_dat
 
 export vtk_structured_write, vtk_structured_write_sequence, load_vtk_img
 
-##########
-# Images #
-##########
-
-"Write a .VTK structured given a field function."
-function vtk_structured_write(
-    coords::AbstractVector,
-    fieldfunction::Function,
-    fieldname::Symbol=:generic,
-    filename::String="generic"
-)
-    fieldarray = [fieldfunction(c...) for c in Iterators.product(coords...)]
-    vtk_structured_write(coords, fieldarray, fieldname, filename)
-end
+###############
+# .VTI format #
+###############
 
 "Write a vtk structured grid given a 2D or 3D scalar array."
 function vtk_structured_write(
     coords::AbstractVector,
     fieldarray::FA,
     fieldname::Symbol=:generic,
-    filename::String="generic"
+    filename::String="generic",
+    filedir::String="./",
 ) where {FA<:Union{AbstractArray{<:Number,3}, AbstractArray{<:Number,2}}}
     # Check dimensions.
     prod(length.(coords)) == length(fieldarray) || throw(ArgumentError("Check dimensions"))
 
     # Generate a VTK file.
-    vtk_grid(filename, coords...) do vtk
+    vtk_grid(filedir * filename, coords...) do vtk
         vtk[String(fieldname), VTKPointData()] = fieldarray
     end
+end
+
+"Write a .VTK structured given a field function."
+function vtk_structured_write(
+    coords::AbstractVector,
+    fieldfunction::Function,
+    fieldname::Symbol=:generic,
+    filename::String="generic",
+    filedir::String="./",
+)
+    fieldarray = [fieldfunction(c...) for c in Iterators.product(coords...)]
+    vtk_structured_write(coords, fieldarray, fieldname, filename, filedir)
 end
 
 "Write a vtk structured grid given a 4D scalar array."
@@ -45,7 +47,8 @@ function vtk_structured_write_sequence(
     coords::AbstractVector,
     fieldarray::Array{<:Number,D},
     fieldname::Symbol=:generic,
-    filename::String="generic"
+    filename::String="generic",
+    filedir::String="./",
 ) where {D}
 
     # Plot a sequence of .vti
@@ -57,8 +60,9 @@ function vtk_structured_write_sequence(
         colums_aux = Vector{Function}(undef, D-1)
         fill!(colums_aux,:)
         slice_int_array = view(fieldarray, colums_aux...,iseq)
+        # Main.@infiltrate
 
-        vtk_structured_write(coords, slice_int_array, fieldname, filename_slice)
+        vtk_structured_write(coords, slice_int_array, fieldname, filename_slice, filedir)
 
     end
 end
@@ -68,18 +72,20 @@ function vtk_structured_write_sequence(
     vars::AbstractVector,
     fieldfunction::Function,
     fieldname::Symbol=:generic,
-    filename::String="generic"
+    filename::String="generic",
+    filedir::String="./",
 ) where {D}
 
     fieldarray = [fieldfunction(v...) for v in Iterators.product(vars...)]
     coords = vars[1:3]
-    vtk_structured_write_sequence(coords, fieldarray, fieldname, filename)
+    vtk_structured_write_sequence(coords, fieldarray, fieldname, filename, filedir)
 
 end
 
 """ Reads a .VTK image with an structured grid. """
 function load_vtk_img(path_img::String)
     # Check if it has the .vti extension and if not add it.
+    Main.@infiltrate
     path_with_extension = if occursin(".vti", path_img)
         path_img
     else
