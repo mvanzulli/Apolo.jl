@@ -7,7 +7,7 @@ using Apolo.Images
 using WriteVTK: VTKPointData, vtk_grid
 using ReadVTK: VTKFile, get_whole_extent, get_origin, get_spacing, get_point_data, get_data
 
-export vtk_structured_write, load_vtk_img
+export vtk_structured_write, vtk_structured_write_sequence, load_vtk_img
 
 ##########
 # Images #
@@ -15,7 +15,7 @@ export vtk_structured_write, load_vtk_img
 
 "Write a .VTK structured given a field function."
 function vtk_structured_write(
-    coords::Vector{<:AbstractRange},
+    coords::AbstractVector,
     fieldfunction::Function,
     fieldname::Symbol=:generic,
     filename::String="generic"
@@ -24,13 +24,13 @@ function vtk_structured_write(
     vtk_structured_write(coords, fieldarray, fieldname, filename)
 end
 
-"Write a vtk structured grid given a 3D scalar array."
+"Write a vtk structured grid given a 2D or 3D scalar array."
 function vtk_structured_write(
-    coords::Vector{<:AbstractRange},
-    fieldarray::Array,
+    coords::AbstractVector,
+    fieldarray::FA,
     fieldname::Symbol=:generic,
     filename::String="generic"
-)
+) where {FA<:Union{AbstractArray{<:Number,3}, AbstractArray{<:Number,2}}}
     # Check dimensions.
     prod(length.(coords)) == length(fieldarray) || throw(ArgumentError("Check dimensions"))
 
@@ -38,6 +38,43 @@ function vtk_structured_write(
     vtk_grid(filename, coords...) do vtk
         vtk[String(fieldname), VTKPointData()] = fieldarray
     end
+end
+
+"Write a vtk structured grid given a 4D scalar array."
+function vtk_structured_write_sequence(
+    coords::AbstractVector,
+    fieldarray::Array{<:Number,D},
+    fieldname::Symbol=:generic,
+    filename::String="generic"
+) where {D}
+
+    # Plot a sequence of .vti
+    for iseq in 1:size(fieldarray,D)
+        # add the current time to the filename
+        filename_slice = filename * "_" *string(iseq)
+
+        #create a variable colomn argumets
+        colums_aux = Vector{Function}(undef, D-1)
+        fill!(colums_aux,:)
+        slice_int_array = view(fieldarray, colums_aux...,iseq)
+
+        vtk_structured_write(coords, slice_int_array, fieldname, filename_slice)
+
+    end
+end
+
+"Write a vtk structured grid given a 4D field function."
+function vtk_structured_write_sequence(
+    vars::AbstractVector,
+    fieldfunction::Function,
+    fieldname::Symbol=:generic,
+    filename::String="generic"
+) where {D}
+
+    fieldarray = [fieldfunction(v...) for v in Iterators.product(vars...)]
+    coords = vars[1:3]
+    vtk_structured_write_sequence(coords, fieldarray, fieldname, filename)
+
 end
 
 """ Reads a .VTK image with an structured grid. """
