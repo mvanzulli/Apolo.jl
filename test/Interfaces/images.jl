@@ -43,11 +43,14 @@ const DCM_TO_LOAD = "./test/DICOMImages/"
     @test finish(f_img_default) == size(intensity(f_img_default))
     @test length(f_img_default) == finish(f_img_default)
 
-    # generate image
+    # generate image and internaly cash a grid
     f_img = FerriteImage(intensity_array, spacing_img, start_img)
 
     fgrid_img = grid(f_img)
     @test grid(f_img).grid.cells == fgrid_img.grid.cells
+
+    # generate a ferrite image with a given grid
+    # f_img = FerriteImage(intensity_array, fgrid_img, spacing_img, start_img)
 
     # test the converter intensity function
     fintensity_to_test, cart_indexes_to_test = _convert_to_ferrite_nomenclature(
@@ -148,9 +151,13 @@ end
     @test fintensity_to_test == fintensity_hand
     @test cart_indexes_to_test == cartesian_indexes_hand
 
-    # generate image
+    # generate image and internaly cash a grid
     f_img = FerriteImage(intensity_array, spacing_img, start_img)
+    fgrid_img = grid(f_img)
     @test grid(f_img).grid.cells == fgrid_img.grid.cells
+
+    # generate a ferrite image with a given grid
+    # f_img = FerriteImage(intensity_array, fgrid_img, spacing_img, start_img)
 
     # test getter functions
     @test start(f_img) == start_img
@@ -272,9 +279,9 @@ end
     # Write a VTK image
     path_img = tempname()
     @info "Writing VTK 2D image in $path_img"
-    vtk_structured_write(coords, intensity_function, :intensity, path_img)
+    vtk_structured_write(coords, intensity_function, :intensity, path_img, "")
     intensity_array = reshape(intensity_array, num_pixels_img)
-    vtk_structured_write(coords, intensity_array, :intensity, path_img)
+    vtk_structured_write(coords, intensity_array, :intensity, path_img, "")
 
     # Test VTK image features
     vtk_img = VTKImage(
@@ -282,6 +289,11 @@ end
     )
     @test path(vtk_img) == path_img
 
+    # Build a VTK image with a given grid
+    vtk_img_grid = grid(vtk_img)
+    vtk_img = VTKImage(
+        intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
+        )
     # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
 
@@ -368,13 +380,18 @@ end
     # Write a VTK image (structured grids only)
     path_img = tempname()
     @info "Writing VTK 3D image in $path_img"
-    vtk_structured_write(coords, intensity_function, :intensity, path_img)
-    vtk_structured_write(coords, intensity_array, :intensity, path_img)
+    vtk_structured_write(coords, intensity_function, :intensity, path_img, "")
+    vtk_structured_write(coords, intensity_array, :intensity, path_img, "")
 
     # Test VTK image features
     vtk_img = VTKImage(
         intensity_array, spacing_img, start_img, path_img, ferrite_grid=true
     )
+    # Build a VTK image with a given grid
+    vtk_img_grid = grid(vtk_img)
+    vtk_img = VTKImage(
+        intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
+        )
 
     # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
@@ -445,6 +462,58 @@ end
     itp_rand_int = vtk_img(rand_point...)
     exact_rand_int = intensity_function(rand_point...)
     @test exact_rand_int ≈ itp_rand_int atol = abs(itp_rand_int * 1e-1)
+
+end
+
+@testset "VTK 3D sequence" begin
+
+    # Define VTK image properties
+    intensity_function(x, y, z, t) = 2*sin(t) * cos(9x - 1y + 7z)
+
+    start_img = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
+    spacing_img = (rand(INTERVAL_POS), rand(INTERVAL_POS), rand(INTERVAL_POS)) ./ 100
+    num_pixels_img = (8, 5, 11)
+    start_img_grid = start_img .+ spacing_img ./ 2
+    image_dimension = length(spacing_img)
+    finish_img = start_img .+ num_pixels_img .* spacing_img
+    finish_img_grid = finish_img .- spacing_img ./ 2
+    length_img = finish_img .- start_img
+    time = rand(INTERVAL_POS):rand(INTERVAL_POS)/6: 3*rand(INTERVAL_POS)
+
+    xc = LinRange(start_img_grid[1], finish_img_grid[1], num_pixels_img[1])
+    yc = LinRange(start_img_grid[2], finish_img_grid[2], num_pixels_img[2])
+    zc = LinRange(start_img_grid[3], finish_img_grid[3], num_pixels_img[3])
+    coords = [xc,yc,zc]
+    vars = [coords..., time]
+
+    intensity_array = [intensity_function(var...) for var in Iterators.product(vars...)]
+
+    # Write the VTK sequence of images
+    tdir = joinpath(tempdir(),"temp")
+    mkdir(tdir)
+    tname = splitpath(tempname())[end]
+    tempfile = joinpath(tdir, tname)
+    root_name_sequence = "temp"
+
+    @info "Writing VTK 3D sequence in $tempdir"
+    vtk_structured_write_sequence(coords, intensity_array, :intensity, tname, tdir)
+    vtk_structured_write_sequence(vars, intensity_function, :intensity, tname, tdir)
+
+    # Read the VTK sequence in a vector of images
+    imgs = load_vtk_sequence_imgs(joinpath(tdir))
+    rm(tdir, recursive = true, force = true)
+
+    # Check that every image have the same grid on memory
+    randtime = rand(1:length(time))
+    rand_img = imgs[randtime]
+    @test grid(imgs[1]) === grid(rand_img)
+    rand_point_1 = start_img_grid .+ (length_img ./ rand(2:10))
+    int_rand_1 = intensity_function(rand_point_1...,time[randtime])
+    rand_point_2 = start_img_grid .+ (length_img ./ rand(2:10))
+    int_rand_2 = intensity_function(rand_point_2...,time[randtime])
+
+    ints_loaded = rand_img([rand_point_1, rand_point_2])
+    @test [int_rand_1, int_rand_2] ≈ ints_loaded atol = 1e-1
 
 end
 

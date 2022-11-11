@@ -59,29 +59,51 @@ struct FerriteImage{D,T,G<:FSG} <: AbstractImage{D,T,G}
     start::NTuple{D,<:Real}
     spacing::NTuple{D,<:Real}
     grid::G
-    # Cash the Ferrite.Grid into grid field of MedicalImage
-    function FerriteImage(
-        intensity_array::Array{T,D},
-        spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
-        start_img::NTuple{D,T}=Tuple(zeros(T, D))
-    ) where {T,D}
-
-        num_pixels = size(intensity_array)
-
-        # compute end point
-        finish_img = finish(start_img, num_pixels, spacing_img)
-        length_img = length(start_img, finish_img)
-
-        # create grid
-        fgrid = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels)
-
-        # convert intensity to ferrite nomenclature
-        intensity = FerriteIntensity(intensity_array, fgrid)
-
-        # instantiate generic grid
-        new{D,T,FerriteStructuredGrid}(intensity, num_pixels, start_img, spacing_img, fgrid)
-    end
 end
+
+# Cash the Ferrite.Grid into grid field of MedicalImage
+function FerriteImage(
+    intensity_array::Array{T,D},
+    spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
+    start_img::NTuple{D,T}=Tuple(zeros(T, D))
+) where {T,D}
+
+    num_pixels = size(intensity_array)
+
+    # compute end point
+    finish_img = finish(start_img, num_pixels, spacing_img)
+    length_img = length(start_img, finish_img)
+
+    # create grid
+    fgrid = create_ferrite_img_fgrid(start_img, spacing_img, length_img, num_pixels)
+
+    # convert intensity to ferrite nomenclature
+    intensity = FerriteIntensity(intensity_array, fgrid)
+
+    # instantiate generic grid
+    FerriteImage{D,T,FerriteStructuredGrid}(intensity, num_pixels, start_img, spacing_img, fgrid)
+end
+
+function FerriteImage(
+    intensity_array::Array{T,D},
+    fgrid::G,
+    spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
+    start_img::NTuple{D,T}=Tuple(zeros(T, D)),
+) where {T,D,G<:FSG}
+
+    num_pixels = size(intensity_array)
+
+    # compute end point
+    finish_img = finish(start_img, num_pixels, spacing_img)
+    length_img = length(start_img, finish_img)
+
+    # convert intensity to ferrite nomenclature
+    intensity = FerriteIntensity(intensity_array, fgrid)
+
+    # instantiate generic grid
+    FerriteImage{D,T,FerriteStructuredGrid}(intensity, num_pixels, start_img, spacing_img, fgrid)
+end
+
 
 "Creates a FerriteStructuredGrid inside a 2D image frame"
 function create_ferrite_img_fgrid(
