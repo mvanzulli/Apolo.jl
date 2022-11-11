@@ -478,13 +478,13 @@ end
     finish_img = start_img .+ num_pixels_img .* spacing_img
     finish_img_grid = finish_img .- spacing_img ./ 2
     length_img = finish_img .- start_img
-    time = rand(INTERVAL_POS):rand(INTERVAL_POS)/6: 3*rand(INTERVAL_POS)
+    mtime = LinRange(rand(INTERVAL_POS), 3*rand(INTERVAL_POS) , 8)
 
     xc = LinRange(start_img_grid[1], finish_img_grid[1], num_pixels_img[1])
     yc = LinRange(start_img_grid[2], finish_img_grid[2], num_pixels_img[2])
     zc = LinRange(start_img_grid[3], finish_img_grid[3], num_pixels_img[3])
     coords = [xc,yc,zc]
-    vars = [coords..., time]
+    vars = [coords..., mtime]
 
     intensity_array = [intensity_function(var...) for var in Iterators.product(vars...)]
 
@@ -497,23 +497,32 @@ end
 
     @info "Writing VTK 3D sequence in $tempdir"
     vtk_structured_write_sequence(coords, intensity_array, :intensity, tname, tdir)
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, tname, tdir)
+    # vtk_structured_write_sequence(vars, intensity_function, :intensity, tname, tdir)
 
     # Read the VTK sequence in a vector of images
     imgs = load_vtk_sequence_imgs(joinpath(tdir))
     rm(tdir, recursive = true, force = true)
 
     # Check that every image have the same grid on memory
-    randtime = rand(1:length(time))
-    rand_img = imgs[randtime]
+    rand_t_idx = rand(1:length(mtime))
+    rand_img = imgs[rand_t_idx]
     @test grid(imgs[1]) === grid(rand_img)
     rand_point_1 = start_img_grid .+ (length_img ./ rand(2:10))
-    int_rand_1 = intensity_function(rand_point_1...,time[randtime])
+    int_rand_1 = intensity_function(rand_point_1...,mtime[rand_t_idx])
     rand_point_2 = start_img_grid .+ (length_img ./ rand(2:10))
-    int_rand_2 = intensity_function(rand_point_2...,time[randtime])
+    int_rand_2 = intensity_function(rand_point_2...,mtime[rand_t_idx])
 
     ints_loaded = rand_img([rand_point_1, rand_point_2])
     @test [int_rand_1, int_rand_2] ≈ ints_loaded atol = 1e-1
+
+    # Define an Image data and test
+    roi_func(x,y,z) = start_img_grid .≤ (x,y,z).≤ (start_img_grid .+ length_grid ./ 4)
+    img_data = ImageData(imgs, roi_func, grid(imgs[1]), mtime )
+    img_ref = reference_img(img_data)
+    imgs_def = deformed_imgs(img_data)
+    @test roi_func == roi(img_data)
+    @test mtime == time_measured(img_data)
+    @test grid(img_data) === grid(img_ref) === grid(imgs_def[rand_t_idx])
 
 end
 
