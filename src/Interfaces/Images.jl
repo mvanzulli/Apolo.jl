@@ -4,7 +4,6 @@ Module defining image properties and features.
 module Images
 
 using ..Geometry: AbstractStructuredGrid
-using Ferrite: addnodeset!
 using Reexport: @reexport
 
 @reexport import ..Materials: value
@@ -14,7 +13,7 @@ import ..Geometry: _interpolate, _extrapolate
 
 export AbstractImage, AbstractDataMeasured, ImageData
 export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing, path, value,
-    roi, reference_img, deformed_imgs, time_measured
+    roi, time_measured
 
 
 #################
@@ -311,33 +310,11 @@ roi(datam::AbstractDataMeasured) = datam.roi
 "Gets the time where the data is measured"
 time_measured(datam::AbstractDataMeasured) = datam.mtime
 
-""" Image data struct.
-### Fields:
 
-- `vec_img`      -- vector of images
-- `roi`          -- region of interest
-- `grid`         -- region of interest
-"""
-struct ImageData{Img<:AbstractImage, R, G<:AbstractStructuredGrid} <:AbstractDataMeasured{Img}
-    vec_img::AbstractVector{Img}
-    roi::R
-    grid::G
-    mtime::AbstractRange
-end
-
-function ImageData(vec_img::AbstractVector{I}, roi::R, t::AbstractRange) where {R, I<:AbstractImage}
-
-    fgrid = grid(vec_img[1])
-    addnodeset!(grid(fgrid), "roi", roi)
-
-    return ImageData(vec_img, roi, fgrid, t)
-end
-
-"Returns the reference image."
-reference_img(img_data::ImageData) = img_data.vec_img[begin]
-
-"Returns deformed images."
-deformed_imgs(img_data::ImageData) = img_data.vec_img[2:end]
+################################
+# measured data implementation #
+################################
+include("../Images/data_imgs.jl")
 
 
 end
