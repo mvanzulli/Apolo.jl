@@ -478,13 +478,13 @@ end
     finish_img = start_img .+ num_pixels_img .* spacing_img
     finish_img_grid = finish_img .- spacing_img ./ 2
     length_img = finish_img .- start_img
-    time = rand(INTERVAL_POS):rand(INTERVAL_POS)/6: 3*rand(INTERVAL_POS)
+    mtime = LinRange(rand(INTERVAL_POS), 3*rand(INTERVAL_POS) , 8)
 
     xc = LinRange(start_img_grid[1], finish_img_grid[1], num_pixels_img[1])
     yc = LinRange(start_img_grid[2], finish_img_grid[2], num_pixels_img[2])
     zc = LinRange(start_img_grid[3], finish_img_grid[3], num_pixels_img[3])
     coords = [xc,yc,zc]
-    vars = [coords..., time]
+    vars = [coords..., mtime]
 
     intensity_array = [intensity_function(var...) for var in Iterators.product(vars...)]
 
@@ -497,24 +497,51 @@ end
 
     @info "Writing VTK 3D sequence in $tempdir"
     vtk_structured_write_sequence(coords, intensity_array, :intensity, tname, tdir)
-    vtk_structured_write_sequence(vars, intensity_function, :intensity, tname, tdir)
+    # vtk_structured_write_sequence(vars, intensity_function, :intensity, tname, tdir)
 
     # Read the VTK sequence in a vector of images
     imgs = load_vtk_sequence_imgs(tdir)
     rm(tdir, recursive = true, force = true)
 
     # Check that every image have the same grid on memory
-    randtime = rand(1:length(time))
-    rand_img = imgs[randtime]
+    rand_t_idx = rand(2:length(mtime))
+    rand_img = imgs[rand_t_idx]
     @test grid(imgs[1]) === grid(rand_img)
     rand_point_1 = start_img_grid .+ (length_img ./ rand(2:10))
-    int_rand_1 = intensity_function(rand_point_1...,time[randtime])
+    int_rand_1 = intensity_function(rand_point_1...,mtime[rand_t_idx])
     rand_point_2 = start_img_grid .+ (length_img ./ rand(2:10))
-    int_rand_2 = intensity_function(rand_point_2...,time[randtime])
+    int_rand_2 = intensity_function(rand_point_2...,mtime[rand_t_idx])
 
     ints_loaded = rand_img([rand_point_1, rand_point_2])
-    @test [int_rand_1, int_rand_2] ≈ ints_loaded atol = 1e-1
+    @test [int_rand_1, int_rand_2] ≈ ints_loaded atol = .5
 
+    # Define an Image data and test
+    start_roi = start_img_grid
+    finish_roi = (start_img_grid .+ length_img ./ 4)
+    roi_func(x) = all(start_roi .≤ (x[1], x[2], x[3]) .≤ finish_roi)
+    img_data = ImageData(imgs, roi_func, mtime )
+    img_ref = reference_img(img_data)
+    imgs_def = deformed_imgs(img_data)
+    rand_img_def = imgs_def[rand_t_idx-1]
+    @test roi_func == roi(img_data)
+    @test mtime == time_measured(img_data)
+    @test grid(img_data) === grid(img_ref) === grid(rand_img_def)
+
+    # Get roi coorindates
+    nodes_roi = roi_nodes(img_data)
+    @test collect(nodes_roi) == collect(grid(grid(img_data)).nodesets["roi"])
+    roi_vec_coords = roi_nodes_coords(img_data)
+    @test all([roi_func(node_roi_coord) for node_roi_coord in roi_vec_coords])
+
+    # Get roi intensity and check values reference image
+    int_ref_roi_to_test = img_ref(roi_vec_coords)
+    int_ref_roi_bench = [intensity_function(p...,mtime[1]) for p in roi_vec_coords]
+    @test int_ref_roi_to_test ≈ int_ref_roi_bench atol = TOLERANCE
+
+    # Get roi intensity and check values random defomed image
+    int_def_roi_to_test = rand_img_def(roi_vec_coords)
+    int_def_roi_bench = [intensity_function(p...,mtime[rand_t_idx]) for p in roi_vec_coords]
+    @test int_ref_roi_to_test ≈ int_ref_roi_bench atol = TOLERANCE
 end
 
 @testset "DICOM 3D image unitary tests" begin
