@@ -151,10 +151,10 @@ function load_vtk_img(filename::String, grid::AbstractStructuredGrid)
 
     # Build intensity array.
     intensity_vec = get_data(get_point_data(vtk)["intensity"])
-    intensity_array = reshape(intensity_vec, num_pixels_img) |> collect
+    intensity_array = reshape(intensity_vec, num_pixels_img)
 
     vtk_img = VTKImage(
-        intensity_array, grid, spacing_img, start_img, filename)
+        collect(intensity_array), grid, spacing_img, start_img, filename)
 
     return vtk_img
 end
