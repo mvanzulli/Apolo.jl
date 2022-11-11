@@ -59,8 +59,8 @@ function vtk_structured_write_sequence(
         #create a variable colomn argumets
         colums_aux = Vector{Function}(undef, D-1)
         fill!(colums_aux,:)
+        #create the array
         slice_int_array = view(fieldarray, colums_aux...,iseq)
-
         vtk_structured_write(coords, slice_int_array, fieldname, filename_slice, filedir)
 
     end

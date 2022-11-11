@@ -9,8 +9,8 @@ module InverseProblem
 import ..Materials: parameters
 
 using ..Materials: AbstractParameter
-using ..ForwardProblem: AbstractForwardProblem, AbstractFowardSolver
-using ..Images: AbstractImage
+using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
+using ..Images: AbstractDataMeasured, AbstractImage
 using ..Utils: ScalarWrapper
 # using Dictionaries: Dictionary
 
@@ -125,7 +125,7 @@ function evaluate(
     fproblem::FP,
     fsolver::FSOL,
     candidate_params::Dict{P,T},
-    ) where {P<:AbstractParameter, T<:Real, ID<:AbstractDataMeasured, FP<:AbstractForwardProblem, FSOL<:AbstractFowardSolver}
+    ) where {P<:AbstractParameter, T<:Real, ID<:AbstractDataMeasured, FP<:AbstractForwardProblem, FSOL<:AbstractForwardProblemSolver}
 
 
     # Extract data measured info
