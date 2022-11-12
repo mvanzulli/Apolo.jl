@@ -35,8 +35,8 @@ include("Interfaces/Images.jl")
 # ==============
 # Inverse Problem
 # ==============
-include("Interfaces/InverseProblem.jl")
-@reexport using .InverseProblem
+# include("Interfaces/InverseProblem.jl")
+# @reexport using .InverseProblem
 
 # ==============
 # VTK
