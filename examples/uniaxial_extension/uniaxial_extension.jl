@@ -229,23 +229,16 @@ def_roi_analytic_x = roi_vec_coords_x + disp_roi_analytic_x
 
 # test deformed intensity values
 # --------------------------
-# compute the index of points that are outside the roi
-#
-
 int_def_roi_analytic = [roi_func([x, 0.5]) ? intensity_func(x, 0.5, 1) : 0.0 for x in def_roi_analytic_x]
-
-# int_def_roi_analytic = zeros(length(int_ref_roi_analytic))
-# idx = findall(roi_func, def_roi_numeric_x)
-# for i in idx
-#     int_def_roi_analytic[i] = intensity_func(def_roi_analytic_x[i], 0.5, 1)
-# end
-
 img_def = imgs_def[1]
 int_def_roi_numeric = img_def(def_roi_numeric)
 
+# test deformed intensity values
+# --------------------------
 @test int_def_roi_numeric ≈ int_def_roi_analytic rtol = 1e-2
 
-
+# test deformed intensity values
+# --------------------------
 msf_analytic = sum((int_def_roi_analytic - int_ref_roi_analytic) .^ 2)
 
 not_in_roi = findall(x -> !roi_func([x, 0.5]), def_roi_analytic_x)
@@ -262,11 +255,9 @@ not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi] .^ 2)
 @test not_in_roi_error_analytic ≈ not_in_roi_error_numeric rtol = 1e-4
 @test msf_numeric ≈ not_in_roi_error_numeric rtol = 1e-4
 
-# repalce values outside the roi
+# replace values outside the roi
 
 println("msf_analytic is $msf_analytic")
-# println("is_in_ones is $(sum(isinroi))")
-
 
 
 #########################################
