@@ -337,7 +337,7 @@ function solve(
     kwargs...
 ) where {FP<:AbstractForwardProblem,SOL<:AbstractForwardProblemSolver}
 
-    _initialize!(fp, solv, args; kwargs)
+    _initialize!(fp, solv, args...; kwargs...)
 
     return _solve(fp, solv, args...; kwargs...)
 end

@@ -199,7 +199,7 @@ nodes_roi = roi_nodes(img_data)
 roi_vec_coords = roi_nodes_coords(img_data)
 roi_vec_coords_x = getindex.(roi_vec_coords, 1)
 
-# get dipslacements of roi_coordinates
+# get displacements of roi_coordinates
 disp_roi = gold_solution(roi_vec_coords)
 disp_roi_numeric_x = getindex.(disp_roi,1)
 # compare them with analytical solution
@@ -209,7 +209,7 @@ disp_roi_analytic_x = uₗ(getindex.(roi_vec_coords,1), 1)
 # test reference intensity values
 # --------------------------
 int_ref_roi_analytic = similar(roi_vec_coords_x)
-# repalce values outside the roi
+# replace values outside the roi
 for i in eachindex(int_ref_roi_analytic)
     int_ref_roi_analytic[i] = intensity_func(roi_vec_coords_x[i], .5, 0)
 end
@@ -244,7 +244,7 @@ for i in eachindex(int_def_roi_analytic)
     if isinroi[i]
         int_def_roi_analytic[i] = intensity_func(def_roi_analytic_x[i], .5, 1)
     else
-        int_def_roi_analytic[i] = 0.0 # if is otside the roi add 0.0
+        int_def_roi_analytic[i] = 0.0 # if is outside the roi add 0.0
     end
 end
 

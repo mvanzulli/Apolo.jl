@@ -7,6 +7,7 @@ Module defining image properties and features.
 module InverseProblem
 
 import ..Materials: parameters
+import ..Images: roi
 
 using ..Materials: AbstractParameter
 using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
@@ -14,8 +15,48 @@ using ..Images: AbstractDataMeasured, AbstractImage
 using ..Utils: ScalarWrapper
 # using Dictionaries: Dictionary
 
-export MSDOpticalFlow
-export append_value!, expression, optim_done, trials, feaseble_reagion, parameters, search_region,set_search_region
+export append_value!, data_measured, expression, optim_done, trials, feasible_region, fproblem, functional,  parameters, search_region,set_search_region
+
+""" Abstract supertype that defines the inverse problem formulation.
+
+The following methods are provided by the interface:
+
+- `fproblem(invp)` -- returns the forward problem to solve the inverse.
+- `data_measured(invp)`    -- returns the data measured.
+- `functional(invp)`    -- returns the functional employed to solve.
+- `roi(invp)` -- returns the region of interest where the functional is evaluated
+
+"""
+abstract type AbstractInverseProblem end
+
+"Returns the measured data to solve the inverse problem `ivp`"
+data_measured(invp::AbstractInverseProblem) = invp.datam
+
+"Returns the forward problem of the inverse `ivp`."
+fproblem(invp::AbstractInverseProblem) = invp.fproblem
+
+"Returns the functional used to solve the inverse problem `ivp`"
+functional(invp::AbstractInverseProblem) = invp.func
+
+"Returns the region of interest ROI used to solve the inverse problem `ivp`"
+roi(invp::AbstractInverseProblem) = invp.roi
+
+""" Abstract supertype that defines the inverse problem solver.
+
+The following methods are provided by the interface:
+
+- `tolerance(invp)`  -- returns the method tolerance.
+- `parameter(invp)` -- returns the method parameters.
+
+"""
+abstract type AbstractInverseProblemSolver end
+
+"Returns the inverse problem solver tolerances."
+tolerance(isolver::AbstractInverseProblemSolver) = isolver.tol
+
+"Returns the inverse problem parameters."
+parameter(isolver::AbstractInverseProblemSolver) = isolver.params
+
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
 The following methods are provided by the interface:
@@ -36,173 +77,78 @@ The following methods are provided by the interface:
 """
 abstract type AbstractFunctional end
 
-"Returns the functional value/values"
+"Returns the functional value/values."
 Base.values(f::AbstractFunctional) = f.vals
 
-"Appends a value to the functional"
+"Appends a value to the functional."
 append_value!(f::AbstractFunctional, val::Real) = append!(values(f), val)
 
-"Returns the functional expression "
+"Returns the functional expression."
 expression(f::AbstractFunctional) = f.expression
 
-"Checks if the optimization process is done"
+"Checks if the optimization process is done."
 optim_done(f::AbstractFunctional) = f.optim_done
 
-"Returns the functional maximum value explored so far"
+"Returns the functional maximum value explored so far."
 Base.maximum(f::AbstractFunctional) = maximum(values(f))
 
-"Returns the functional minimum value explored so far"
+"Returns the functional minimum value explored so far."
 Base.minimum(f::AbstractFunctional) = minimum(values(f))
 
-"Returns the trial value for each parameter"
+"Returns the trial value for each parameter."
 trials(f::AbstractFunctional) = f.trials
 
-"Returns the trial value for each parameter"
+"Returns the trial value for each parameter."
 parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
 
-"Returns the parameters explored region"
+"Returns the parameters explored region."
 search_region(f::AbstractFunctional) = f.search_region
 
-"Returns the parameters is being explored"
-function feseble_region(::AbstractFunctional) end
+"Returns the feasible region given the functional parameters."
+function feasible_region(::AbstractFunctional) end
 
-"Sets the region of interest where the functional is evaluated"
+"Sets the region of interest where the functional is evaluated."
 function set_search_region(::AbstractFunctional, args...; kwargs...) end
 
-"Evaluates the functional for a given sequence of arguments "
+"Evaluates the functional for a given sequence of arguments."
 function evaluate(::AbstractFunctional, args...) end
 
 
-"Returns the functional maximum value"
+#################################
+# Generic functions to overlead #
+##################################
 
-""" Optical Flow mean square functional.
-### Fields:
 
-- `vals`          -- history of value/s
-- `trials`        -- trailed parameter values
-- `search_region` -- region where the parameters are explored
-- `optim_done`    -- boolean optimization status
-- `gradient`      -- actual gradient value
-- `hessian`       -- actual hessian matrix value
-- `expression`    -- mathematical expresion
+""" Solves the inverse problem.
 
+### Input
+- `invp`    -- inverse problem
+- `isolver` -- inverse solver algorithm
+
+### Output
+A solution structure (`InverseProblemSolution`) that holds the results.
 """
-Base.@kwdef struct MSDOpticalFlow{T,P<:AbstractParameter,GT,HT} <:AbstractFunctional
-    vals::Vector{T} = Vector{Float64}(undef, 0)
-    trials::Dict{P,Vector{T}} = Dict{AbstractParameter,Vector{Float64}}()
-    search_region::Dict{P,Tuple{T,T}} = Dict{AbstractParameter,Tuple{Float64,Float64}}()
-    optim_done::ScalarWrapper{Bool} = ScalarWrapper(false)
-    gradient::GT = Vector{Float64}(undef, 0)
-    hessian::HT = Matrix{Float64}(undef, (0,0))
-    expression::Expr = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
+function solve(
+    invp::IP,
+    isolver::ISOL,
+    args...;
+    kwargs...,
+) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
+
+    _initialize!(invp, isolver, args...; kwargs...)
+
+    return _solve(invp, isolver, args...; kwargs...)
 end
 
-"Constructor with a search region."
-function MSDOpticalFlow(
-    search_region::Dict{P,Tuple{T,T}},
-    vals::Vector{T} = Vector{Float64}(undef, 0),
-    optim_done::ScalarWrapper{Bool} = ScalarWrapper(false),
-    gradient::GT = Vector{Float64}(undef, 0),
-    hessian::HT = Matrix{Float64}(undef, (0,0)),
-    ) where {T<:Real,P<:AbstractParameter, GT,HT}
+"Internal function that solves the inverse problem"
+function _solve(invp, isolver, args...; kwargs...) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
 
-    expression = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
-    # create an empty trials dict with search_region input
-    trials = Dict{P,Vector{T}}()
-    for key in keys(search_region)
-        trials[key] = Vector{T}(undef, 0)
-    end
+    # to solve an inverse problem consits of optimizing a functional
+    f = functional(invp)
 
-    return MSDOpticalFlow(
-        vals, trials, search_region, optim_done, gradient, hessian, expression
-        )
+    optimize!(f, isolver, args...; kwargs...)
+
+    return f
 end
-
-"Computes the functional value."
-function evaluate!(
-    oflow::MSDOpticalFlow,
-    img_data::ID,
-    fproblem::FP,
-    fsolver::FSOL,
-    candidate_params::Dict{P,T},
-    ) where {P<:AbstractParameter, T<:Real, ID<:AbstractDataMeasured, FP<:AbstractForwardProblem, FSOL<:AbstractForwardProblemSolver}
-
-
-    # Extract data measured info
-    img_gird = grid(img_data)
-    img_ref = reference_img(img_data)
-    img_defs = deformed_imgs(img_data)
-    roi_coords = roi_points(img_data)
-    spacing = _roi_int_data(img_data)
-    t = time_vec(img_data)
-
-    # Integrate the functional for each time
-    int_ref_roi = img_ref(roi_coords)
-
-    candidate_params ∈ search_region(osf)
-
-    # roi displacements and deformed positions
-    fsol = solve(fproblem, fsolver, candidate_params, t)
-
-    f_value = .0
-    for (indexₜ,tᵢ) in enumerate(t[2:end])
-
-        # deformed image at time tᵢ
-        img_def_t = img_defs[indexₜ]
-
-        # deformed xₒ + u(xₒ)
-        u_roi = fsol(roi_coords, tᵢ)
-        x_def = roi_coords .+ u_roi
-
-        # deformed intesnities
-        int_def_roi = img_def_t(x_def)
-
-        # intensity values
-        f_value += reduce(+,(int_def_roi .- img_def_t).^2)
-    end
-    f_val = f_value * prod(spacing) * delta_t(img_data)
-
-    append_value!(oflow, f_val)
-    append_trial!(oflow, candidate_params)
-    return nothing
-end
-
-
-invp = InvProblem(fproblem, data_measured, msf = OpticalFLow(), ROI)
-
-function solve(invp, alg)
-    optimize!(invp.msf, alg_optim = alg, args...; kwargs...)
-    return minimu(d)
-end
-
-solve(invp, ::BruteForce)
-
-
-
-#=
-indmin(vals):: #INDICE DEL MINIMIO DE VALS
-
-indmin(vals):: #INDICE DEL MINIMIO DE VALS
-
-admissible_ranges(::AbstractFunctional)
-
-update!()
-
-
-#
-
-
-msf(vec_params) = _evaluate(msf, vec_params)
-
-alg = BruteForce(params)
-
-function solve(invp, alg)
-    optimize!(invp.msf, alg_optim = alg, args...; kwargs...)
-    return minimu(d)
-end
-
-search_region(invp)
-=#
-
 
 end
