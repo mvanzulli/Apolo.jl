@@ -5,17 +5,12 @@
 Module defining image properties and features.
 """
 module InverseProblem
-
-import ..Materials: parameters
-import ..Images: roi
-
 using ..Materials: AbstractParameter
-using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
-using ..Images: AbstractDataMeasured, AbstractImage
-using ..Utils: ScalarWrapper
-# using Dictionaries: Dictionary
+using ..ForwardProblem: AbstractForwardProblem
+using ..Images: AbstractDataMeasured
 
-export append_value!, data_measured, expression, optim_done, trials, feasible_region, fproblem, functional,  parameters, search_region,set_search_region
+export AbstractInverseProblem, MaterialIdentificationProblem
+export append_value!, data_measured, expression, evaluate!, optim_done, trials, feasible_region, fproblem, functional, parameters, search_region, set_search_region
 
 """ Abstract supertype that defines the inverse problem formulation.
 
@@ -49,13 +44,18 @@ The following methods are provided by the interface:
 - `parameter(invp)` -- returns the method parameters.
 
 """
+
 abstract type AbstractInverseProblemSolver end
 
 "Returns the inverse problem solver tolerances."
-tolerance(isolver::AbstractInverseProblemSolver) = isolver.tol
+function is_done(isolver::AbstractInverseProblemSolver)::Bool end
 
-"Returns the inverse problem parameters."
-parameter(isolver::AbstractInverseProblemSolver) = isolver.params
+"Returns the parameters explored region."
+search_region(isolver::AbstractInverseProblemSolver) = isolver.search_region
+
+"Sets the region of interest where the functional is evaluated."
+function set_search_region!(isolver::AbstractInverseProblemSolver, args...; kwargs...) end
+
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
@@ -73,7 +73,7 @@ The following methods are provided by the interface:
 - `variables(f)`        -- returns the variables which this functional depends.
 - `gradient(f, pname)`  -- returns the gradient of the functional respect to the parameter pname.
 - `set_roi(f, roi)`     -- sets the region of interest.
-- `evaluate(f,args)`    -- returns the functional value.
+- `evaluate!(f,args)`    -- returns the functional value.
 """
 abstract type AbstractFunctional end
 
@@ -81,10 +81,25 @@ abstract type AbstractFunctional end
 Base.values(f::AbstractFunctional) = f.vals
 
 "Appends a value to the functional."
-append_value!(f::AbstractFunctional, val::Real) = append!(values(f), val)
+append_value!(f::AbstractFunctional, val::Real) = push!(values(f), val)
+
+"Appends a value to the functional."
+function append_trial!(f::AbstractFunctional, trial::Dict{AbstractParameter,T}) where {T}
+
+    current_trials = trials(f)
+
+    current_trials[]
+
+end
 
 "Returns the functional expression."
 expression(f::AbstractFunctional) = f.expression
+
+"Returns the gradient of the functional."
+gradient(f::AbstractFunctional) = f.grad
+
+"Returns the hessian matrix of the functional."
+hessian(f::AbstractFunctional) = f.hessian
 
 "Checks if the optimization process is done."
 optim_done(f::AbstractFunctional) = f.optim_done
@@ -101,17 +116,29 @@ trials(f::AbstractFunctional) = f.trials
 "Returns the trial value for each parameter."
 parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
 
-"Returns the parameters explored region."
-search_region(f::AbstractFunctional) = f.search_region
-
 "Returns the feasible region given the functional parameters."
 function feasible_region(::AbstractFunctional) end
 
-"Sets the region of interest where the functional is evaluated."
-function set_search_region(::AbstractFunctional, args...; kwargs...) end
-
 "Evaluates the functional for a given sequence of arguments."
-function evaluate(::AbstractFunctional, args...) end
+function evaluate!(::AbstractFunctional, args...) end
+
+##############################
+# Functional implementations #
+##############################
+
+include("../ISolvers/optical_flow.jl")
+
+
+
+##################################
+# Inverse problem implementation #
+##################################
+struct MaterialIdentificationProblem{FP<:AbstractForwardProblem,DM<:AbstractDataMeasured,F<:AbstractFunctional,R} <: AbstractInverseProblem
+    fproblem::FP
+    datam::DM
+    func::F
+    roi::R
+end
 
 
 #################################
@@ -132,7 +159,7 @@ function solve(
     invp::IP,
     isolver::ISOL,
     args...;
-    kwargs...,
+    kwargs...
 ) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
 
     _initialize!(invp, isolver, args...; kwargs...)
@@ -144,7 +171,7 @@ end
 function _solve(invp, isolver, args...; kwargs...) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
 
     # to solve an inverse problem consits of optimizing a functional
-    f = functional(invp)
+    f = functional(invp) # returns the enclosed function
 
     optimize!(f, isolver, args...; kwargs...)
 
