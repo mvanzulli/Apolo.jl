@@ -162,7 +162,7 @@ end
 "Loads a VTK sequence of images"
 function load_vtk_sequence_imgs(folder_path::String)
 
-    # Extract.vti list
+    # Extract.vti or .vtk list
     files = readdir(folder_path)
     vtkfiles = sort(files[endswith.(files, r".vti|vtk")], lt = natural)
     vtkfiles = joinpath.(folder_path, vtkfiles)

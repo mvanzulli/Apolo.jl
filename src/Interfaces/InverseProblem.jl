@@ -119,7 +119,7 @@ function MSDOpticalFlow(
 end
 
 "Computes the functional value."
-function evaluate(
+function evaluate!(
     oflow::MSDOpticalFlow,
     img_data::ID,
     fproblem::FP,
@@ -138,16 +138,20 @@ function evaluate(
 
     # Integrate the functional for each time
     int_ref_roi = img_ref(roi_coords)
-    f_value = .0
 
-    for (indexₜ,tᵢ) in enumerate(t)
+    candidate_params ∈ search_region(osf)
+
+    # roi displacements and deformed positions
+    fsol = solve(fproblem, fsolver, candidate_params, t)
+
+    f_value = .0
+    for (indexₜ,tᵢ) in enumerate(t[2:end])
 
         # deformed image at time tᵢ
         img_def_t = img_defs[indexₜ]
 
-        # roi displacements and deformed positions
-        fsol = solve(fproblem, fsolver, candidate_params, tᵢ)
-        u_roi = fsol(roi_coords)
+        # deformed xₒ + u(xₒ)
+        u_roi = fsol(roi_coords, tᵢ)
         x_def = roi_coords .+ u_roi
 
         # deformed intesnities
@@ -156,9 +160,22 @@ function evaluate(
         # intensity values
         f_value += reduce(+,(int_def_roi .- img_def_t).^2)
     end
+    f_val = f_value * prod(spacing) * delta_t(img_data)
 
-    return f_value * prod(spacing)
+    append_value!(oflow, f_val)
+    append_trial!(oflow, candidate_params)
+    return nothing
 end
+
+
+invp = InvProblem(fproblem, data_measured, msf = OpticalFLow(), ROI)
+
+function solve(invp, alg)
+    optimize!(invp.msf, alg_optim = alg, args...; kwargs...)
+    return minimu(d)
+end
+
+solve(invp, ::BruteForce)
 
 
 
@@ -174,7 +191,6 @@ update!()
 
 #
 
-invp = InvProblem(fproblem, data_measured, msf = OpticalFLow(), ROI)
 
 msf(vec_params) = _evaluate(msf, vec_params)
 

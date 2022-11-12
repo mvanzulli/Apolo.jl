@@ -15,14 +15,15 @@ export reference_img, deformed_imgs, roi_nodes, roi_nodes_coords
 - `roi`          -- region of interest
 - `grid`         -- region of interest
 """
-struct ImageData{G<:AbstractStructuredGrid, Img<:AbstractImage, R} <:AbstractDataMeasured{Img}
-    vec_img::AbstractVector{Img}
+struct ImageData{G<:AbstractStructuredGrid, Img<:AbstractImage, R, T<:AbstractVector} <:AbstractDataMeasured{Img}
+    vec_img::Vector{Img}
     roi::R
     grid::G
-    mtime::AbstractRange
+    mtime::T
 end
 
-function ImageData(vec_img::AbstractVector{I}, roi::R, t::AbstractRange) where {R, I<:AbstractImage}
+""
+function ImageData(vec_img::Vector{I}, roi::R, t) where {R, I<:AbstractImage}
 
     fgrid = grid(vec_img[1])
     addnodeset!(grid(fgrid), "roi", roi)

@@ -73,7 +73,7 @@ topbot_ΓD = DirichletBC(dof_topbot, vals_topbot, num_dof_topbot, label_topbot);
 # region
 region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
 # load factors
-pₓ = 200; # force
+pₓ = 2; # force
 tensionΓN(t) = pₓ*t
 # load direction
 dir_tensionΓN = [1, 0] # x direction
@@ -92,7 +92,7 @@ bcs = Dict{AbstractBoundaryCondition,Function}(
 # Define Materials
 # ------------------------------
 # reference parameters
-Eᵣ = 2.0e3
+Eᵣ = 2.0
 νᵣ = 0.4
 # range where E lives
 Eₘᵢₙ = 0.5 * Eᵣ
@@ -139,26 +139,36 @@ tdir = "./examples/uniaxial_extension/imgs/"
 write_vtk_fsol(gold_solution, tdir, tname )
 # Analytic gold solution considering (Eᵣ, νᵣ)
 # -----------------------------------
-C(t) = tensionΓN(t) * (1 - value(svk[:ν]) - 2value(svk[:ν])^2 ) / (1 - value(svk[:ν]) )
+C(t) = tensionΓN(t) * (1 - νᵣ - 2νᵣ^2 ) / (1 - νᵣ)
 factor = 5.478260869565273e-5 / 4.666666666666666e-5
 Cp(t) = C(t) * factor
-uₗ(x,t) = Cp(t) / value(svk[:E]) * getindex.(x,1)
+uₗ(x,t) = Cp(t) / Eᵣ * getindex.(x,1)
 uₗ(x_points,1.0)
 # --------------------------
 # Generate synthetic images
 # --------------------------
 # intesnsity function
 ω = 100
-intensity_func(x,y,t) = sin(ω * value(svk[:E]) / (Cp(t) + value(svk[:E])) * x)
-# intensity_func(x,y,t) =  uₗ(x,t)
+# intensity_func(x,y,t) = sin((ω * Eᵣ) / (Cp(t) + Eᵣ) * x)
+intensity_func(x,y,t) = Eᵣ / (Cp(t) + Eᵣ) * x / Lᵢₛ
 # roi zone
 start_roi = (Lᵢₛ, Lᵢₛ) ./ 4
 finish_roi = (Lᵢₛ, Lᵢₛ) .* (3/4)
-npix_roi = (128,128)
-coords = [LinRange.(start_roi, finish_roi, npix_roi)...]
-time = LinRange(0.0, 1.0, 2)
-vars = [coords..., time]
-roi_zone(x,y) = all(@. start_roi ≤ (x,y)  ≤  finish_roi)
+length_roi = finish_roi .- start_roi
+npix_roi = (4, 2)
+spacing_roi = length_roi ./ npix_roi
+
+coords = [LinRange.(start_roi .+ spacing_roi./2 , finish_roi .- spacing_roi./2, npix_roi)...]
+mtime = LinRange(0.0, 1.0, 2)
+vars = [coords..., mtime]
+roi_func(x) = all(@. start_roi ≤ (x[1],x[2])  ≤  finish_roi)
+# check optical flow hypothesis
+p = (rand(start_roi[1]:Lⱼₛ/20:finish_roi[1]),rand(start_roi[2]:Lⱼₛ/20:finish_roi[2]))
+u_p = (uₗ(p[1],1), 0.)
+def_p = p .+ u_p
+@test intensity_func(p..., 0) ≈ intensity_func(def_p...,1) atol = 1e-6
+# intensity_func(x,y,t) =  uₗ(x,t)
+# plot image sequence
 tname = "uniaxial"
 tdir = "./examples/uniaxial_extension/imgs/"
 vtk_structured_write_sequence(vars, intensity_func, :intensity, tname, tdir)
@@ -166,4 +176,93 @@ vtk_structured_write_sequence(vars, intensity_func, :intensity, tname, tdir)
 # Inverse problem
 # --------------------------
 # read the data
+# --------------------------
 imgs = load_vtk_sequence_imgs(tdir)
+# gather all history of images information
+img_data = ImageData(imgs, roi_func, mtime )
+# extract reference and deformed Images
+img_ref = reference_img(img_data)
+imgs_def = deformed_imgs(img_data)
+# --------------------------
+# Tests problem
+# --------------------------
+
+# check optical flow hypothesis
+p = Tuple(rand.(coords))
+@test img_ref([p]) ≈ [intensity_func(p...,0)] rtol = 1e-3
+@test imgs_def[1]([p]) ≈ [intensity_func(p...,1)] rtol = 1e-3
+
+# get roi coordinates, intensity and displacemets
+# --------------------------
+# cooridnates
+nodes_roi = roi_nodes(img_data)
+roi_vec_coords = roi_nodes_coords(img_data)
+roi_vec_coords_x = getindex.(roi_vec_coords, 1)
+
+# get dipslacements of roi_coordinates
+disp_roi = gold_solution(roi_vec_coords)
+disp_roi_numeric_x = getindex.(disp_roi,1)
+# compare them with analytical solution
+disp_roi_analytic_x = uₗ(getindex.(roi_vec_coords,1), 1)
+@test disp_roi_analytic_x ≈ disp_roi_numeric_x rtol = 1e-5
+
+# test reference intensity values
+# --------------------------
+int_ref_roi_analytic = similar(roi_vec_coords_x)
+# repalce values outside the roi
+for i in eachindex(int_ref_roi_analytic)
+    int_ref_roi_analytic[i] = intensity_func(roi_vec_coords_x[i], .5, 0)
+end
+# intensity array numeric
+int_ref_roi_numeric = img_ref(roi_vec_coords)
+@test int_ref_roi_analytic ≈ int_ref_roi_numeric rtol = 1e-4
+
+# test deformed coordinates
+#-------------------------
+# compute deformed coordinates as a vector of tuples
+def_roi_numeric = similar(roi_vec_coords)
+for i in 1:length(disp_roi)
+    def_roi_numeric[i] = Tuple(disp_roi[i]) .+ roi_vec_coords[i]
+end
+def_roi_numeric_x = getindex.(def_roi_numeric,1)
+def_roi_analytic_x = roi_vec_coords_x + disp_roi_analytic_x
+@test def_roi_numeric_x ≈ def_roi_analytic_x rtol = 1e-4
+
+# test deformed intensity values
+# --------------------------
+# compute the index of points that are outside the roi
+isinroi = Vector{Bool}(undef, length(def_roi_numeric_x))
+for i in eachindex(isinroi)
+    isinroi[i] = roi_func([def_roi_numeric_x[i], .5])
+end
+not_in_roi_idx = .!isinroi
+
+
+int_def_roi_analytic = similar(int_ref_roi_analytic)
+for i in eachindex(int_def_roi_analytic)
+    def_i = def_roi_analytic_x[i]
+    if isinroi[i]
+        int_def_roi_analytic[i] = intensity_func(def_roi_analytic_x[i], .5, 1)
+    else
+        int_def_roi_analytic[i] = 0.0 # if is otside the roi add 0.0
+    end
+end
+
+int_def_roi_numeric = imgs_def[1](def_roi_numeric)
+@test int_def_roi_numeric ≈ int_def_roi_analytic rtol = 1e-2
+
+
+msf_analytic =  sum((int_def_roi_analytic - int_ref_roi_analytic).^2)
+not_in_roi_error_analytic = sum(int_ref_roi_analytic[not_in_roi_idx].^2)
+msf_numeric =  sum((int_def_roi_numeric - int_ref_roi_numeric).^2)
+not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi_idx].^2)
+
+
+@test msf_numeric ≈ msf_analytic rtol= 1e-5
+@test not_in_roi_error_analytic ≈ not_in_roi_error_numeric rtol= 1e-4
+@test msf_numeric ≈ not_in_roi_error_numeric  rtol= 1e-4
+
+# repalce values outside the roi
+
+println("msf_analytic is $msf_analytic")
+println("is_in_ones is $(sum(isinroi))")
