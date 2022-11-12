@@ -6,7 +6,8 @@
 import Ferrite.DofHandler
 
 using Apolo.Materials: SVK, value, lamé_params
-using Apolo.ForwardProblem: ForwardProblemSolution, femdata, materials, dofsvals, label
+using Apolo.ForwardProblem: AbstractForwardProblemSolver, ForwardProblemSolution
+using Apolo.ForwardProblem: femdata, materials, dofsvals, label
 import Apolo.ForwardProblem: _solve, _initialize!
 
 using Reexport: @reexport
@@ -15,7 +16,7 @@ using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC
 using LinearAlgebra: Symmetric, norm
 
-export FerriteForwardSolver
+export FerriteForwardSolver, write_vtk_fsol
 
 
 """ Struct with the interpolations for stress and displacements.
@@ -103,7 +104,7 @@ _cell_values_σ(cfvals::CellFaceValsStressDisp) = cfvals.cell_val_σ
 - `nbasefuncs`   -- number of base functions
 
 "
-struct FerriteForwardSolver{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProbSolver
+struct FerriteForwardSolver{IGEO,QRS,IDOFS,DH,CFV,NB} <: AbstractForwardProblemSolver
     inter_geo::IGEO
     qrs::QRS
     inter_dofs::IDOFS
@@ -278,6 +279,7 @@ function create_dirichlet_bc(
     dh::DofHandler,
     bcs::Dict{AbstractBoundaryCondition,Function},
 )
+
     # create a constrain dof handler
     dbc = ConstraintHandler(dh)
 
@@ -468,7 +470,7 @@ function applyNeumannBC!(
                             # compute δu for the virtual work
                             δu = shape_value(facevalues_u, q_point, i)
                             # build tension vector
-                            time = 0
+                            time = 1.0
                             t = Vec{length(bc.dir)}(bc.vals_func(time) .* Tuple(bc.dir)) # eval at time t = 0                            # compute nodal virtual work
                             fe[i] += (δu ⋅ t) * dΓ
                         end
@@ -571,4 +573,21 @@ function _eval_displacements(
 
     return Ferrite.get_point_values(ph, dh, dofvals_sol, symbol(sol.dofs.u))
 
+end
+
+"Generates the vtk of a forward problem solution."
+function write_vtk_fsol(
+    sol::ForwardProblemSolution{S},
+    dir::String,
+    filename::String,
+) where {S<:FerriteForwardSolver,D,T}
+
+    # Create and eval the dof handler
+    dh = dofhandler(sol)
+
+    vtk_grid(dir * filename, dh) do vtkfile
+        vtk_point_data(vtkfile, dh, dofsvals(sol))
+    end
+
+    return "VTK generated at :$dir"
 end

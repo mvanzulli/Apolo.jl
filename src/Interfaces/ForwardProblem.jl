@@ -11,7 +11,7 @@ using ..Geometry: AbstractGrid, FerriteStructuredGrid
 using Ferrite: Grid, addfaceset!, addcellset!
 
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
-    AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProbSolver, ForwardProblemSolution
+    AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProblemSolver, ForwardProblemSolution
 
 export boundary_conditions, component, dofs, dofsvals, materials, values_function,
     solve, _solve, symbol, set_materials_params!
@@ -237,7 +237,7 @@ end
 function label_solid_grid!(
     fgrid::FerriteStructuredGrid,
     materials::Dict{AbstractMaterial,Function}
-) #  interfaces should not  be related?
+)
 
     # Extract ferrite type grid to use ferrite methods
     ferrite_grid = grid(fgrid)
@@ -249,7 +249,7 @@ function label_solid_grid!(
 end
 
 """ Abstract supertype for all Forward problem solvers. """
-abstract type AbstractForwardProbSolver end
+abstract type AbstractForwardProblemSolver end
 
 " Abstract supertype for all Forward problem solution. "
 abstract type AbstractForwardProblemSolution end
@@ -279,7 +279,7 @@ function _eval_displacements(
 - `dofs`-- fields solved
 - `valdofs`   -- value of solved fields
 """
-struct ForwardProblemSolution{FSOLVER<:AbstractForwardProbSolver,FEMData,M,D,VD,T<:Any} <: AbstractForwardProblemSolution
+struct ForwardProblemSolution{FSOLVER<:AbstractForwardProblemSolver,FEMData,M,D,VD,T<:Any} <: AbstractForwardProblemSolution
     solver::FSOLVER
     dat_fem::FEMData
     data_mats::M
@@ -308,12 +308,12 @@ boundary_conditions(fpsol::ForwardProblemSolution) = boundary_conditions(femdata
 
 """ Solve a generic problem. Each solver implemented should overlead this function."""
 function _solve(fp::FP, solv::SOL, args...; kwargs...) where
-{FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
+{FP<:AbstractForwardProblem,SOL<:AbstractForwardProblemSolver}
 end
 
 """ Solve a generic forward problem for a given parameters. """
 function solve(fp::FP, solv::SOL, params::Dict, args...; kwargs...) where
-{FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
+{FP<:AbstractForwardProblem,SOL<:AbstractForwardProblemSolver}
 
     set_materials_params!(fp::AbstractForwardProblem, params::Dict)
 
@@ -335,9 +335,9 @@ function solve(
     solv::SOL,
     args...;
     kwargs...
-) where {FP<:AbstractForwardProblem,SOL<:AbstractForwardProbSolver}
+) where {FP<:AbstractForwardProblem,SOL<:AbstractForwardProblemSolver}
 
-    _initialize!(fp, solv, args; kwargs)
+    _initialize!(fp, solv, args...; kwargs...)
 
     return _solve(fp, solv, args...; kwargs...)
 end

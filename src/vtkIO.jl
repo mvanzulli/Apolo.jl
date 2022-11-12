@@ -59,8 +59,8 @@ function vtk_structured_write_sequence(
         #create a variable colomn argumets
         colums_aux = Vector{Function}(undef, D-1)
         fill!(colums_aux,:)
+        #create the array
         slice_int_array = view(fieldarray, colums_aux...,iseq)
-
         vtk_structured_write(coords, slice_int_array, fieldname, filename_slice, filedir)
 
     end
@@ -162,7 +162,7 @@ end
 "Loads a VTK sequence of images"
 function load_vtk_sequence_imgs(folder_path::String)
 
-    # Extract.vti list
+    # Extract.vti or .vtk list
     files = readdir(folder_path)
     vtkfiles = sort(files[endswith.(files, r".vti|vtk")], lt = natural)
     vtkfiles = joinpath.(folder_path, vtkfiles)

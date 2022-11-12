@@ -22,9 +22,9 @@ export FerriteStructuredGrid, border_points, set_coordinates
 - `grid`     -- Ferrite.grid
 - `vertices` -- Vertices vector
 """
-struct FerriteStructuredGrid{D,E,T} <: AbstractStructuredGrid{D,T}
+struct FerriteStructuredGrid{D,E,T,V<:AbstractVector} <: AbstractStructuredGrid{D,T}
     grid::Grid{D,E,T}
-    vertices::AbstractVector
+    vertices::V
     num_elements::NTuple{D,<:Int}
 end
 

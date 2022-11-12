@@ -500,7 +500,7 @@ end
     # vtk_structured_write_sequence(vars, intensity_function, :intensity, tname, tdir)
 
     # Read the VTK sequence in a vector of images
-    imgs = load_vtk_sequence_imgs(joinpath(tdir))
+    imgs = load_vtk_sequence_imgs(tdir)
     rm(tdir, recursive = true, force = true)
 
     # Check that every image have the same grid on memory

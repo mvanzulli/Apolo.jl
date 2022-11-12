@@ -222,8 +222,8 @@ function _eval_intensity(
             intensity_p = ifunc([p], img)
             intensity_vec[num_point] = getindex(intensity_p)
         else
-            return missing
-            throw(Warning("p + offset = $p is not inside the img frame"))
+            @warn "p + offset = $p is not inside the img frame"
+            intensity_vec[num_point] =  0.0
         end
     end
 

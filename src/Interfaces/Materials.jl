@@ -93,7 +93,7 @@ end
 function set_feasible_region!(p::AbstractParameter, pₘᵢₙ::Number, pₘₐₓ::Number)
 
     has_feasible_region(p) && @warn(
-        "The feasilbe region of p is being modified ($(feasible_region(p)) => ($pₘᵢₙ, $pₘₐₓ))"
+        "The feasible region of p = $p is being modified ($(feasible_region(p)) => ($pₘᵢₙ, $pₘₐₓ))"
         )
     p.fregion = (pₘᵢₙ, pₘₐₓ)
 
