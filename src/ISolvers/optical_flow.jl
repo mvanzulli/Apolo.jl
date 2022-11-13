@@ -3,16 +3,13 @@
 # Main types for optical flow functional #
 ##########################################
 
-using ..InverseProblem: AbstractFunctional
 using ..Materials: AbstractParameter
+using ..InverseProblem: AbstractFunctional
+using ..InverseProblem: data_measured, fproblem, parameters, evaluate!
 using ..Images: AbstractDataMeasured, AbstractImage
-using ..Images: data_measured, fproblem, reference_img, deformed_imgs, roi_points, roi_int_data, roi
+using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, time_measured
 using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
 using ..Utils: ScalarWrapper
-
-
-import ..Materials: parameters, evaluate!
-import ..Images: roi
 
 export MSDOpticalFlow, optimize
 
@@ -88,20 +85,24 @@ function evaluate!(
     candidate_params::Dict{P,T},
 ) where {P<:AbstractParameter,T<:Number}
 
-
     # Extract data measured info
-    # TODO: _unwarp
-    img_gird = grid(img_data)
+    img_data = data_measured(invp)
     img_ref = reference_img(img_data)
+    roi_coords = roi_nodes_coords(img_data)
+    pix_dims = spacing(img_ref)
     img_defs = deformed_imgs(img_data)
-    roi_coords = roi_points(img_data)
-    spacing = _roi_int_data(img_data)
-    t = time_vec(img_data)
+    t = time_measured(img_data)
 
+    # Main.@infiltrate
+
+    # Extract forward problem
+    fprob = fproblem(invp)
+    # fsolv =
     # Integrate the functional for each time
     int_ref_roi = img_ref(roi_coords)
 
-    candidate_params ∈ search_region(osf)
+
+    candidate_params ∈ search_region(invp)
 
     # roi displacements and deformed positions
     fsol = solve(fproblem, fsolver, candidate_params, t)

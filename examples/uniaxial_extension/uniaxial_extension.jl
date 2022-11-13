@@ -127,10 +127,10 @@ fproblem = LinearElasticityProblem(data_fem, mat)
 # Ferrite Forward Problem Solver
 # ------------------------------
 # ferrite solver
-solver = FerriteForwardSolver(fproblem)
+fsolver = FerriteForwardSolver(fproblem)
 # gold solution considering (Eᵣ, νᵣ)
 # -----------------------------------
-gold_solution = solve(fproblem, solver);
+gold_solution = solve(fproblem, fsolver);
 # eavalutte the solution at a line
 x_points = [(x, Lⱼₛ / 2) for x in range(0, Lᵢₛ, length=30)]
 gold_solution(x_points)
@@ -156,7 +156,7 @@ intensity_func(x, y, t) = Eᵣ / (Cp(t) + Eᵣ) * x / Lᵢₛ
 start_roi = (Lᵢₛ, Lᵢₛ) ./ 4
 finish_roi = (Lᵢₛ, Lᵢₛ) .* (3 / 4)
 length_roi = finish_roi .- start_roi
-npix_roi = (128, 2)
+npix_roi = (4, 2)
 spacing_roi = length_roi ./ npix_roi
 
 coords = [LinRange.(start_roi .+ spacing_roi ./ 2, finish_roi .- spacing_roi ./ 2, npix_roi)...]
@@ -264,4 +264,13 @@ println("msf_analytic is $msf_analytic")
 # Using Inverse Problem Apolo Interface #
 ##########################################
 
-MSDOpticalFlow()
+msd = MSDOpticalFlow()
+
+new_trial = Dict(
+    E => Eₘᵢₙ,
+    ν => νₘᵢₙ,
+)
+
+invp = MaterialIdentificationProblem(fproblem, fsolver, img_data, msd, roi_func)
+
+evaluate!(msd, invp, new_trial)

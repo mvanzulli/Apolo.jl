@@ -5,12 +5,17 @@
 Module defining image properties and features.
 """
 module InverseProblem
+
 using ..Materials: AbstractParameter
 using ..ForwardProblem: AbstractForwardProblem
+using ..ForwardProblem: materials
 using ..Images: AbstractDataMeasured
 
+import ..Materials: feasible_region, parameters
+
 export AbstractInverseProblem, MaterialIdentificationProblem
-export append_value!, data_measured, expression, evaluate!, optim_done, trials, feasible_region, fproblem, functional, parameters, search_region, set_search_region
+export append_value!, data_measured, expression, evaluate!, optim_done, trials,
+    fproblem, functional, parameters, search_region, set_search_region
 
 """ Abstract supertype that defines the inverse problem formulation.
 
@@ -30,11 +35,49 @@ data_measured(invp::AbstractInverseProblem) = invp.datam
 "Returns the forward problem of the inverse `ivp`."
 fproblem(invp::AbstractInverseProblem) = invp.fproblem
 
+"Returns the forward problem of the inverse `ivp`."
+fsolver(invp::AbstractInverseProblem) = invp.fsolver
+
 "Returns the functional used to solve the inverse problem `ivp`"
 functional(invp::AbstractInverseProblem) = invp.func
 
 "Returns the region of interest ROI used to solve the inverse problem `ivp`"
 roi(invp::AbstractInverseProblem) = invp.roi
+
+"Returns the parameters explored region."
+search_region(invp::AbstractInverseProblem) = invp.search_region
+
+"Returns the feasible region of a forward problem"
+function feasible_region(fprob::AbstractForwardProblem)
+
+    mats = materials(fprob)
+
+    fregion = Dict{AbstractParameter,NTuple{2,<:Real}}()
+
+    for mat in keys(mats)
+        mat_params = parameters(mat)
+        for p in mat_params
+            fregion[p] = feasible_region(p)
+        end
+    end
+
+    return fregion
+
+end
+
+"Returns the feasible region given the functional parameters."
+feasible_region(invp::AbstractInverseProblem) = feasible_region(fproblem(invp))
+
+"Sets the region of interest where the functional is evaluated."
+function set_search_region!(
+    invp::AbstractInverseProblem,
+    search_region::Dict{<:AbstractParameter,NTuple{2,<:Real}},
+)
+
+    invp.search_region = search_region
+
+    return invp
+end
 
 """ Abstract supertype that defines the inverse problem solver.
 
@@ -49,13 +92,6 @@ abstract type AbstractInverseProblemSolver end
 
 "Returns the inverse problem solver tolerances."
 function is_done(isolver::AbstractInverseProblemSolver)::Bool end
-
-"Returns the parameters explored region."
-search_region(isolver::AbstractInverseProblemSolver) = isolver.search_region
-
-"Sets the region of interest where the functional is evaluated."
-function set_search_region!(isolver::AbstractInverseProblemSolver, args...; kwargs...) end
-
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
@@ -116,9 +152,6 @@ trials(f::AbstractFunctional) = f.trials
 "Returns the trial value for each parameter."
 parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
 
-"Returns the feasible region given the functional parameters."
-function feasible_region(::AbstractFunctional) end
-
 "Evaluates the functional for a given sequence of arguments."
 function evaluate!(::AbstractFunctional, args...) end
 
@@ -129,17 +162,33 @@ function evaluate!(::AbstractFunctional, args...) end
 include("../ISolvers/optical_flow.jl")
 
 
-
 ##################################
 # Inverse problem implementation #
 ##################################
-struct MaterialIdentificationProblem{FP<:AbstractForwardProblem,DM<:AbstractDataMeasured,F<:AbstractFunctional,R} <: AbstractInverseProblem
+struct MaterialIdentificationProblem{FP<:AbstractForwardProblem,FSOL<:AbstractForwardProblemSolver,DM<:AbstractDataMeasured,F<:AbstractFunctional,R} <: AbstractInverseProblem
     fproblem::FP
+    fsolver::FSOL
     datam::DM
     func::F
     roi::R
+    search_region::Dict{AbstractParameter,NTuple{2,<:Real}}
 end
 
+"Constructor without a search region add ass default the feasible region."
+function MaterialIdentificationProblem(
+    fproblem::AbstractForwardProblem,
+    fsolver::AbstractForwardProblemSolver,
+    datam::AbstractDataMeasured,
+    func::AbstractFunctional,
+    roi::Function,
+)
+
+    search_default_region = feasible_region(fproblem)
+
+    # Main.@infiltrate
+    MaterialIdentificationProblem(fproblem, fsolver, datam, func, roi, search_default_region)
+
+end
 
 #################################
 # Generic functions to overlead #
