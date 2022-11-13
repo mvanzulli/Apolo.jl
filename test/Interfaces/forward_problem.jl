@@ -106,26 +106,21 @@ using Statistics: mean
     Eₙ = 10e6
     νₙ = 0.7
     mat_to_set_params = svk
-    params_to_set_both = Dict(Symbol(label(mat_to_set_params)) => (:E => Eₙ, :ν => νₙ))
-    set_materials_params!(fproblem, params_to_set_both)
+    params_to_set_both = Dict(E => Eₙ, ν => νₙ)
+
+    params = parameters(fproblem)
+    @test (E ∈ params)
+    @test has_parameter(fproblem, E)
+    @test (ν ∈ params)
+    @test has_parameter(fproblem, ν)
+    set_material_params!(fproblem, params_to_set_both)
     @test value(svk[:E]) == Eₙ
     @test value(svk[:ν]) == νₙ
     # --- Set back νᵣ value
     νᵣ = 0.4
-    params_to_set_ν = Dict(Symbol(label(mat_to_set_params)) => (:ν => νᵣ))
-    set_materials_params!(fproblem, params_to_set_ν)
+    params_to_set_ν = Dict(ν => νᵣ)
+    set_material_params!(fproblem, params_to_set_ν)
     @test value(svk[:ν]) == νᵣ
-    # --- Set multiple parameters for the same material
-    Eₙ₂ = 2e6
-    νₙ₂ = 0.6
-    multiple_params_to_set = Dict(
-        # Symbol(label(mat_to_set_params)) => (:E => Eᵣ, :ν => νᵣ),
-        Symbol(label(mat_to_set_params)) => (:E => Eₙ₂),
-        Symbol(label(mat_to_set_params)) => (:ν => νₙ₂)
-    )
-    set_materials_params!(fproblem, multiple_params_to_set)
-    @test value(svk[:E]) == Eₙ₂ skip = true   # Only one value is admited to the same key
-    @test value(svk[:ν]) == νₙ₂
 
 end
 
@@ -206,9 +201,7 @@ end
     region_svk(x) = 0 ≤ x[1] ≤ Lᵢₛ && 0 ≤ x[2] ≤ Lⱼₛ
     mats = Dict{AbstractMaterial,Function}(svk => region_svk)
     # parameters to be set
-    params_to_set = Dict(
-        Symbol(label(svk)) => (:E => Eᵣ, :ν => νᵣ),
-    )
+    params_to_set = Dict(E => Eᵣ, ν => νᵣ)
 
     # --- Forward problem formulation and grid labeled with a material ---
     fproblem = LinearElasticityProblem(data_fem_p, mats)
