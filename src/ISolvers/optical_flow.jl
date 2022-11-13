@@ -78,10 +78,10 @@ function optimize(
     sol = Optimization.solve(prob, alg=alg)
 end
 
-"Computes the functional value."
+"Computes the optical flow value for inverse problem with a LinearElasticityProblem forward problem."
 function evaluate!(
     oflow::MSDOpticalFlow,
-    invp::AbstractInverseProblem,
+    invp::MaterialIdentificationProblem{FP<:LinearElasticityProblem},
     candidate_params::Dict{P,T},
 ) where {P<:AbstractParameter,T<:Number}
 
@@ -95,13 +95,12 @@ function evaluate!(
 
     # Main.@infiltrate
 
-    # Extract and solve forward problem
+    # Extract and solve forward problem (considering load factor = 1)
     fproblem = forward_problem(invp)
     fsolver = forward_solver(invp)
     fsolution = solve(fproblem, fsolver, candidate_params)
 
-
-    # Integrate the functional for each time
+    # Reference intensity
     int_ref_roi = img_ref(roi_coords)
 
     candidate_params ∈ search_region(invp)
