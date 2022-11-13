@@ -15,7 +15,7 @@ import ..Materials: feasible_region, parameters
 
 export AbstractInverseProblem, MaterialIdentificationProblem
 export append_value!, data_measured, expression, evaluate!, optim_done, trials,
-    fproblem, functional, parameters, search_region, set_search_region
+    forward_problem, forward_solver, functional, parameters, search_region, set_search_region
 
 """ Abstract supertype that defines the inverse problem formulation.
 
@@ -33,10 +33,10 @@ abstract type AbstractInverseProblem end
 data_measured(invp::AbstractInverseProblem) = invp.datam
 
 "Returns the forward problem of the inverse `ivp`."
-fproblem(invp::AbstractInverseProblem) = invp.fproblem
+forward_problem(invp::AbstractInverseProblem) = invp.fproblem
 
 "Returns the forward problem of the inverse `ivp`."
-fsolver(invp::AbstractInverseProblem) = invp.fsolver
+forward_solver(invp::AbstractInverseProblem) = invp.fsolver
 
 "Returns the functional used to solve the inverse problem `ivp`"
 functional(invp::AbstractInverseProblem) = invp.func

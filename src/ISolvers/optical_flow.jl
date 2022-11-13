@@ -5,7 +5,7 @@
 
 using ..Materials: AbstractParameter
 using ..InverseProblem: AbstractFunctional
-using ..InverseProblem: data_measured, fproblem, parameters, evaluate!
+using ..InverseProblem: data_measured, forward_problem, forward_solver, parameters, evaluate!
 using ..Images: AbstractDataMeasured, AbstractImage
 using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, time_measured
 using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
@@ -95,17 +95,18 @@ function evaluate!(
 
     # Main.@infiltrate
 
-    # Extract forward problem
-    fprob = fproblem(invp)
-    # fsolv =
+    # Extract and solve forward problem
+    fproblem = forward_problem(invp)
+    fsolver = forward_solver(invp)
+    fsolution = solve(fproblem, fsolver, candidate_params)
+
+
     # Integrate the functional for each time
     int_ref_roi = img_ref(roi_coords)
-
 
     candidate_params ∈ search_region(invp)
 
     # roi displacements and deformed positions
-    fsol = solve(fproblem, fsolver, candidate_params, t)
 
     f_value = 0.0
     for (indexₜ, tᵢ) in enumerate(t[2:end])

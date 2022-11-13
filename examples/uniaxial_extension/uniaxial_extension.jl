@@ -122,15 +122,15 @@ data_fem = FEMData(fgrid, dofs, bcs);
 # ------------------------------
 # Define LinearElasticityProblem
 # ------------------------------
-fproblem = LinearElasticityProblem(data_fem, mat)
+lep_fproblem = LinearElasticityProblem(data_fem, mat)
 # ------------------------------
 # Ferrite Forward Problem Solver
 # ------------------------------
 # ferrite solver
-fsolver = FerriteForwardSolver(fproblem)
+ferrite_sovlver = FerriteForwardSolver(lep_fproblem)
 # gold solution considering (Eᵣ, νᵣ)
 # -----------------------------------
-gold_solution = solve(fproblem, fsolver);
+gold_solution = solve(lep_fproblem, ferrite_sovlver);
 # eavalutte the solution at a line
 x_points = [(x, Lⱼₛ / 2) for x in range(0, Lᵢₛ, length=30)]
 gold_solution(x_points)
@@ -271,6 +271,6 @@ new_trial = Dict(
     ν => νₘᵢₙ,
 )
 
-invp = MaterialIdentificationProblem(fproblem, fsolver, img_data, msd, roi_func)
+invp = MaterialIdentificationProblem(lep_fproblem, ferrite_sovlver, img_data, msd, roi_func)
 
 evaluate!(msd, invp, new_trial)
