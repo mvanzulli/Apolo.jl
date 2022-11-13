@@ -4,17 +4,18 @@
 module ForwardProblem
 
 import ..Geometry: dimension, grid
-import ..Materials: label, setval!
+import ..Materials: label, material, parameters
 
-using ..Materials: AbstractMaterial
+using ..Materials: AbstractMaterial, AbstractParameter
+using ..Materials: has_material, setval!
 using ..Geometry: AbstractGrid, FerriteStructuredGrid
 using Ferrite: Grid, addfaceset!, addcellset!
 
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
     AbstractForwardProblem, LinearElasticityProblem, AbstractForwardProblemSolver, ForwardProblemSolution
 
-export boundary_conditions, component, dofs, dofsvals, materials, values_function,
-    solve, _solve, symbol, set_materials_params!
+export boundary_conditions, component, dofs, dofsvals, has_parameter, materials, values_function,
+    solve, _solve, symbol, set_material_params!
 
 """ Abstract supertype that includes degrees of freedom  information.
 
@@ -146,48 +147,50 @@ The following methods are provided by the interface:
 """
 abstract type AbstractForwardProblem end
 
-" Extract materials data. "
-materials(fp::AbstractForwardProblem) = fp.materials
+"Extracts Forward Problem boundary conditions. "
+boundary_conditions(fp::AbstractForwardProblem) = boundary_conditions(femdata(fp))
 
-" Extract FEM model data. "
+"Extracts Forward Problem dofs. "
+dofs(fp::AbstractForwardProblem) = dofs(femdata(fp))
+
+"Extract FEM model data. "
 femdata(fp::AbstractForwardProblem) = fp.data
 
 "Extracts Forward Problem grid. "
 grid(fp::AbstractForwardProblem) = grid(femdata(fp))
 
-"Extracts Forward Problem dofs. "
-dofs(fp::AbstractForwardProblem) = dofs(femdata(fp))
+" Extract materials data. "
+materials(fp::AbstractForwardProblem) = fp.materials
 
-"Extracts Forward Problem boundary conditions. "
-boundary_conditions(fp::AbstractForwardProblem) = boundary_conditions(femdata(fp))
+"Returns the forward problem parameters."
+function parameters(fp::AbstractForwardProblem)
+    params = Vector{AbstractParameter}(undef, 0)
+    for mat in keys(materials(fp))
+        for p in parameters(mat)
+            push!(params, p)
+        end
+    end
+    return params
+end
+
+"Checks if the parameter belongs to forward problem materials."
+function has_parameter(fp::AbstractForwardProblem, param::AbstractParameter)
+
+    !has_material(param) && throw(ArgumentError("The param $param has no material defined"))
+    params = parameters(fp)
+
+    return param ∈ params
+
+end
 
 "Sets material values to a forward problem."
-function set_materials_params!(fp::AbstractForwardProblem, params_to_set::Dict)
-
-    # Extract all the forward problem materials
-    fp_materials = materials(fp)
-
-    # Iterate over each material and find into the list of params
-    for mat in keys(fp_materials)
-        # Find the material whose parameter is going to be modified
-        material_symbol = Symbol(label(mat))
-
-        # Find all the paremeters that going to be set
-        mat_params_to_set = params_to_set[material_symbol]
-
-        # iterate over all of different params and set them
-        if mat_params_to_set isa Pair # only one parameter to change
-
-            setval!(mat[Symbol(mat_params_to_set.first)], mat_params_to_set.second)
-
-        elseif mat_params_to_set isa Tuple
-
-            for p in mat_params_to_set
-                setval!(mat[Symbol(p.first)], p.second)
-            end
-
-        end
-
+function set_material_params!(fp::AbstractForwardProblem, params_to_set::Dict)
+    # Iterate over each material and check patamers to set belongs to at least one mat
+    for (param, pvalue) in params_to_set
+        !has_parameter(fp, param) && throw(
+            ArgumentError("The parameter $param is not in forward problem mats")
+        )
+        setval!(param, pvalue)
     end
 
 end
@@ -315,7 +318,7 @@ end
 function solve(fp::FP, solv::SOL, params::Dict, args...; kwargs...) where
 {FP<:AbstractForwardProblem,SOL<:AbstractForwardProblemSolver}
 
-    set_materials_params!(fp::AbstractForwardProblem, params::Dict)
+    set_material_params!(fp::AbstractForwardProblem, params::Dict)
 
     return solve(fp, solv, args...; kwargs...)
 end
