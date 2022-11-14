@@ -17,7 +17,6 @@ export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadB
 export boundary_conditions, component, dofs, dofsvals, has_parameter, materials, values_function,
     solve, _solve, symbol, set_material_params!
 
-
 ######################
 # Degrees of freedom #
 ######################
@@ -265,7 +264,6 @@ The following methods are provided by the interface:
 "
 abstract type AbstractForwardProblemSolution end
 
-
 "Returns the degrees of freedom of the forward problem solution `fpsol`."
 dofs(fsol::AbstractForwardProblemSolution) = dofs(femdata(fsol))
 
@@ -315,7 +313,6 @@ struct ForwardProblemSolution{FSOLVER<:AbstractForwardProblemSolver,FEMData,M,D,
     extra::Dict{Symbol,T} # Extra Dict to add specific solver structs
 end
 
-
 """ Solve a generic problem. Each solver implemented should overlead this function."""
 function _solve(fp::FP, solv::SOL, args...; kwargs...) where
 {FP<:AbstractForwardProblem,SOL<:AbstractForwardProblemSolver}
@@ -351,7 +348,6 @@ function solve(
 
     return _solve(fp, solv, args...; kwargs...)
 end
-
 
 ###################################################
 # Abstract Forward Problem Solver implementations #
