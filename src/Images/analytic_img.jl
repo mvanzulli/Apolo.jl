@@ -53,7 +53,7 @@ function _eval_intensity(
         intensity_function = intensity(a_img)
         intensity_function(p...)
     else
-        throw(ArgumentError("p + offset = $p is not inside the img frame"))
+        # @warn "p + offset = $p is not inside the img frame"
     end
 
     return intensity_p
@@ -76,7 +76,7 @@ function _eval_intensity(
         if p ∈ a_img
             intensity_vec[num_point] = intensity_function(p...)
         else
-            throw(Warning("p + offset = $p is not inside the img frame"))
+            # @warn "p + offset = $p is not inside the img frame"
             return missing
         end
     end

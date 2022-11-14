@@ -10,7 +10,7 @@ module Materials
 using AutoHashEquals: @auto_hash_equals
 
 
-export AbstractMaterial, ConstitutiveParameter, SVK
+export AbstractMaterial, AbstractParameter, ConstitutiveParameter, SVK
 export material, setmaterial!, has_material, label, value, setval!, feasible_region,
     has_feasible_region, set_feasible_region!, parameter_index, set!, setval!, model, parameters
 
@@ -81,7 +81,7 @@ function setval!(p::AbstractParameter, val::Number)
 
     val ∉ p && throw(ArgumentError(
         "The value $val is not inside the parameter range = $(feasible_region(p))"
-        ))
+    ))
 
     p.val = val
 
@@ -94,7 +94,7 @@ function set_feasible_region!(p::AbstractParameter, pₘᵢₙ::Number, pₘₐ�
 
     has_feasible_region(p) && @warn(
         "The feasible region of p = $p is being modified ($(feasible_region(p)) => ($pₘᵢₙ, $pₘₐₓ))"
-        )
+    )
     p.fregion = (pₘᵢₙ, pₘₐₓ)
 
     return p
