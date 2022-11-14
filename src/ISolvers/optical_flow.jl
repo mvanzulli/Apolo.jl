@@ -3,16 +3,13 @@
 # Main types for optical flow functional #
 ##########################################
 
-using ..InverseProblem: AbstractFunctional
 using ..Materials: AbstractParameter
 using ..Images: AbstractDataMeasured, AbstractImage
-using ..Images: data_measured, fproblem, reference_img, deformed_imgs, roi_points, roi_int_data, roi
-using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
+using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, time_measured
+using ..ForwardProblem: LinearElasticityProblem
+using ..InverseProblem: AbstractFunctional, MaterialIdentificationProblem
+using ..InverseProblem: data_measured, forward_problem, forward_solver, parameters, evaluate!
 using ..Utils: ScalarWrapper
-
-
-import ..Materials: parameters, evaluate!
-import ..Images: roi
 
 export MSDOpticalFlow, optimize
 
@@ -59,19 +56,14 @@ function MSDOpticalFlow(
     )
 end
 
-function optimize(
+function optimize!(
     ifunctional::AbstractFunctional,
     invp::AbstractInverseProblem;
-    alg=BFGS(),
-    search_region::Dict{AbstractParameter,Tuple{<:Number,<:Number}}=feasible_region(invp)
+    alg=BFGS()
 )
-    p = parameters(invp)# vector de parametros a optimizar de invp
-    collect(keys(search_region)) == p || throw(ArgumentError("Check parameters between mats and search region"))
-
-
     # closure over inverse problem
-    optf = x -> evaluate!(ifunctional, invp, Dict(pi => xi for (pi, xi) in zip(p, x)))
-    ofunc = OptimizationFunction(optf, Optimization.AutoForwardDiff())
+    f = x -> evaluate!(ifunctional, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(p, x)))
+    ofunc = OptimizationFunction(f, Optimization.AutoForwardDiff())
 
     lb = [search_region[pᵢ][1] for pᵢ in p]
     ub = [search_region[pᵢ][2] for pᵢ in p]
@@ -81,50 +73,64 @@ function optimize(
     sol = Optimization.solve(prob, alg=alg)
 end
 
-"Computes the functional value."
+"Computes the optical flow value for inverse problem with a LinearElasticityProblem forward problem."
 function evaluate!(
     oflow::MSDOpticalFlow,
-    invp::AbstractInverseProblem,
-    candidate_params::Dict{P,T},
-) where {P<:AbstractParameter,T<:Number}
-
+    invp::MaterialIdentificationProblem{<:LinearElasticityProblem},
+    candidate_params::Dict{<:AbstractParameter,<:Number},
+)
 
     # Extract data measured info
-    # TODO: _unwarp
-    img_gird = grid(img_data)
+    img_data = data_measured(invp)
     img_ref = reference_img(img_data)
+    roi_coords = roi_nodes_coords(img_data)
+    pix_dims = spacing(img_ref)
     img_defs = deformed_imgs(img_data)
-    roi_coords = roi_points(img_data)
-    spacing = _roi_int_data(img_data)
-    t = time_vec(img_data)
+    t = time_measured(img_data)
 
-    # Integrate the functional for each time
+    # Checks candidate parameters belong to search region
+    #=
+    sregion = search_region(invp)
+    for p in keys(candidate_params)
+        !(minimum(sregion[p]) ≤ candidate_params[p] ≤ maximum(sregion[p])) &&
+            throw(ArgumentError("Candidate params is outrange the search region defined"))
+    end
+    =#
+    # Extract and solve forward problem (considering load factor = 1)
+    fproblem = forward_problem(invp)
+    fsolver = forward_solver(invp)
+    fsol = solve(fproblem, fsolver, candidate_params)
+    u_roi_T = fsol(roi_coords)
+    # Reference intensity at ROI
     int_ref_roi = img_ref(roi_coords)
 
-    candidate_params ∈ search_region(osf)
 
-    # roi displacements and deformed positions
-    fsol = solve(fproblem, fsolver, candidate_params, t)
-
+    # Computes functional value
     f_value = 0.0
+    # time step and pixel integration area
+    dt = t[2] - t[1]
+    dΩ = prod(spacing(img_ref))
     for (indexₜ, tᵢ) in enumerate(t[2:end])
 
         # deformed image at time tᵢ
         img_def_t = img_defs[indexₜ]
 
-        # deformed xₒ + u(xₒ)
-        u_roi = fsol(roi_coords, tᵢ)
-        x_def = roi_coords .+ u_roi
+        # deformed positions ∀ p ∈ ROI (x = xₒ + u(xₒ))
+        u_roi = u_roi_T * tᵢ #/ T = 1s
+        x_def = [x_roi_p .+ Tuple(u_roi_p) for (x_roi_p, u_roi_p) in zip(roi_coords, u_roi)]
 
-        # deformed intesnities
+        # deformed intensities
         int_def_roi = img_def_t(x_def)
 
-        # intensity values
-        f_value += reduce(+, (int_def_roi .- img_def_t) .^ 2)
+        # intensity differences
+        f_value += reduce(+, (int_def_roi - int_ref_roi) .^ 2)
     end
-    f_val = f_value * prod(spacing) * delta_t(img_data)
+    f_val = f_value
+    # f_val = f_value * dΩ * dt
 
     append_value!(oflow, f_val)
     append_trial!(oflow, candidate_params)
+
     return f_val
+
 end

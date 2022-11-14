@@ -35,7 +35,7 @@ finish = (Lᵢₛ, Lⱼₛ);
 # grid dimension (x,y) = 2
 dimgrid = dimension(dofu)
 # define number and element types
-(nx, ny) = (2, 2)
+(nx, ny) = (256, 2)
 ElemType = Triangle
 # build rectangular grid
 fgrid = FerriteStructuredGrid(start, finish, (nx, ny), ElemType)
@@ -74,7 +74,7 @@ topbot_ΓD = DirichletBC(dof_topbot, vals_topbot, num_dof_topbot, label_topbot);
 # region
 region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
 # load factors
-pₓ = 2; # force
+pₓ = 0.3; # force
 tensionΓN(t) = pₓ * t
 # load direction
 dir_tensionΓN = [1, 0] # x direction
@@ -96,8 +96,8 @@ bcs = Dict{AbstractBoundaryCondition,Function}(
 Eᵣ = 2.0
 νᵣ = 0.4
 # range where E lives
-Eₘᵢₙ = 0.5 * Eᵣ
-Eₘₐₓ = 1.2 * Eᵣ
+Eₘᵢₙ = 0.5
+Eₘₐₓ = 3.5
 # range where ν lives
 νₘᵢₙ = 0.2
 νₘₐₓ = 0.5
@@ -122,15 +122,15 @@ data_fem = FEMData(fgrid, dofs, bcs);
 # ------------------------------
 # Define LinearElasticityProblem
 # ------------------------------
-fproblem = LinearElasticityProblem(data_fem, mat)
+lep_fproblem = LinearElasticityProblem(data_fem, mat)
 # ------------------------------
 # Ferrite Forward Problem Solver
 # ------------------------------
 # ferrite solver
-solver = FerriteForwardSolver(fproblem)
+ferrite_sovlver = FerriteForwardSolver(lep_fproblem)
 # gold solution considering (Eᵣ, νᵣ)
 # -----------------------------------
-gold_solution = solve(fproblem, solver);
+gold_solution = solve(lep_fproblem, ferrite_sovlver);
 # eavalutte the solution at a line
 x_points = [(x, Lⱼₛ / 2) for x in range(0, Lᵢₛ, length=30)]
 gold_solution(x_points)
@@ -156,7 +156,7 @@ intensity_func(x, y, t) = Eᵣ / (Cp(t) + Eᵣ) * x / Lᵢₛ
 start_roi = (Lᵢₛ, Lᵢₛ) ./ 4
 finish_roi = (Lᵢₛ, Lᵢₛ) .* (3 / 4)
 length_roi = finish_roi .- start_roi
-npix_roi = (128, 2)
+npix_roi = (4, 2)
 spacing_roi = length_roi ./ npix_roi
 
 coords = [LinRange.(start_roi .+ spacing_roi ./ 2, finish_roi .- spacing_roi ./ 2, npix_roi)...]
@@ -225,7 +225,7 @@ end
 
 def_roi_numeric_x = getindex.(def_roi_numeric, 1)
 def_roi_analytic_x = roi_vec_coords_x + disp_roi_analytic_x
-@test def_roi_numeric_x ≈ def_roi_analytic_x rtol = 1e-4
+@test def_roi_numeric_x ≈ def_roi_analytic_x atol = 1e-5
 
 # test deformed intensity values
 # --------------------------
@@ -235,7 +235,7 @@ int_def_roi_numeric = img_def(def_roi_numeric)
 
 # test deformed intensity values
 # --------------------------
-@test int_def_roi_numeric ≈ int_def_roi_analytic rtol = 1e-2
+@test int_def_roi_numeric ≈ int_def_roi_analytic rtol = 1e-1
 
 # test deformed intensity values
 # --------------------------
@@ -245,23 +245,119 @@ not_in_roi = findall(x -> !roi_func([x, 0.5]), def_roi_analytic_x)
 in_roi = findall(x -> roi_func([x, 0.5]), def_roi_analytic_x)
 
 not_in_roi_error_analytic = sum(int_ref_roi_analytic[not_in_roi] .^ 2)
-msf_analytic_reamain = sum((int_def_roi_analytic[in_roi] - int_ref_roi_analytic[in_roi]) .^ 2)
+msf_analytic_inroi = sum((int_def_roi_analytic[in_roi] - int_ref_roi_analytic[in_roi]) .^ 2)
 msf_numeric = sum((int_def_roi_numeric - int_ref_roi_numeric) .^ 2)
 not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi] .^ 2)
 
 
-@test msf_analytic_reamain ≈ 0 atol = 1e-8
-@test msf_numeric ≈ msf_analytic rtol = 1e-5
+@test msf_analytic_inroi ≈ 0 atol = 1e-8
+@test msf_numeric ≈ msf_analytic atol = 1e-2
 @test not_in_roi_error_analytic ≈ not_in_roi_error_numeric rtol = 1e-4
-@test msf_numeric ≈ not_in_roi_error_numeric rtol = 1e-4
+@test msf_numeric ≈ not_in_roi_error_numeric atol = 1e-2
 
 # replace values outside the roi
 
 println("msf_analytic is $msf_analytic")
 
-
 #########################################
 # Using Inverse Problem Apolo Interface #
 ##########################################
+msd = MSDOpticalFlow()
 
-MSDOpticalFlow()
+new_trial = Dict(
+    E => Eᵣ,
+)
+
+invp = MaterialIdentificationProblem(lep_fproblem, ferrite_sovlver, img_data, msd, roi_func)
+
+msf_numeric_apolo = evaluate!(msd, invp, new_trial)
+
+@test msf_numeric_apolo == msf_numeric
+
+##################################
+# Plot functional using brute force
+##############################
+# closure over inverse problem
+mat_params = [E]
+f = (x, p) -> evaluate!(msd, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(mat_params, x)))
+sregion = search_region(invp)
+Evec = range(E, 30)
+fvals = [f([Eᵢ], [rand(1)]) for Eᵢ in Evec]
+min_bf, argmin_bf = findmin(fvals)
+
+
+################
+# Optimization #
+################
+using Optimization, OptimizationBBO
+# ofunc = OptimizationFunction(f, Optimization.AutoForwardDiff())
+ofunc = OptimizationFunction(f)
+
+sregion = search_region(invp)
+lb = [Eₘᵢₙ]
+ub = [Eₘₐₓ]
+x0 = lb
+
+prob = OptimizationProblem(ofunc, x0, lb=lb, ub=ub)
+sol = Optimization.solve(
+    prob,
+    BBO_adaptive_de_rand_1_bin_radiuslimited(),
+    maxiters=100,
+    maxtime=60.0
+)
+Emin_optim = sol.u
+fmin_optim = sol.minimum
+
+###############
+# Plot results
+###############
+# Load plot pkgs
+using Plots, LaTeXStrings
+
+# load backend
+gr()
+theme(:dracula)
+plot_font = "Computer Modern"
+default(
+    fontfamily=plot_font,
+    linewidth=2,
+    framestyle=:box,
+    label=nothing,
+    grid=true,
+)
+colors = (bf=:green, optim=:orange)
+markers = (bf=:uptriangle, optim=:circle)
+lw = 4
+linestyles = (bf=:dash, optim=:solid)
+
+plot(Evec, log10.(fvals),
+    label="Brute-Force functional",
+    linecolor=colors.bf,
+    linewidth=lw,
+    linestyle=linestyles.bf,
+    markershape=markers.bf,
+    markercolor=colors.bf,
+)
+
+vline!([Eᵣ],
+    label="gold E",
+    linecolor=:gold)
+
+
+vline!([Evec[argmin_bf]],
+    label="min Brute force",
+    linecolor=:blue,
+)
+
+vline!([Emin_optim],
+    label="minim Optimizations.jl",
+    linecolor=colors.optim,
+    linewidth=lw,
+    linestyle=linestyles.optim,
+    markershape=markers.optim,
+    markercolor=colors.optim,
+)
+
+println("Emin_optim is $Emin_optim ")
+println("Emin bf is $(Evec[argmin_bf]) ")
+println("Eᵣ is $(Evec[argmin_bf]) ")
