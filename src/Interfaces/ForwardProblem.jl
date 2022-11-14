@@ -14,8 +14,8 @@ export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadB
     AbstractForwardProblem, AbstractForwardProblemSolver, AbstractForwardProblemSolution,
     ForwardProblemSolution
 
-export boundary_conditions, component, dofs, dofsvals, has_parameter, materials, values_function,
-    solve, _solve, symbol, set_material_params!
+export boundary_conditions, component, dofs, dofsvals, direction, has_parameter, materials,
+    values_function, solve, _solve, symbol, set_material_params!
 
 ######################
 # Degrees of freedom #
@@ -109,12 +109,16 @@ component(bc::DirichletBC) = bc.components
 """
 struct NeumannLoadBC <: AbstractBoundaryCondition
     vals_func::Function
-    dir::Any
+    dir::Vector
     label::Symbol
     function NeumannLoadBC(vals_func, dir, label)
         new(vals_func, dir, Symbol(label))
     end
 end
+
+" Return the function of values of a boundary condition `bc`. "
+direction(bc::NeumannLoadBC) = bc.dir
+
 
 ##############################
 # Finite Element Method data #
@@ -132,14 +136,15 @@ struct FEMData{G,D,BC}
     bcs::BC
 end
 
+"Returns the boundary conditions  of the finite element data `femdata`."
+boundary_conditions(femdata::FEMData) = femdata.bcs
+
 "Returns the grid of the finite element data `femdata`."
 grid(femdata::FEMData) = femdata.grid
 
 "Returns the degree of freedom of the finite element data `femdata`."
 dofs(femdata::FEMData) = femdata.dfs
 
-"Returns the boundary conditions  of the finite element data `femdata`."
-boundary_conditions(femdata::FEMData) = femdata.bcs
 
 """ Abstract supertype that defines the Forward problem formulation
 
@@ -147,7 +152,6 @@ The following methods are provided by the interface:
 
 - `femdata(fproblem)` -- return FEM data struct.
 - `materials(fproblem)`    -- return materials dict info.
-
 """
 
 ########################################
@@ -167,7 +171,6 @@ The following methods are provided by the interface:
 - `has_parameter(fproblem, p)`               -- returns `true` if the fproblem has the parameter `p`.
 - `materials(fproblem)`                      -- returns the forward problem materials with their respective region.
 - `set_material_params!(fproblem, p_to_set)` -- returns the forward problem materials with their respective region.
-
 """
 abstract type AbstractForwardProblem end
 
@@ -201,6 +204,16 @@ end
 "Extracts Forward Problem grid. "
 grid(fp::AbstractForwardProblem) = grid(femdata(fp))
 
+"Checks if the parameter belongs to forward problem materials."
+function has_parameter(fp::AbstractForwardProblem, param::AbstractParameter)
+
+    !has_material(param) && throw(ArgumentError("The param $param has no material defined"))
+    params = parameters(fp)
+
+    return param ∈ params
+
+end
+
 "Built-in function to initialize a `fproblem` forward problem.
     Label the grid named `grid` with boundary conditions `bcs` and materials `mats`."
 function _initialize!(grid::AbstractGrid, bcs::AbstractDict, mats::AbstractDict)
@@ -215,27 +228,22 @@ materials(fp::AbstractForwardProblem) = fp.materials
 
 "Returns the forward problem parameters."
 function parameters(fp::AbstractForwardProblem)
+
     params = Vector{AbstractParameter}(undef, 0)
+
     for mat in keys(materials(fp))
         for p in parameters(mat)
             push!(params, p)
         end
     end
+
     return params
-end
-
-"Checks if the parameter belongs to forward problem materials."
-function has_parameter(fp::AbstractForwardProblem, param::AbstractParameter)
-
-    !has_material(param) && throw(ArgumentError("The param $param has no material defined"))
-    params = parameters(fp)
-
-    return param ∈ params
 
 end
 
 "Sets material values to a forward problem."
 function set_material_params!(fp::AbstractForwardProblem, params_to_set::Dict)
+
     # Iterate over each material and check parameters to set belongs to at least one mat
     for (param, pvalue) in params_to_set
         !has_parameter(fp, param) && throw(
@@ -276,15 +284,17 @@ femdata(fsol::AbstractForwardProblemSolution) = fsol.dat_fem
 "Returns the grid of the forward problem solution `fsol`"
 grid(fsol::AbstractForwardProblemSolution) = grid(femdata(fsol))
 
-"Returns forward problem materials"
+"Returns forward problem materials of a forward problem solution `fsol`."
 materials(fsol::AbstractForwardProblemSolution) = fsol.data_mats
 
-" Abstract functor for a forward problem solution. "
+" Abstract functor for a forward problem solution `fsol``. "
 function (fsol::AbstractForwardProblemSolution)(
     vec_points::Vector{NTuple{D,T}},
     offset::NTuple{D,T}=Tuple(zeros(T, D))
 ) where {D,T}
+
     return _eval_displacements(fsol, vec_points, offset)
+
 end
 
 " Internal function to evaluate displacements of a forward problem solution. This function
@@ -325,6 +335,7 @@ function solve(fp::FP, solv::SOL, params::Dict, args...; kwargs...) where
     set_material_params!(fp::AbstractForwardProblem, params::Dict)
 
     return solve(fp, solv, args...; kwargs...)
+
 end
 
 
@@ -347,6 +358,7 @@ function solve(
     _initialize!(fp, solv, args...; kwargs...)
 
     return _solve(fp, solv, args...; kwargs...)
+
 end
 
 ###################################################
