@@ -8,7 +8,7 @@ module InverseProblem
 
 using ..Materials: AbstractParameter
 using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
-using ..ForwardProblem: materials
+using ..ForwardProblem: materials, feasible_region
 using ..Images: AbstractDataMeasured
 
 import ..Materials: feasible_region, parameters
@@ -47,24 +47,6 @@ roi(invp::AbstractInverseProblem) = invp.roi
 
 "Returns the parameters explored region."
 search_region(invp::AbstractInverseProblem) = invp.search_region
-
-"Returns the feasible region of a forward problem"
-function feasible_region(fprob::AbstractForwardProblem)
-
-    mats = materials(fprob)
-
-    fregion = Dict{AbstractParameter,NTuple{2,<:Real}}()
-
-    for mat in keys(mats)
-        mat_params = parameters(mat)
-        for p in mat_params
-            fregion[p] = feasible_region(p)
-        end
-    end
-
-    return fregion
-
-end
 
 "Returns the feasible region given the functional parameters."
 feasible_region(invp::AbstractInverseProblem) = feasible_region(fproblem(invp))
