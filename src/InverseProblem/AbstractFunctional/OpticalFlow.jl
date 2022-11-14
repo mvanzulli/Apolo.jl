@@ -7,9 +7,11 @@ using ..Materials: AbstractParameter
 using ..Images: AbstractDataMeasured, AbstractImage
 using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, time_measured
 using ..ForwardProblem: LinearElasticityProblem
-using ..InverseProblem: AbstractFunctional, MaterialIdentificationProblem
+using ..InverseProblem: AbstractFunctional
 using ..InverseProblem: data_measured, forward_problem, forward_solver, parameters, evaluate!
 using ..Utils: ScalarWrapper
+
+import ..InverseProblem: evaluate!
 
 export MSDOpticalFlow, optimize
 
