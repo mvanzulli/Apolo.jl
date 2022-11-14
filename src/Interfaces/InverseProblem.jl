@@ -7,14 +7,15 @@ Module defining image properties and features.
 module InverseProblem
 
 using ..Materials: AbstractParameter
-using ..ForwardProblem: AbstractForwardProblem
+using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
 using ..ForwardProblem: materials
 using ..Images: AbstractDataMeasured
 
 import ..Materials: feasible_region, parameters
+import ..ForwardProblem: solve, _solve
 
 export AbstractInverseProblem, MaterialIdentificationProblem
-export append_value!, data_measured, expression, evaluate!, optim_done, trials,
+export append_value!, append_trial!, data_measured, expression, evaluate!, optim_done, trials,
     forward_problem, forward_solver, functional, parameters, search_region, set_search_region
 
 """ Abstract supertype that defines the inverse problem formulation.
@@ -93,6 +94,7 @@ abstract type AbstractInverseProblemSolver end
 "Returns the inverse problem solver tolerances."
 function is_done(isolver::AbstractInverseProblemSolver)::Bool end
 
+
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
 The following methods are provided by the interface:
@@ -120,12 +122,20 @@ Base.values(f::AbstractFunctional) = f.vals
 append_value!(f::AbstractFunctional, val::Real) = push!(values(f), val)
 
 "Appends a value to the functional."
-function append_trial!(f::AbstractFunctional, trial::Dict{AbstractParameter,T}) where {T}
+function append_trial!(f::AbstractFunctional, trial::Dict{<:AbstractParameter,<:Number})
 
-    current_trials = trials(f)
+    functional_trials = trials(f)
+    functional_params_trials = keys(functional_trials)
 
-    current_trials[]
-
+    # Check the new parameter trial is defined as a functional trial and push the value
+    for (p_to_set, pvalue) in trial
+        if p_to_set ∉ functional_params_trials
+            functional_trials[p_to_set] = [pvalue]
+        else
+            push!(functional_trials[p_to_set], pvalue)
+        end
+    end
+    return trials(f)
 end
 
 "Returns the functional expression."
@@ -155,12 +165,6 @@ parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
 "Evaluates the functional for a given sequence of arguments."
 function evaluate!(::AbstractFunctional, args...) end
 
-##############################
-# Functional implementations #
-##############################
-
-include("../ISolvers/optical_flow.jl")
-
 
 ##################################
 # Inverse problem implementation #
@@ -185,10 +189,16 @@ function MaterialIdentificationProblem(
 
     search_default_region = feasible_region(fproblem)
 
-    # Main.@infiltrate
     MaterialIdentificationProblem(fproblem, fsolver, datam, func, roi, search_default_region)
 
 end
+
+##############################
+# Functional implementations #
+##############################
+
+include("../ISolvers/optical_flow.jl")
+
 
 #################################
 # Generic functions to overlead #
