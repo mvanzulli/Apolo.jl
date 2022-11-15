@@ -23,7 +23,7 @@ using Statistics: mean
     dofσ = Dof{1}(:p)
     dfs = StressDispDofs(σ=dofσ, u=dofu)
 
-    # --- Boundary Conditions ---
+    # --- Boundary conditions ---
     # -- Dirichlet boundary condition -- #
     # dof name
     dof_clampedΓD = dofu
@@ -134,15 +134,11 @@ end
 @testset "Ferrite solver end-to-end 2D case" begin
 
     # --- Degrees of freedom ---
-    symbol_u = :u
-    dim = 2
-    dofu = Dof{dim}(symbol_u)
-    # test getter functions
-    @test symbol(dofu) == symbol_u
-    @test dimension(dofu) == dim
-    dofu = Dof{2}(:u)
-    dofσ = Dof{1}(:p)
-    dfs = StressDispDofs(σ=dofσ, u=dofu)
+    dimgrid = dimu = 2;
+    dimσₓ = 1;
+    dofu = Dof{dimu}(:u)
+    dofσₓ = Dof{dimσₓ}(:σₓ)
+    dofs = StressDispDofs(σ=dofσₓ, u=dofu)
 
     # --- Boundary Conditions ---
     # --- Dirichlet

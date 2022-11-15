@@ -11,7 +11,7 @@ using Apolo.ForwardProblem: femdata, materials, dofsvals, label
 import Apolo.ForwardProblem: _solve, _initialize!
 
 using Reexport: @reexport
-@reexport using Ferrite
+using Ferrite
 using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC
 using LinearAlgebra: Symmetric, norm

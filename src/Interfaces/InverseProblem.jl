@@ -11,14 +11,13 @@ import ..Materials: feasible_region, parameters
 import ..ForwardProblem: solve, _solve
 
 export AbstractInverseProblem, AbstractFunctional
-export append_value!, append_trial!, data_measured, expression, evaluate!, optim_done, trials,
-    forward_problem, forward_solver, functional, parameters, search_region, set_search_region
+export append_value!, append_trial!, data_measured, expression, evaluate!, gradient, hessian,
+ optim_done, trials, forward_problem, forward_solver, functional, parameters, search_region, set_search_region
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
 The following methods are provided by the interface:
 
-- `values(f)`            -- returns the functional value.
 - `append_value!(f, val)` -- appends the value `val` to functional value.
 - `explored_region(f)`  -- returns the explored region so far.
 - `expression(f)`       -- returns the functional expression.
@@ -26,14 +25,12 @@ The following methods are provided by the interface:
 - `minimum(f)`          -- returns the minimum value/s explored so far.
 - `optim_params(f)`     -- returns the parameters where the functional is optimized.
 - `variables(f)`        -- returns the variables which this functional depends.
+- `values(f)`            -- returns the functional value.
 - `gradient(f, pname)`  -- returns the gradient of the functional respect to the parameter pname.
 - `set_roi(f, roi)`     -- sets the region of interest.
 - `evaluate!(f,args)`    -- returns the functional value.
 """
 abstract type AbstractFunctional end
-
-"Returns the functional `f` value/values."
-Base.values(f::AbstractFunctional) = f.vals
 
 "Appends a value to the functional `f`."
 append_value!(f::AbstractFunctional, val::Real) = push!(values(f), val)
@@ -60,11 +57,14 @@ end
 "Returns the functional `f` expression."
 expression(f::AbstractFunctional) = f.expression
 
+"Evaluates the functional `f` for a given sequence of arguments."
+function evaluate!(f::AbstractFunctional, args...) end
+
 "Returns the gradient of the functional `f`."
 gradient(f::AbstractFunctional) = f.grad
 
 "Returns the hessian matrix of the functional `f`."
-hessian(f::AbstractFunctional) = f.hessian
+hessian(f::AbstractFunctional) = f.hess
 
 "Returns the functional `f` maximum value explored so far."
 Base.maximum(f::AbstractFunctional) = maximum(values(f))
@@ -72,14 +72,17 @@ Base.maximum(f::AbstractFunctional) = maximum(values(f))
 "Returns the functional `f` minimum value explored so far."
 Base.minimum(f::AbstractFunctional) = minimum(values(f))
 
-"Returns the trials explored with the functional `f`."
-trials(f::AbstractFunctional) = f.trials
-
 "Returns the material parameter trials."
 parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
 
-"Evaluates the functional `f` for a given sequence of arguments."
-function evaluate!(f::AbstractFunctional, args...) end
+"Returns `true` if the optimization process has been done."
+optim_done(f::AbstractFunctional) = f.optim_done
+
+"Returns the trials explored with the functional `f`."
+trials(f::AbstractFunctional) = f.trials
+
+"Returns the functional `f` value/values."
+Base.values(f::AbstractFunctional) = f.vals
 
 """ Abstract supertype that defines the inverse problem formulation.
 
@@ -142,7 +145,7 @@ The following methods are provided by the interface:
 abstract type AbstractInverseProblemSolver end
 
 "Returns `true` if the inverse problem has compleated the optimization task."
-function is_done(::AbstractInverseProblemSolver)::Bool end
+function optim_done(::AbstractInverseProblemSolver)::Bool end
 
 #################################
 # Generic functions to overlead #
@@ -170,7 +173,9 @@ function solve(
 end
 
 "Internal function that solves the inverse problem"
-function _solve(invp, isolver, args...; kwargs...) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
+function _solve(invp::IP, isolver::ISOL,
+    args...;kwargs...,
+    ) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
 
     # to solve an inverse problem consits of optimizing a functional
     f = functional(invp) # returns the enclosed function

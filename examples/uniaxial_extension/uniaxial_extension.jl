@@ -82,7 +82,7 @@ dir_tensionΓN = [1, 0] # x direction
 label_tensionΓN = "traction"
 # create BC
 tension_ΓN = NeumannLoadBC(tensionΓN, dir_tensionΓN, label_tensionΓN)
-# Gether boundary conditions
+# Gather boundary conditions
 # ----------------------------
 bcs = Dict{AbstractBoundaryCondition,Function}(
     left_ΓD => region_left_ΓD,
