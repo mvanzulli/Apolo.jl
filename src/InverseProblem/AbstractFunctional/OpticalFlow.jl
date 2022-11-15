@@ -7,9 +7,11 @@ using ..Materials: AbstractParameter
 using ..Images: AbstractDataMeasured, AbstractImage
 using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, time_measured
 using ..ForwardProblem: LinearElasticityProblem
-using ..InverseProblem: AbstractFunctional, MaterialIdentificationProblem
+using ..InverseProblem: AbstractFunctional
 using ..InverseProblem: data_measured, forward_problem, forward_solver, parameters, evaluate!
 using ..Utils: ScalarWrapper
+
+import ..InverseProblem: evaluate!
 
 export MSDOpticalFlow, optimize
 
@@ -30,8 +32,9 @@ export MSDOpticalFlow, optimize
 Base.@kwdef struct MSDOpticalFlow{T,P<:AbstractParameter,GT,HT} <: AbstractFunctional
     vals::Vector{T} = Vector{Float64}(undef, 0)
     trials::Dict{P,Vector{T}} = Dict{AbstractParameter,Vector{Float64}}()
-    gradient::GT = Vector{Float64}(undef, 0)
-    hessian::HT = Matrix{Float64}(undef, (0, 0))
+    optim_done::ScalarWrapper{Bool} = ScalarWrapper{Bool}(false)
+    grad::GT = Vector{Float64}(undef, 0)
+    hess::HT = Matrix{Float64}(undef, (0, 0))
     expression::Expr = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
 end
 
@@ -52,7 +55,7 @@ function MSDOpticalFlow(
     end
 
     return MSDOpticalFlow(
-        vals, trials, search_region, optim_done, gradient, hessian, expression
+        vals, trials, optim_done, gradient, hessian, expression
     )
 end
 

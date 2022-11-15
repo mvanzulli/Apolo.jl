@@ -9,6 +9,7 @@ using Apolo.ForwardProblem: _eval_displacements, femdata
 
 using Test: @test, @testset
 using Statistics: mean
+using LinearAlgebra: norm
 
 @testset "ForwardProblem unitary tests" begin
 
@@ -23,7 +24,7 @@ using Statistics: mean
     dofσ = Dof{1}(:p)
     dfs = StressDispDofs(σ=dofσ, u=dofu)
 
-    # --- Boundary Conditions ---
+    # --- Boundary conditions ---
     # -- Dirichlet boundary condition -- #
     # dof name
     dof_clampedΓD = dofu
@@ -134,15 +135,11 @@ end
 @testset "Ferrite solver end-to-end 2D case" begin
 
     # --- Degrees of freedom ---
-    symbol_u = :u
-    dim = 2
-    dofu = Dof{dim}(symbol_u)
-    # test getter functions
-    @test symbol(dofu) == symbol_u
-    @test dimension(dofu) == dim
-    dofu = Dof{2}(:u)
-    dofσ = Dof{1}(:p)
-    dfs = StressDispDofs(σ=dofσ, u=dofu)
+    dimgrid = dimu = 2;
+    dimσₓ = 1;
+    dofu = Dof{dimu}(:u)
+    dofσₓ = Dof{dimσₓ}(:σₓ)
+    dfs = StressDispDofs(σ=dofσₓ, u=dofu)
 
     # --- Boundary Conditions ---
     # --- Dirichlet
@@ -151,7 +148,7 @@ end
     # region function
     region_clampedΓD = x -> norm(x[1]) ≈ 0.0
     # value dof function
-    vals_calmpedΓD(x, t) = zero(Vec{dim})
+    vals_calmpedΓD(x, t) = zero(Vec{dimu})
     # dofs to apply BC
     dofs_clampedΓD = [1, 2]  # x and y are fixed
     # label BC
@@ -235,7 +232,7 @@ end
     @test _eval_displacements(sol, y_points) == sol(y_points)
     uyᵥ_num = getindex.(sol(y_points), 2)
 
-    # test it with Prez Zerpa 2019, CMAME
+    # test it with Perez Zerpa, 2019, CMAME example 1
     JPZ_uy = 2.4e-3
     @test mean(uyᵥ_num) ≈ JPZ_uy atol = 0.005
 

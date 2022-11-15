@@ -15,3 +15,7 @@ end
 @safetestset "Apolo.Images" begin
     include("Interfaces/images.jl")
 end
+
+@safetestset "Apolo.InverseProblem" begin
+    include("Interfaces/inverse_problem.jl")
+end
