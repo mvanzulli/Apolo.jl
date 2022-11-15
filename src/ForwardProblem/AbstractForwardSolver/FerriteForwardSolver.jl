@@ -12,6 +12,7 @@ import Apolo.ForwardProblem: _solve, _initialize!
 
 using Reexport: @reexport
 using Ferrite
+@reexport using Ferrite: Triangle, Vec, Quadrilateral
 using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC
 using LinearAlgebra: Symmetric, norm

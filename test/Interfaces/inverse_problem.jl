@@ -2,10 +2,7 @@
 # Inverse problem interface tests #
 ###################################
 using Test: @testset, @test
-using Apolo.Materials: AbstractParameter, ConstitutiveParameter, SVK
-using Apolo.InverseProblem
-
-using Ferrite: Triangle, Vec
+using Apolo
 using LinearAlgebra: norm
 
 @testset "Inverse functionals unitary tests" begin
@@ -64,7 +61,7 @@ using LinearAlgebra: norm
 
     @testset "Material identification inverse problem end to end" begin
         ####################################
-        # Example 2 (Zerpa, et. Al., 2019) #
+        # Example 1 (Zerpa, et. Al., 2019) #
         ####################################
         # --- Degree of freedoms ---
         symbol_u = :u
@@ -107,7 +104,7 @@ using LinearAlgebra: norm
         # -- Neumann boundary conditions -- #
         # tension at (x,y) = (Lᵢ,[0-Lⱼ])
         region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
-        pₓ = 0.3; # force
+        pₓ = 0.2; # force
         tensionΓN(t) = pₓ * t
         dir_tensionΓN = [1, 0] # x direction
         label_tensionΓN = "traction"
@@ -166,27 +163,30 @@ using LinearAlgebra: norm
         vars = [coords..., time_images]
         roi_func(x) = all(@. start_roi ≤ (x[1], x[2]) ≤ finish_roi)
 
-        # --- Optical flow hypothesis ---
-        p = (rand(start_roi[1]:Lⱼₛ/20:finish_roi[1]), rand(start_roi[2]:Lⱼₛ/20:finish_roi[2]))
-        u_p = (uₗ(p[1], 1), 0.0)
-        def_p = p .+ u_p
-        @test intensity_func(p..., 0) ≈ intensity_func(def_p..., 1) atol = 1e-6
-
         # Generate synthetic images and create image data
         # -----------------------------------------------
-        tname = "uniaxial"
-        tdir = tempdir()
+        tname = "uniaxial_extension"
+        temporary_dir = tempdir()
+        tdir = joinpath(temporary_dir, "uniaxial/")
+        mkdir(tdir)
         vtk_structured_write_sequence(vars, intensity_func, :intensity, tname, tdir)
-
         imgs = load_vtk_sequence_imgs(tdir)
+        rm(tdir, recursive = true, force = true)
         img_data = ImageData(imgs, roi_func, time_images)
         img_ref = reference_img(img_data)
         imgs_def = deformed_imgs(img_data)
+        img_def = imgs_def[1]
 
+        # --- Optical flow hypothesis inside the image grid ---
+        x_range_inside_img_grid = LinRange(coordinates(img_def)[1][begin], coordinates(img_def)[1][end], 100)
+        p = (rand(x_range_inside_img_grid), rand(coordinates(img_def)[2]))
+        u_p = (uₗ(p[1], 1), 0.0)
+        def_p = p .+ u_p
+        @test intensity_func(p..., 0) ≈ intensity_func(def_p..., 1) atol = 1e-6
         # check optical flow hypothesis with the loaded images
-        p = Tuple(rand.(coords))
         @test img_ref([p]) ≈ [intensity_func(p..., 0)] rtol = 1e-3
-        @test imgs_def[1]([p]) ≈ [intensity_func(p..., 1)] rtol = 1e-3
+        @test img_def([def_p]) ≈ [intensity_func(def_p..., 1)] rtol = 1e-3
+        @test img_def([def_p]) ≈  img_ref([p]) rtol = 1e-3
 
         # Test the functional values computed by hand with E = Eᵣ
         # ------------------------------------------------------
@@ -222,7 +222,6 @@ using LinearAlgebra: norm
 
         # test deformed intensity values
         int_def_roi_analytic = [roi_func([x, 0.5]) ? intensity_func(x, 0.5, 1) : 0.0 for x in def_roi_analytic_x]
-        img_def = imgs_def[1]
         int_def_roi_numeric = img_def(def_roi_numeric)
         @test int_def_roi_numeric ≈ int_def_roi_analytic rtol = 1e-1
 
@@ -233,8 +232,6 @@ using LinearAlgebra: norm
         not_in_roi = findall(x -> !roi_func([x, 0.5]), def_roi_analytic_x)
         in_roi = findall(x -> roi_func([x, 0.5]), def_roi_analytic_x)
 
-        #TODO: DEBUG deformed image imgs_def[1]([(0.6874, 0.625)]) 1-element Vector{Float64}: 0.6352028927280028
-
         not_in_roi_error_analytic = sum(int_ref_roi_analytic[not_in_roi] .^ 2)
         msf_analytic_inroi = sum((int_def_roi_analytic[in_roi] - int_ref_roi_analytic[in_roi]) .^ 2)
         not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi] .^ 2)
@@ -243,7 +240,6 @@ using LinearAlgebra: norm
         @test msf_numeric ≈ msf_analytic atol = 1e-2
         @test not_in_roi_error_analytic ≈ not_in_roi_error_numeric rtol = 1e-4
         @test msf_numeric ≈ not_in_roi_error_numeric atol = 1e-2
-
 
     end
 
