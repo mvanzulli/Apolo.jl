@@ -12,12 +12,14 @@ Brute-force struct algorthim
 """
 Base.@kwdef struct BruteForceInverseSolver
     num_params::Int = 10
-end
+
 
 function _solve(invp::MaterialIdentificationProblem, ::BruteForceInverseSolver)
 
     # compute iterators product
     prams_to_tier = _iterators_unknown_parameters(invp)
+
+    #
 
 
 end

@@ -3,7 +3,7 @@
 ###################################
 using Test: @testset, @test
 using Apolo
-using Apolo.InverseProblem: _iterators_unknown_parameters
+using Apolo.InverseProblem: _iterators_unknown_parameters, _closure_function
 using LinearAlgebra: norm
 
 # Create parameters and material to test
@@ -18,7 +18,6 @@ E = ConstitutiveParameter(:E, Eᵣ, (Eₘᵢₙ, Eₘₐₓ))
 svk = SVK(E, ν, :material_to_test)
 
 @testset "Inverse functional unitary tests" begin
-
 
     @testset "MSFOpticalFlow" begin
         # Empty constructor
@@ -274,6 +273,21 @@ end
         @test E ∈ unknown_parameters(invp) && ν ∈ unknown_parameters(invp)
         @test E ∈ keys(search_region(invp)) && ν ∈ keys(search_region(invp))
         params_to_set_iters = _iterators_unknown_parameters(invp)
-        @test params_to_set_iters[1] == Dict(E=> Eᵣ, ν=> νᵣ)
+        @test params_to_set_iters[1] == Dict(E=> Eₘᵢₙ, ν=> νₘᵢₙ)
+
+        # test evaluate! and closure function
+        setval!(ν, νᵣ)
+        candidate_param = Dict{AbstractParameter,Float64}(E => Eᵣ)
+        eval_f_Eᵣ = evaluate!(msd, invp, candidate_param)
+
+        # once a parameter is set to a value then unknown parameters will become []
+        setval!(E, missing)
+        func_closure = _closure_function(invp)
+        @test func_closure([Eᵣ], [.2]) ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
+        @test eval_f_Eᵣ ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
+
     end
+
+
+
 end

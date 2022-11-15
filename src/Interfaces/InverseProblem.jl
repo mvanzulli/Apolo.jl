@@ -61,12 +61,6 @@ end
 "Returns the functional `f` expression."
 expression(f::AbstractFunctional) = f.expression
 
-"Evaluates the functional `f` for a given sequence of arguments."
-function evaluate!(f::AbstractFunctional, args...) end
-
-"Closure function to evaluate the functional given a vector of numerical parameters `vec_params`` "
-function closure_evaluate!(vec_params::Vector{<:Real}, constant_params::Vector{<:Real}, args...) end
-
 "Returns the gradient of the functional `f`."
 gradient(f::AbstractFunctional) = f.grad
 
@@ -216,8 +210,6 @@ function _solve(invp::IP, isolver::ISOL, args...;kwargs...,
     return f
 end
 
-end # end module
-
 ############################################
 # Abstract Inverse Problem implementations #
 ############################################
@@ -228,4 +220,23 @@ include("../InverseProblem/AbstractInverseProblem/MaterialIdentificationProblem.
 # Abstract Functional implementations #
 #######################################
 
+"Evaluates the functional `f` for a given sequence of arguments."
+function evaluate!(f::AbstractFunctional, invp::AbstractInverseProblem, candidate_params::CP,args...) where {CP} end
+
+"Closure function to evaluate the functional given a vector of numerical parameters `vec_params`` "
+function _closure_function(
+    invp::AbstractInverseProblem,
+    eval_func = evaluate!,
+    args...)
+
+    func = functional(invp)
+    uparams = unknown_parameters(invp)
+
+    closure_functional = (vec_params, constant_params) -> eval_func(func, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(uparams, vec_params)))
+
+    return closure_functional
+end
+
 include("../InverseProblem/AbstractFunctional/OpticalFlow.jl")
+
+end # end module

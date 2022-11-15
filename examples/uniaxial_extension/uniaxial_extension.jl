@@ -274,18 +274,22 @@ msf_numeric_apolo = evaluate!(msd, invp, new_trial)
 
 @test msf_numeric_apolo == msf_numeric
 
-Main.@infiltrate
+using Apolo.InverseProblem:_closure_function
+
 ##################################
 # Plot functional using brute force
 ##############################
 # closure over inverse problem
 mat_params = [E]
-f = (x, p) -> evaluate!(msd, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(mat_params, x)))
+
+setval!(E, missing)
+func_closure = _closure_function(invp)
 sregion = search_region(invp)
 Evec = range(E, 30)
-fvals = [f([Eᵢ], [rand(1)]) for Eᵢ in Evec]
-min_bf, argmin_bf = findmin(fvals)
+favlues_uniaxial = [func_closure([Eᵢ], [rand(1)]) for Eᵢ in Evec]
+min_bf, argmin_bf = findmin(favlues_uniaxial)
 
+#=
 
 ################
 # Optimization #
@@ -362,3 +366,6 @@ vline!([Emin_optim],
 println("Emin_optim is $Emin_optim ")
 println("Emin bf is $(Evec[argmin_bf]) ")
 println("Eᵣ is $(Evec[argmin_bf]) ")
+
+
+=#

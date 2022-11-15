@@ -4,6 +4,7 @@
 ##################################################
 
 using ..Materials: AbstractParameter
+using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
 using ..Images: AbstractDataMeasured
 using ..InverseProblem: AbstractInverseProblem, AbstractFunctional
 
