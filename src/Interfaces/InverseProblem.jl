@@ -7,12 +7,15 @@ Module defining image properties and features.
 module InverseProblem
 
 using ..Materials: AbstractParameter
-import ..Materials: feasible_region, parameters
-import ..ForwardProblem: solve, _solve
+using ..Materials: parameters
+import ..Materials: feasible_region
+import ..ForwardProblem: solve, _solve, unknown_parameters
+import ..Images: roi
 
 export AbstractInverseProblem, AbstractFunctional
 export append_value!, append_trial!, data_measured, expression, evaluate!, gradient, hessian,
- optim_done, trials, forward_problem, forward_solver, functional, parameters, search_region, set_search_region
+ optim_done, trials, forward_problem, forward_solver, functional, search_region, set_search_region,
+ trial_parameters
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
@@ -23,6 +26,7 @@ The following methods are provided by the interface:
 - `expression(f)`       -- returns the functional expression.
 - `maximum(f)`          -- returns the maximum value/s explored so far.
 - `minimum(f)`          -- returns the minimum value/s explored so far.
+- `trial_parameters(f)` -- returns the parameters where the functional is evaluated.
 - `optim_params(f)`     -- returns the parameters where the functional is optimized.
 - `variables(f)`        -- returns the variables which this functional depends.
 - `values(f)`            -- returns the functional value.
@@ -60,6 +64,9 @@ expression(f::AbstractFunctional) = f.expression
 "Evaluates the functional `f` for a given sequence of arguments."
 function evaluate!(f::AbstractFunctional, args...) end
 
+"Closure function to evaluate the functional given a vector of numerical parameters `vec_params`` "
+function closure_evaluate!(vec_params::Vector{<:Real}, constant_params::Vector{<:Real}, args...) end
+
 "Returns the gradient of the functional `f`."
 gradient(f::AbstractFunctional) = f.grad
 
@@ -73,7 +80,7 @@ Base.maximum(f::AbstractFunctional) = maximum(values(f))
 Base.minimum(f::AbstractFunctional) = minimum(values(f))
 
 "Returns the material parameter trials."
-parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
+trial_parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
 
 "Returns `true` if the optimization process has been done."
 optim_done(f::AbstractFunctional) = f.optim_done
@@ -97,8 +104,8 @@ The following methods are provided by the interface:
 - `roi(invp)`                         -- returns the region of interest where the functional
                                         is evaluated.
 - `search_region(invp)`               -- returns the region where the parameters are explored.
-- `set_search_region!(invp, sregion)`-- sets an explored region to an inverse problem.
-
+- `set_search_region!(invp, sregion)` -- sets an explored region to an inverse problem.
+- `unknown_parameters(invp)`          -- returns the parameters vector with a `missing` value.
 """
 abstract type AbstractInverseProblem end
 
@@ -106,7 +113,7 @@ abstract type AbstractInverseProblem end
 data_measured(iproblem::AbstractInverseProblem) = iproblem.datam
 
 "Returns the feasible region given the functional parameters of an inverse problem `iproblem`."
-feasible_region(iproblem::AbstractInverseProblem) = feasible_region(fproblem(iproblem))
+feasible_region(iproblem::AbstractInverseProblem) = feasible_region(forward_problem(iproblem))
 
 "Returns the forward problem assigned to solve the inverse problem `iproblem`."
 forward_problem(iproblem::AbstractInverseProblem) = iproblem.fproblem
@@ -115,23 +122,48 @@ forward_problem(iproblem::AbstractInverseProblem) = iproblem.fproblem
 forward_solver(iproblem::AbstractInverseProblem) = iproblem.fsolver
 
 "Returns the target function used to solve the inverse problem `iproblem`"
-functional(iproblem::AbstractInverseProblem) = iproblem.func
+functional(iproblem::AbstractInverseProblem) = iproblem.f
 
 "Returns the region of interest ROI used where the inverse problem (`iproblem`) functional is evaluated."
-roi(iproblem::AbstractInverseProblem) = iproblem.roi
+roi(iproblem::AbstractInverseProblem) = roi(data_measured(iproblem))
 
 "Returns the parameter explored region of a given `iproblem`."
-search_region(iproblem::AbstractInverseProblem) = iproblem.search_region
+search_region(iproblem::AbstractInverseProblem) = iproblem.sregion
 
 "Sets the region of interest `sregion` where the inverse problem (`iproblem`) functional is evaluated."
 function set_search_region!(
     iproblem::AbstractInverseProblem,
-    sregion::Dict{<:AbstractParameter,NTuple{2,<:Real}},
+    sregion::Dict{<:AbstractParameter,AbstractVector},
 )
 
     iproblem.sregion = sregion
 
     return iproblem
+end
+
+"Returns the unknown parameters of a given inverse problem `iproblem`."
+unknown_parameters(iproblem::AbstractInverseProblem) = unknown_parameters(forward_problem(iproblem))
+
+"Returns the unknown parameters of a given inverse problem `iproblem`."
+function _iterators_unknown_parameters(iproblem::AbstractInverseProblem)
+
+    uparams = unknown_parameters(iproblem)
+    sregion = search_region(iproblem)
+    sregion_uparams = [sregion[u] for u in uparams]
+
+    # combine them into a single vector
+    iters = vec([p_combination for p_combination in Iterators.product(sregion_uparams...) ])
+    # set parameters dicts iterators
+    set_params_iters = Vector{Dict}()
+    for iter_p in iters
+        d = Dict{AbstractParameter,eltype(eltype(iters))}()
+        for (ip, p) in enumerate(uparams)
+            d[p] = iter_p[ip]
+        end
+        push!(set_params_iters, d)
+    end
+
+    return set_params_iters
 end
 
 """ Abstract supertype that defines the inverse problem solver.
@@ -172,9 +204,8 @@ function solve(
     return _solve(invp, isolver, args...; kwargs...)
 end
 
-"Internal function that solves the inverse problem"
-function _solve(invp::IP, isolver::ISOL,
-    args...;kwargs...,
+"Internal function that solves the inverse problem `invp` using the solver `isolver`"
+function _solve(invp::IP, isolver::ISOL, args...;kwargs...,
     ) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
 
     # to solve an inverse problem consits of optimizing a functional

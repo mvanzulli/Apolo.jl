@@ -89,6 +89,16 @@ function setval!(p::AbstractParameter, val::Number)
 
 end
 
+"Sets the value  missing to the parameter `p`."
+function setval!(p::AbstractParameter, ::Missing)
+
+    p.val = missing
+    @warn "The value of $p is now missing"
+
+    return p
+
+end
+
 "Sets the range (`pₘᵢₙ`, `pₘₐₓ`) to the parameter `p`."
 function set_feasible_region!(p::AbstractParameter, pₘᵢₙ::Number, pₘₐₓ::Number)
 

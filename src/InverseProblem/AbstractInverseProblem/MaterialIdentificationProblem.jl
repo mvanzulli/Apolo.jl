@@ -24,13 +24,15 @@ struct MaterialIdentificationProblem{
     FSOL<:AbstractForwardProblemSolver,
     DM<:AbstractDataMeasured,
     F<:AbstractFunctional,
-    R} <: AbstractInverseProblem
+    R,
+    P<:AbstractParameter,
+    PRANGE<:AbstractVector} <: AbstractInverseProblem
     fproblem::FP
     fsolver::FSOL
     datam::DM
     f::F
     roi::R
-    sregion::Dict{AbstractParameter,NTuple{2,<:Real}}
+    sregion::Dict{P,PRANGE}
 end
 
 "Constructor without a search region defined will consider the feasible region."
@@ -42,7 +44,11 @@ function MaterialIdentificationProblem(
     roi::Function,
 )
 
-    search_default_region = feasible_region(fproblem)
+    uparams = unknown_parameters(fproblem)
+    search_default_region = Dict{AbstractParameter, AbstractVector}()
+    for uparam in uparams
+        search_default_region[uparam] = range(uparam)
+    end
 
     return MaterialIdentificationProblem(
         fproblem, fsolver, datam, func, roi, search_default_region

@@ -274,6 +274,7 @@ msf_numeric_apolo = evaluate!(msd, invp, new_trial)
 
 @test msf_numeric_apolo == msf_numeric
 
+Main.@infiltrate
 ##################################
 # Plot functional using brute force
 ##############################
