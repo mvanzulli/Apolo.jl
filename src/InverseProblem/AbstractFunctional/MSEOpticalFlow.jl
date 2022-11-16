@@ -13,7 +13,7 @@ using ..Utils: ScalarWrapper
 
 import ..InverseProblem: evaluate!
 
-export MSDOpticalFlow, optimize
+export MSEOpticalFlow, optimize
 
 "Returns the functional maximum value"
 
@@ -29,20 +29,18 @@ export MSDOpticalFlow, optimize
 - `expression`    -- mathematical expresion
 
 """
-Base.@kwdef struct MSDOpticalFlow{T,P<:AbstractParameter,GT,HT} <: AbstractFunctional
+Base.@kwdef struct MSEOpticalFlow{T,P<:AbstractParameter,GT,HT} <: AbstractFunctional
     vals::Vector{T} = Vector{Float64}(undef, 0)
     trials::Dict{P,Vector{T}} = Dict{AbstractParameter,Vector{Float64}}()
-    optim_done::ScalarWrapper{Bool} = ScalarWrapper{Bool}(false)
     grad::GT = Vector{Float64}(undef, 0)
     hess::HT = Matrix{Float64}(undef, (0, 0))
     expression::Expr = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
 end
 
 "Constructor with a search region."
-function MSDOpticalFlow(
+function MSEOpticalFlow(
     search_region::Dict{P,Tuple{T,T}},
     vals::Vector{T}=Vector{Float64}(undef, 0),
-    optim_done::ScalarWrapper{Bool}=ScalarWrapper(false),
     gradient::GT=Vector{Float64}(undef, 0),
     hessian::HT=Matrix{Float64}(undef, (0, 0)),
 ) where {T<:Real,P<:AbstractParameter,GT,HT}
@@ -54,15 +52,13 @@ function MSDOpticalFlow(
         trials[key] = Vector{T}(undef, 0)
     end
 
-    return MSDOpticalFlow(
-        vals, trials, optim_done, gradient, hessian, expression
-    )
+    return MSEOpticalFlow(vals, trials, gradient, hessian, expression)
 end
 
 
 "Computes the optical flow value for inverse problem with a LinearElasticityProblem forward problem."
 function evaluate!(
-    oflow::MSDOpticalFlow,
+    oflow::MSEOpticalFlow,
     invp::MaterialIdentificationProblem{<:LinearElasticityProblem},
     candidate_params::Dict{<:AbstractParameter,<:Number},
 )

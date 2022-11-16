@@ -262,7 +262,7 @@ println("msf_analytic is $msf_analytic")
 #########################################
 # Using Inverse Problem Apolo Interface #
 ##########################################
-msd = MSDOpticalFlow()
+msd = MSEOpticalFlow()
 
 new_trial = Dict(
     E => Eᵣ,

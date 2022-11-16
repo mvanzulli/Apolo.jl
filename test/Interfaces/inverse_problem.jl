@@ -3,7 +3,7 @@
 ###################################
 using Test: @testset, @test
 using Apolo
-using Apolo.InverseProblem: _iterators_unknown_parameters, _closure_function
+using Apolo.InverseProblem: _iterators_unknown_parameters, _closure_function, _solve
 using LinearAlgebra: norm
 
 # Create parameters and material to test
@@ -21,11 +21,10 @@ svk = SVK(E, ν, :material_to_test)
 
     @testset "MSFOpticalFlow" begin
         # Empty constructor
-        default_msf = MSDOpticalFlow()
+        default_msf = MSEOpticalFlow()
         @test expression(default_msf) == :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
         @test gradient(default_msf) == Vector{Float64}(undef, 0)
         @test hessian(default_msf) == Matrix{Float64}(undef, (0,0))
-        @test optim_done(default_msf).x == false
         @test trials(default_msf) == Dict{AbstractParameter,Vector}()
         @test values(default_msf) == Vector{Float64}(undef, 0)
 
@@ -35,7 +34,7 @@ svk = SVK(E, ν, :material_to_test)
             ν => (1.1νₘᵢₙ, 0.9νₘᵢₙ),
             )
 
-        param_msf = MSDOpticalFlow(param_search_region)
+        param_msf = MSEOpticalFlow(param_search_region)
 
         # Getter functions
         @test Float64[] == values(param_msf)
@@ -190,7 +189,7 @@ end
     @test img_def([def_p]) ≈ [intensity_func(def_p..., 1)] rtol = 1e-2
     @test img_def([def_p]) ≈  img_ref([p]) rtol = 1e-2
 
-    @testset "MSDOpticalFlow value 1D" begin
+    @testset "MSEOpticalFlow value 1D" begin
 
         # Test the functional values computed by hand with E = Eᵣ
         # ------------------------------------------------------
@@ -257,7 +256,7 @@ end
         setval!(ν, missing)
 
         # initialize the functional and create the inverse problem
-        msd = MSDOpticalFlow()
+        msd = MSEOpticalFlow()
         invp = MaterialIdentificationProblem(lep_fproblem, ferrite_fsolver, img_data, msd, roi_func)
 
         # test getter functions
@@ -273,7 +272,11 @@ end
         @test E ∈ unknown_parameters(invp) && ν ∈ unknown_parameters(invp)
         @test E ∈ keys(search_region(invp)) && ν ∈ keys(search_region(invp))
         params_to_set_iters = _iterators_unknown_parameters(invp)
+        num_params_to_bf = 3
+        params_to_set_iters_nparams = _iterators_unknown_parameters(invp, num_params_to_bf)
+        @test length(params_to_set_iters_nparams) == num_params_to_bf^2
         @test params_to_set_iters[1] == Dict(E=> Eₘᵢₙ, ν=> νₘᵢₙ)
+        @test params_to_set_iters_nparams[1] == Dict(E=> Eₘᵢₙ, ν=> νₘᵢₙ)
 
         # test evaluate! and closure function
         setval!(ν, νᵣ)
@@ -286,6 +289,16 @@ end
         @test func_closure([Eᵣ], [.2]) ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
         @test eval_f_Eᵣ ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
 
+        bf_alg = BruteForce()
+        # default number of parameters
+        @test optim_done(bf_alg).x == false
+        @test nparams_foreach_param(bf_alg) == 10
+        # set the parameter to be unknown and reset
+        Main.@infiltrate
+        setval!(E, missing)
+        msd = MSEOpticalFlow()
+        invp = MaterialIdentificationProblem(lep_fproblem, ferrite_fsolver, img_data, msd, roi_func)
+        _solve(invp, bf_alg)
     end
 
 

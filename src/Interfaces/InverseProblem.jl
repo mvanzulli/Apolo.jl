@@ -7,32 +7,31 @@ Module defining image properties and features.
 module InverseProblem
 
 using ..Materials: AbstractParameter
-using ..Materials: parameters
+using ..Materials: parameters, label, material
 import ..Materials: feasible_region
 import ..ForwardProblem: solve, _solve, unknown_parameters
 import ..Images: roi
 
 export AbstractInverseProblem, AbstractFunctional
 export append_value!, append_trial!, data_measured, expression, evaluate!, gradient, hessian,
- optim_done, trials, forward_problem, forward_solver, functional, search_region, set_search_region,
+ optim_done, trials, forward_problem, forward_solver, functional, reset!, search_region, set_search_region,
  trial_parameters
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
 The following methods are provided by the interface:
 
-- `append_value!(f, val)` -- appends the value `val` to functional value.
-- `explored_region(f)`  -- returns the explored region so far.
-- `expression(f)`       -- returns the functional expression.
-- `maximum(f)`          -- returns the maximum value/s explored so far.
-- `minimum(f)`          -- returns the minimum value/s explored so far.
-- `trial_parameters(f)` -- returns the parameters where the functional is evaluated.
-- `optim_params(f)`     -- returns the parameters where the functional is optimized.
-- `variables(f)`        -- returns the variables which this functional depends.
-- `values(f)`            -- returns the functional value.
-- `gradient(f, pname)`  -- returns the gradient of the functional respect to the parameter pname.
-- `set_roi(f, roi)`     -- sets the region of interest.
-- `evaluate!(f,args)`    -- returns the functional value.
+- `append_value!(f, val)`   -- appends the value `val` to functional value.
+- `append_trial!(f, trial)` -- appends the trial `trial` to functional trials.
+- `expression(f)`           -- returns the functional expression.
+- `gradient(f, pname)`      -- returns the gradient of the functional respect to the parameter pname.
+- `hessian(f, pname)`       -- returns the gradient of the functional respect to the parameter pname.
+- `maximum(f)`              -- returns the maximum value/s explored so far.
+- `minimum(f)`              -- returns the minimum value/s explored so far.
+- `trial_parameters(f)`     -- returns the parameters where the functional is evaluated.
+- `trials(f)`               -- returns the parameters where the functional is optimized.
+- `variables(f)`            -- returns the variables which this functional depends.
+- `values(f)`               -- returns the functional value.
 """
 abstract type AbstractFunctional end
 
@@ -47,11 +46,20 @@ function append_trial!(f::AbstractFunctional, trial::Dict{<:AbstractParameter,<:
 
     # Check that the new parameter trial is defined as a functional trial and if it is push the value
     for (p_to_set, pvalue) in trial
-        if p_to_set ∉ functional_params_trials
-            functional_trials[p_to_set] = [pvalue]
-        else
-            push!(functional_trials[p_to_set], pvalue)
+        symbol_p_to_set = label(p_to_set)
+        mat_p_to_set = material(p_to_set)
+        for p_already_tried in functional_params_trials
+            if symbol_p_to_set == label(p_already_tried) &&
+                mat_p_to_set == material(p_already_tried)
+                # Main.@infiltrate
+                push!(functional_trials[p_already_tried], pvalue)
+
+                return trials(f)
+            end
         end
+
+        # if is not a parameter tried add the new key
+        functional_trials[p_to_set] = [pvalue]
     end
 
     return trials(f)
@@ -73,11 +81,11 @@ Base.maximum(f::AbstractFunctional) = maximum(values(f))
 "Returns the functional `f` minimum value explored so far."
 Base.minimum(f::AbstractFunctional) = minimum(values(f))
 
-"Returns the material parameter trials."
-trial_parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
+"Resets the functional `f`."
+reset!(f::AbstractFunctional) = f = typeof(f)()
 
-"Returns `true` if the optimization process has been done."
-optim_done(f::AbstractFunctional) = f.optim_done
+"Returns the material parameter trials corresponding to the functional `f`."
+trial_parameters(f::AbstractFunctional) = [param for param in keys(trials(f))]
 
 "Returns the trials explored with the functional `f`."
 trials(f::AbstractFunctional) = f.trials
@@ -136,28 +144,11 @@ function set_search_region!(
 end
 
 "Returns the unknown parameters of a given inverse problem `iproblem`."
-unknown_parameters(iproblem::AbstractInverseProblem) = unknown_parameters(forward_problem(iproblem))
+function unknown_parameters(iproblem::AbstractInverseProblem)
 
-"Returns the unknown parameters of a given inverse problem `iproblem`."
-function _iterators_unknown_parameters(iproblem::AbstractInverseProblem)
-
-    uparams = unknown_parameters(iproblem)
-    sregion = search_region(iproblem)
-    sregion_uparams = [sregion[u] for u in uparams]
-
-    # combine them into a single vector
-    iters = vec([p_combination for p_combination in Iterators.product(sregion_uparams...) ])
-    # set parameters dicts iterators
-    set_params_iters = Vector{Dict}()
-    for iter_p in iters
-        d = Dict{AbstractParameter,eltype(eltype(iters))}()
-        for (ip, p) in enumerate(uparams)
-            d[p] = iter_p[ip]
-        end
-        push!(set_params_iters, d)
-    end
-
-    return set_params_iters
+    uparams = unknown_parameters(forward_problem(iproblem))
+    uparams == [] && @warn "The inverse problem has no unknown parameters, please check materials(fproblem)"
+    return uparams
 end
 
 """ Abstract supertype that defines the inverse problem solver.
@@ -171,7 +162,13 @@ The following methods are provided by the interface:
 abstract type AbstractInverseProblemSolver end
 
 "Returns `true` if the inverse problem has compleated the optimization task."
-function optim_done(::AbstractInverseProblemSolver)::Bool end
+optim_done(isolver::AbstractInverseProblemSolver)= isolver.optim_done
+
+"Sets the optimization boolean to true"
+_set_optim_done!(isolver::AbstractInverseProblemSolver) = isolver.optim_done.x = true
+
+
+
 
 #################################
 # Generic functions to overlead #
@@ -232,11 +229,18 @@ function _closure_function(
     func = functional(invp)
     uparams = unknown_parameters(invp)
 
+    uparams == [] && @warn "There is any unknown parameter, please check parameters(forward_problem)"
+
     closure_functional = (vec_params, constant_params) -> eval_func(func, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(uparams, vec_params)))
 
     return closure_functional
 end
 
-include("../InverseProblem/AbstractFunctional/OpticalFlow.jl")
+include("../InverseProblem/AbstractFunctional/MSEOpticalFlow.jl")
+#######################################
+# Abstract Inverse Solver implementations #
+#######################################
+
+include("../InverseProblem/AbstractInverseSolver/BruteForce.jl")
 
 end # end module
