@@ -3,7 +3,7 @@
 # Main types for optical flow functional #
 ##########################################
 
-using ..Materials: AbstractParameter
+using ..Materials: AbstractParameter, label, material
 using ..Images: AbstractDataMeasured, AbstractImage
 using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, time_measured
 using ..ForwardProblem: LinearElasticityProblem
@@ -29,9 +29,9 @@ export MSEOpticalFlow, optimize
 - `expression`    -- mathematical expresion
 
 """
-Base.@kwdef struct MSEOpticalFlow{T,P<:AbstractParameter,GT,HT} <: AbstractFunctional
+Base.@kwdef struct MSEOpticalFlow{T,GT,HT} <: AbstractFunctional
     vals::Vector{T} = Vector{Float64}(undef, 0)
-    trials::Dict{P,Vector{T}} = Dict{AbstractParameter,Vector{Float64}}()
+    trials::Dict{NTuple{2,Symbol},Vector{T}} = Dict{NTuple{2,Symbol},Vector{Float64}}()
     grad::GT = Vector{Float64}(undef, 0)
     hess::HT = Matrix{Float64}(undef, (0, 0))
     expression::Expr = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
@@ -47,9 +47,9 @@ function MSEOpticalFlow(
 
     expression = :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
     # create an empty trials dict with search_region input
-    trials = Dict{P,Vector{T}}()
-    for key in keys(search_region)
-        trials[key] = Vector{T}(undef, 0)
+    trials = Dict{NTuple{2,Symbol},Vector{T}}()
+    for param in keys(search_region)
+        trials[(label(param), material(param))] = Vector{T}(undef, 0)
     end
 
     return MSEOpticalFlow(vals, trials, gradient, hessian, expression)

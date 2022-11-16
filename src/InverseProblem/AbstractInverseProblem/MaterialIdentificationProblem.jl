@@ -28,12 +28,14 @@ struct MaterialIdentificationProblem{
     R,
     P<:AbstractParameter,
     PRANGE<:AbstractVector} <: AbstractInverseProblem
+    #Fields:
     fproblem::FP
     fsolver::FSOL
     datam::DM
     f::F
     roi::R
     sregion::Dict{P,PRANGE}
+
 end
 
 "Constructor without a search region defined will consider the feasible region."

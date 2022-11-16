@@ -2,9 +2,10 @@
 # Brute force resolution algorithm #
 ####################################
 
+using ..InverseProblem: InverseProblemSolution
 using ..InverseProblem: functional, values, trials, evaluate!, _set_optim_done!
 using ..Utils: ScalarWrapper
-import ..InverseProblem: _solve, _initialize!
+import ..InverseProblem: solve
 
 export BruteForce, nparams_foreach_param
 
@@ -70,25 +71,26 @@ Base.@kwdef struct BruteForce <:AbstractInverseProblemSolver
     optim_done::ScalarWrapper = ScalarWrapper(false)
 end
 
-"Returns the number of paramaters that are tried for each unknown parameter."
-nparams_foreach_param(bfs::BruteForce) = bfs.nparam
+"Brute force algorithm constructor with a `nparmas` number of parameters "
+BruteForce(naparams::Int) = BruteForce(naparams, ScalarWrapper(false))
 
-
-function _solve(invp::MaterialIdentificationProblem, bfs::BruteForce)
+"Solves the material identification problem."
+function solve(invp::MaterialIdentificationProblem, bfs::BruteForce)
 
     #compute parameters set of iterators
     prams_to_tier = _iterators_unknown_parameters(invp, nparams_foreach_param(bfs))
 
-    Main.@infiltrate
     # exhaustive evaluation
     func = functional(invp)
     [evaluate!(func, invp, params) for params in prams_to_tier]
 
-    # find minimum
-    min_f, idx_min = findmin(values(func))
-    min_param = prams_to_tier
+
     _set_optim_done!(bfs)
 
     #
-    return
+    # Main.@infiltrate
+    return InverseProblemSolution(invp, func, bfs)
 end
+
+"Returns the number of paramaters that are tried for each unknown parameter."
+nparams_foreach_param(bfs::BruteForce) = bfs.nparam

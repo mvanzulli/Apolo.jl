@@ -7,15 +7,15 @@ Module defining image properties and features.
 module InverseProblem
 
 using ..Materials: AbstractParameter
-using ..Materials: parameters, label, material
-import ..Materials: feasible_region
-import ..ForwardProblem: solve, _solve, unknown_parameters
+using ..Materials: label, material, setval!
+import ..Materials: parameters, feasible_region
+import ..ForwardProblem: materials, solver, solve, _solve, unknown_parameters
 import ..Images: roi
 
-export AbstractInverseProblem, AbstractFunctional
+export AbstractInverseProblem, AbstractFunctional, InverseProblemSolution
 export append_value!, append_trial!, data_measured, expression, evaluate!, gradient, hessian,
- optim_done, trials, forward_problem, forward_solver, functional, reset!, search_region, set_search_region,
- trial_parameters
+ optim_done, trials, forward_problem, forward_solver, functional, functional_values, functional_trials,
+ identified_params, inverse_problem, reset!, search_region, set_search_region, trial_parameters
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
@@ -49,17 +49,18 @@ function append_trial!(f::AbstractFunctional, trial::Dict{<:AbstractParameter,<:
         symbol_p_to_set = label(p_to_set)
         mat_p_to_set = material(p_to_set)
         for p_already_tried in functional_params_trials
-            if symbol_p_to_set == label(p_already_tried) &&
-                mat_p_to_set == material(p_already_tried)
-                # Main.@infiltrate
+            if symbol_p_to_set == p_already_tried[1] &&
+                mat_p_to_set == p_already_tried[2]
+            # if symbol_p_to_set == label(p_already_tried) &&
+            #     mat_p_to_set == material(p_already_tried)
                 push!(functional_trials[p_already_tried], pvalue)
 
                 return trials(f)
             end
         end
 
-        # if is not a parameter tried add the new key
-        functional_trials[p_to_set] = [pvalue]
+        functional_trials[(label(p_to_set), material(p_to_set))] = [pvalue]
+
     end
 
     return trials(f)
@@ -108,6 +109,7 @@ The following methods are provided by the interface:
 - `search_region(invp)`               -- returns the region where the parameters are explored.
 - `set_search_region!(invp, sregion)` -- sets an explored region to an inverse problem.
 - `unknown_parameters(invp)`          -- returns the parameters vector with a `missing` value.
+- `parameters(invp)`                  -- returns all the parameters into a vector.
 """
 abstract type AbstractInverseProblem end
 
@@ -151,12 +153,15 @@ function unknown_parameters(iproblem::AbstractInverseProblem)
     return uparams
 end
 
+"Returns the parameters of a given inverse problem `iproblem`."
+parameters(iproblem::AbstractInverseProblem) = parameters(forward_problem(iproblem))
+
 """ Abstract supertype that defines the inverse problem solver.
 
 The following methods are provided by the interface:
 
-- `parameters(invp)`  -- returns the optimization method parameters.
-- `is_done(invp)` -- returns the method parameters.
+- `optim_done(isolver)`  -- returns the optimization status.
+- `_set_optim_done!(isolver)`  -- sets to true the optimization status.
 
 """
 abstract type AbstractInverseProblemSolver end
@@ -167,13 +172,118 @@ optim_done(isolver::AbstractInverseProblemSolver)= isolver.optim_done
 "Sets the optimization boolean to true"
 _set_optim_done!(isolver::AbstractInverseProblemSolver) = isolver.optim_done.x = true
 
+#############################
+# Abstract Inverse Solution #
+#############################
+
+""" Abstract supertype that defines the inverse problem solution.
+
+The following methods are provided by the interface:
+
+- `functional(isol)`         -- returns the optimization functional where the inverse
+                                solution is computed.
+- `functional_values(isol)`  -- returns the functional values.
+- `functional_trails(isol)`  -- returns the functional parameter trials.
+- `identified_params(isol)`  -- returns the material identified parameters.
+- `inverse_problem(isol)`    -- returns the inverse problem solved.
+- `solver(invp)`             -- returns the solver and its method used to solve the inverse
+                                 problem parameters.
+- `materials(isol)`          -- returns materials used to solve the inverse problem solution.
+
+"""
+abstract type AbstractInverseProblemSolution end
+
+"Returns the functional employed to solve the inverse problem `isol`."
+functional(isol::AbstractInverseProblemSolution)= isol.f
+
+"Returns the functional values during the construction of the inverse problem solution `isol`."
+functional_values(isol::AbstractInverseProblemSolution)= values(functional(isol))
+
+"Returns the functional trials during the construction of the inverse problem solution `isol`."
+functional_trials(isol::AbstractInverseProblemSolution)= trails_aux(functional(isol))
+
+"Returns the materials identified during the process of obtaining the inverse problem solution `isol`."
+parameters(isol::AbstractInverseProblemSolution)= parameters(inverse_problem(isol))
+
+"Returns the inverse problem solved in `isol`."
+inverse_problem(isol::AbstractInverseProblemSolution)= isol.invp
+
+"Returns the materials identified during the process of obtaining the inverse problem solution `isol`."
+materials(isol::AbstractInverseProblemSolution)= keys(materials(forward_problem(inverse_problem(isol)))) |> collect
+
+"Returns the solver employed to solve the inverse problem `isol`."
+solver(isol::AbstractInverseProblemSolution)= isol.solver
+
+""" Inverse Problem solution struct
+### Fields:
+- `invp`    -- inverse problem
+- `solver`  -- inverse problem solver
+- `f`       -- functional employed
+- `extra`   -- other data
+"""
+struct InverseProblemSolution{
+    ISOLVER<:AbstractInverseProblemSolver,
+    F<:AbstractFunctional,
+    INVP<:AbstractInverseProblem,
+    T<:Any} <: AbstractInverseProblemSolution
+    invp::INVP
+    solver::ISOLVER
+    f::F
+    extra::Dict{Symbol,T} # Extra Dict to add specific variables and a linked symbol
+    function InverseProblemSolution(invp::IP, f::F, isolver::ISOL, extra::Dict)where {IP<:AbstractInverseProblem, F<:AbstractFunctional, ISOL<:AbstractInverseProblemSolver}
+
+        _set_optim_parameters!(invp, isolver)
+
+        return new{ISOL,F,IP,typeof(extra)}(invp, isolver, f, extra)
+    end
+end
+
+"Inverse problem solution constructor with an empty extra dict."
+function InverseProblemSolution(
+    invp::INVP,
+    f::F,
+    isolver::ISOL
+    ) where{INVP<:AbstractInverseProblem, F<:AbstractFunctional, ISOL<:AbstractInverseProblemSolver}
+
+    extra_empty = Dict{Symbol,Nothing}()
+
+    return InverseProblemSolution(invp, f, isolver, extra_empty)
+end
 
 
+"Sets the optimized parameters to each parameter"
+function _set_optim_parameters!(invp::AbstractInverseProblem, isolver::AbstractInverseProblemSolver)
+
+    !(optim_done(isolver).x) && throw(
+        ArgumentError("The inverse solver has not finish the optimization, check optim_done(isolver)")
+        )
+
+    # functional minimum
+    func = functional(invp)
+    _, idx_min = findmin(values(func))
+
+    # replace parameters values with the identified ones
+    vec_all_params = parameters(invp)
+    vec_param_names = label.(vec_all_params)
+    vec_param_mats = material.(vec_all_params)
+
+    # sets the identified parameter values
+    for ((pname, matname), pvalue) in trials(func)
+
+        param = filter(x -> label(x) == pname && material(x) == matname, vec_all_params)
+        length(param) != 1 && throw(
+            ArgumentError("Two or materials has the same parameter name and symbol: $param ")
+            )
+        setval!(param[1], pvalue[idx_min])
+
+    end
+
+    return parameters(invp)
+end
 
 #################################
 # Generic functions to overlead #
 ##################################
-
 """ Solves the inverse problem.
 
 ### Input
@@ -237,6 +347,7 @@ function _closure_function(
 end
 
 include("../InverseProblem/AbstractFunctional/MSEOpticalFlow.jl")
+
 #######################################
 # Abstract Inverse Solver implementations #
 #######################################

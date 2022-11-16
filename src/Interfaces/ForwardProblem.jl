@@ -15,7 +15,7 @@ export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadB
     ForwardProblemSolution
 
 export boundary_conditions, component, dofs, dofsvals, direction, has_parameter, materials,
-    values_function, solve, _solve, symbol, set_material_params!, unknown_parameters
+    values_function, solver, solve, _solve, symbol, set_material_params!, unknown_parameters
 
 ######################
 # Degrees of freedom #
@@ -288,6 +288,9 @@ grid(fsol::AbstractForwardProblemSolution) = grid(femdata(fsol))
 
 "Returns forward problem materials of a forward problem solution `fsol`."
 materials(fsol::AbstractForwardProblemSolution) = fsol.data_mats
+
+"Returns forward problem solver used to obtain the forward problem solution `fsol`."
+solver(fsol::AbstractForwardProblemSolution) = fsol.solver
 
 " Abstract functor for a forward problem solution `fsol``. "
 function (fsol::AbstractForwardProblemSolution)(

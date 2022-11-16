@@ -39,11 +39,12 @@ svk = SVK(E, ν, :material_to_test)
         # Getter functions
         @test Float64[] == values(param_msf)
         trials_to_test = Dict(
-            E => [],
-            ν => [],
+            (label(E), material(E)) => [],
+            (label(ν), material(ν)) => [],
         )
         @test trials_to_test == trials(param_msf)
-        @test E ∈ trial_parameters(param_msf) && ν ∈ trial_parameters(param_msf)
+        @test (label(E), material(E)) ∈ trial_parameters(param_msf) &&
+            (label(ν), material(ν)) ∈ trial_parameters(param_msf)
 
         # Append a trial and a value functions
         val_to_add = rand(Float64)
@@ -289,18 +290,30 @@ end
         @test func_closure([Eᵣ], [.2]) ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
         @test eval_f_Eᵣ ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
 
-        bf_alg = BruteForce()
-        # default number of parameters
-        @test optim_done(bf_alg).x == false
-        @test nparams_foreach_param(bf_alg) == 10
-        # set the parameter to be unknown and reset
-        Main.@infiltrate
-        setval!(E, missing)
-        msd = MSEOpticalFlow()
-        invp = MaterialIdentificationProblem(lep_fproblem, ferrite_fsolver, img_data, msd, roi_func)
-        _solve(invp, bf_alg)
+        @testset "Brute-Force algorithm" begin
+            # set the brute force algortihm
+            n_params = 100
+            bf_alg = BruteForce(n_params)
+            @test optim_done(bf_alg).x == false
+            @test nparams_foreach_param(bf_alg) == n_params
+            # set the parameter to be unknown and reset
+            # solve the inverse problem
+            setval!(E, missing)
+            msd = MSEOpticalFlow()
+            invp = MaterialIdentificationProblem(lep_fproblem, ferrite_fsolver, img_data, msd, roi_func)
+            isol = solve(invp, bf_alg)
+
+            functional_values
+            @test functional(isol) == msd
+            @test functional_values(isol) == values(msd)
+            @test parameters(isol) == parameters(lep_fproblem)
+            @test inverse_problem(isol) == invp
+            @test materials(isol) == [svk]
+            @test solver(isol) == bf_alg
+            # test the value of E is now the reference
+            @test value(E) ≈ Eᵣ rtol =1e-2
+        end
+
     end
-
-
 
 end
