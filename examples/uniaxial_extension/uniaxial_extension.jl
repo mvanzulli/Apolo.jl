@@ -153,16 +153,21 @@ uₗ(x_points, 1.0)
 # intensity_func(x,y,t) = sin((ω * Eᵣ) / (Cp(t) + Eᵣ) * x)
 intensity_func(x, y, t) = Eᵣ / (Cp(t) + Eᵣ) * x / Lᵢₛ
 # roi zone
-start_roi = (Lᵢₛ, Lᵢₛ) ./ 4
-finish_roi = (Lᵢₛ, Lᵢₛ) .* (3 / 4)
-length_roi = finish_roi .- start_roi
-npix_roi = (8, 2)
-spacing_roi = length_roi ./ npix_roi
+start_img = (Lᵢₛ, Lᵢₛ) ./ 4
+finish_img = (Lᵢₛ, Lᵢₛ) .* (3 / 4)
+length_img = finish_img .- start_img
+npix_img = (64, 2)
+spacing_img = length_img ./ npix_img
 
-coords = [LinRange.(start_roi .+ spacing_roi ./ 2, finish_roi .- spacing_roi ./ 2, npix_roi)...]
+in_img_func(x) = all(@. start_img ≤ (x[1], x[2]) ≤ finish_img)
+
+coords = [LinRange.(start_img .+ spacing_img ./ 2, finish_img .- spacing_img ./ 2, npix_img)...]
 mtime = LinRange(0.0, 1.0, 2)
 vars = [coords..., mtime]
-roi_func(x) = all(@. start_roi ≤ (x[1], x[2]) ≤ finish_roi)
+start_roi = @. (Lᵢₛ, Lᵢₛ) * 1/3
+finish_roi = @. (Lᵢₛ, Lᵢₛ) * 3/4 * 8/9
+
+in_roi_func(x) = all(@. start_roi ≤ (x[1], x[2]) ≤ finish_roi)
 # check optical flow hypothesis
 p = (rand(start_roi[1]:Lⱼₛ/20:finish_roi[1]), rand(start_roi[2]:Lⱼₛ/20:finish_roi[2]))
 u_p = (uₗ(p[1], 1), 0.0)
@@ -180,7 +185,7 @@ vtk_structured_write_sequence(vars, intensity_func, :intensity, tname, tdir)
 # --------------------------
 imgs = load_vtk_sequence_imgs(tdir)
 # gather all history of images information
-img_data = ImageData(imgs, roi_func, mtime)
+img_data = ImageData(imgs, in_roi_func, mtime)
 # extract reference and deformed Images
 img_ref = reference_img(img_data)
 imgs_def = deformed_imgs(img_data)
@@ -229,7 +234,7 @@ def_roi_analytic_x = roi_vec_coords_x + disp_roi_analytic_x
 
 # test deformed intensity values
 # --------------------------
-int_def_roi_analytic = [roi_func([x, 0.5]) ? intensity_func(x, 0.5, 1) : 0.0 for x in def_roi_analytic_x]
+int_def_roi_analytic = [in_img_func([x, 0.5]) ? intensity_func(x, 0.5, 1) : 0.0 for x in def_roi_analytic_x]
 img_def = imgs_def[1]
 int_def_roi_numeric = img_def(def_roi_numeric)
 
@@ -241,19 +246,19 @@ int_def_roi_numeric = img_def(def_roi_numeric)
 # --------------------------
 msf_analytic = sum((int_def_roi_analytic - int_ref_roi_analytic) .^ 2)
 
-not_in_roi = findall(x -> !roi_func([x, 0.5]), def_roi_analytic_x)
-in_roi = findall(x -> roi_func([x, 0.5]), def_roi_analytic_x)
+not_in_img = findall(x -> !in_img_func([x, 0.5]), def_roi_analytic_x)
+in_img = findall(x -> in_img_func([x, 0.5]), def_roi_analytic_x)
 
-not_in_roi_error_analytic = sum(int_ref_roi_analytic[not_in_roi] .^ 2)
-msf_analytic_inroi = sum((int_def_roi_analytic[in_roi] - int_ref_roi_analytic[in_roi]) .^ 2)
+not_in_img_error_analytic = sum(int_ref_roi_analytic[not_in_img] .^ 2)
+msf_analytic_inimg = sum((int_def_roi_analytic[in_img] - int_ref_roi_analytic[in_img]) .^ 2)
 msf_numeric = sum((int_def_roi_numeric - int_ref_roi_numeric) .^ 2)
-not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi] .^ 2)
-msf_numeric_inroi = sum((int_def_roi_numeric[in_roi] - int_ref_roi_numeric[in_roi]) .^ 2)
+not_in_img_error_numeric = sum(int_ref_roi_numeric[not_in_img] .^ 2)
+msf_numeric_inimg = sum((int_def_roi_numeric[in_img] - int_ref_roi_numeric[in_img]) .^ 2)
 
-@test msf_analytic_inroi ≈ 0 atol = 1e-8
+@test msf_analytic_inimg ≈ 0 atol = 1e-8
+@test msf_numeric_inimg ≈ 0 atol = 1e-8
 @test msf_numeric ≈ msf_analytic atol = 1e-2
-@test not_in_roi_error_analytic ≈ not_in_roi_error_numeric rtol = 1e-4
-@test msf_numeric ≈ not_in_roi_error_numeric atol = 1e-2
+@test not_in_img_error_analytic ≈ not_in_img_error_numeric rtol = 1e-4
 
 # replace values outside the roi
 
@@ -268,7 +273,7 @@ new_trial = Dict(
     E => Eᵣ,
 )
 
-invp = MaterialIdentificationProblem(lep_fproblem, ferrite_sovlver, img_data, msd, roi_func)
+invp = MaterialIdentificationProblem(lep_fproblem, ferrite_sovlver, img_data, msd, in_roi_func)
 
 msf_numeric_apolo = evaluate!(msd, invp, new_trial)
 
@@ -279,15 +284,27 @@ using Apolo.InverseProblem:_closure_function
 ##################################
 # Plot functional using brute force
 ##############################
+setval!(E, missing)
+
+msd = MSEOpticalFlow()
+
+new_trial = Dict(
+    E => Eᵣ,
+)
+
+invp = MaterialIdentificationProblem(lep_fproblem, ferrite_sovlver, img_data, msd, in_roi_func)
+
+
 # closure over inverse problem
 mat_params = [E]
-
-setval!(E, missing)
 func_closure = _closure_function(invp)
 sregion = search_region(invp)
-Evec = range(E, 30)
+Evec = range(E, 41)
 favlues_uniaxial = [func_closure([Eᵢ], [rand(1)]) for Eᵢ in Evec]
 min_bf, argmin_bf = findmin(favlues_uniaxial)
+println("E estimated is: $(Evec[argmin_bf])")
+
+functional(invp)
 
 #=
 
