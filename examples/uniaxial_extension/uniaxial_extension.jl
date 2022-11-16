@@ -156,7 +156,7 @@ intensity_func(x, y, t) = Eᵣ / (Cp(t) + Eᵣ) * x / Lᵢₛ
 start_roi = (Lᵢₛ, Lᵢₛ) ./ 4
 finish_roi = (Lᵢₛ, Lᵢₛ) .* (3 / 4)
 length_roi = finish_roi .- start_roi
-npix_roi = (4, 2)
+npix_roi = (8, 2)
 spacing_roi = length_roi ./ npix_roi
 
 coords = [LinRange.(start_roi .+ spacing_roi ./ 2, finish_roi .- spacing_roi ./ 2, npix_roi)...]
@@ -248,7 +248,7 @@ not_in_roi_error_analytic = sum(int_ref_roi_analytic[not_in_roi] .^ 2)
 msf_analytic_inroi = sum((int_def_roi_analytic[in_roi] - int_ref_roi_analytic[in_roi]) .^ 2)
 msf_numeric = sum((int_def_roi_numeric - int_ref_roi_numeric) .^ 2)
 not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi] .^ 2)
-
+msf_numeric_inroi = sum((int_def_roi_numeric[in_roi] - int_ref_roi_numeric[in_roi]) .^ 2)
 
 @test msf_analytic_inroi ≈ 0 atol = 1e-8
 @test msf_numeric ≈ msf_analytic atol = 1e-2

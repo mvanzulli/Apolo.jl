@@ -218,7 +218,7 @@ function _eval_intensity(
     for (num_point, p) in enumerate(vec_points)
         p = p .+ offset
         if p ∈ img
-            ifunc = p ∈ grid(img) ? _interpolate : 0.0# _extrapolate
+            ifunc = p ∈ grid(img) ? _interpolate : _extrapolate
             intensity_p = ifunc([p], img)
             intensity_vec[num_point] = getindex(intensity_p)
         else
