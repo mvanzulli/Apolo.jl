@@ -15,7 +15,7 @@ export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadB
     ForwardProblemSolution
 
 export boundary_conditions, component, dofs, dofsvals, direction, has_parameter, materials,
-    values_function, solve, _solve, symbol, set_material_params!
+    values_function, solver, solve, _solve, symbol, set_material_params!, unknown_parameters
 
 ######################
 # Degrees of freedom #
@@ -78,13 +78,11 @@ values_function(bc::AbstractBoundaryCondition) = bc.vals_func
 label(bc::AbstractBoundaryCondition) = bc.label
 
 """ Struct that contains the info of a Dirichlet boundary condition
-
 ### Fields:
-`dof`       -- name or symbol of the field
-`vals_func` -- function submitted
-`components`-- vector of components (global or local) to prescribe the BC
-`label`     -- BC name
-
+- `dof`        -- name or symbol of the field
+- `vals_func`  -- function submitted
+- `components` -- vector of components (global or local) to prescribe the BC
+- `label`      -- BC name
 """
 struct DirichletBC <: AbstractBoundaryCondition
     dof::Dof
@@ -168,6 +166,7 @@ The following methods are provided by the interface:
 - `feasible_region(fproblem)`                -- returns the feasible region where the parameters of
                                                 the forward problem are defined data struct.
 - `grid(fproblem)`                           -- returns the forward problem grid.
+- `unknown_parameters(fproblem, p)`               -- returns a vector with the unknown parameters.
 - `has_parameter(fproblem, p)`               -- returns `true` if the fproblem has the parameter `p`.
 - `materials(fproblem)`                      -- returns the forward problem materials with their respective region.
 - `set_material_params!(fproblem, p_to_set)` -- returns the forward problem materials with their respective region.
@@ -201,18 +200,21 @@ function feasible_region(fproblem::AbstractForwardProblem)
 
 end
 
-"Extracts Forward Problem grid. "
-grid(fp::AbstractForwardProblem) = grid(femdata(fp))
+"Extracts the grid of the forward problem `fproblem`. "
+grid(fproblem::AbstractForwardProblem) = grid(femdata(fproblem))
 
 "Checks if the parameter belongs to forward problem materials."
-function has_parameter(fp::AbstractForwardProblem, param::AbstractParameter)
+function has_parameter(fproblem::AbstractForwardProblem, param::AbstractParameter)
 
     !has_material(param) && throw(ArgumentError("The param $param has no material defined"))
-    params = parameters(fp)
+    params = parameters(fproblem)
 
     return param ∈ params
 
 end
+
+"Returns a vector with the unknown parameters of the forward problem `fproblem`` "
+unknown_parameters(fproblem::AbstractForwardProblem) = filter(ismissing, parameters(fproblem))
 
 "Built-in function to initialize a `fproblem` forward problem.
     Label the grid named `grid` with boundary conditions `bcs` and materials `mats`."
@@ -286,6 +288,9 @@ grid(fsol::AbstractForwardProblemSolution) = grid(femdata(fsol))
 
 "Returns forward problem materials of a forward problem solution `fsol`."
 materials(fsol::AbstractForwardProblemSolution) = fsol.data_mats
+
+"Returns forward problem solver used to obtain the forward problem solution `fsol`."
+solver(fsol::AbstractForwardProblemSolution) = fsol.solver
 
 " Abstract functor for a forward problem solution `fsol``. "
 function (fsol::AbstractForwardProblemSolution)(
