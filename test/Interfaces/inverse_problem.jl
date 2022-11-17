@@ -24,7 +24,7 @@ svk = SVK(E, ν, :material_to_test)
         default_msf = MSEOpticalFlow()
         @test expression(default_msf) == :(∭((I(x₀ + u(x₀, t), t) - I(x₀, t₀))^2 * dΩdt))
         @test gradient(default_msf) == Vector{Float64}(undef, 0)
-        @test hessian(default_msf) == Matrix{Float64}(undef, (0,0))
+        @test hessian(default_msf) == Matrix{Float64}(undef, (0, 0))
         @test trials(default_msf) == Dict{AbstractParameter,Vector}()
         @test values(default_msf) == Vector{Float64}(undef, 0)
 
@@ -32,7 +32,7 @@ svk = SVK(E, ν, :material_to_test)
         param_search_region = Dict(
             E => (1.1Eₘᵢₙ, 0.9Eₘᵢₙ),
             ν => (1.1νₘᵢₙ, 0.9νₘᵢₙ),
-            )
+        )
 
         param_msf = MSEOpticalFlow(param_search_region)
 
@@ -44,7 +44,7 @@ svk = SVK(E, ν, :material_to_test)
         )
         @test trials_to_test == trials(param_msf)
         @test (label(E), material(E)) ∈ trial_parameters(param_msf) &&
-            (label(ν), material(ν)) ∈ trial_parameters(param_msf)
+              (label(ν), material(ν)) ∈ trial_parameters(param_msf)
 
         # Append a trial and a value functions
         val_to_add = rand(Float64)
@@ -94,19 +94,19 @@ end
     vals_left = (x, t) -> zero(Vec{1})
     num_dof_left = [1] # uₓ
     label_left = "left_fixed"
-    left_ΓD = DirichletBC(dof_left, vals_left, num_dof_left, label_left);
+    left_ΓD = DirichletBC(dof_left, vals_left, num_dof_left, label_left)
     # null x displacement at (x,y) = (0,[Lⱼ])
     dof_topbot = dofu
     region_topbot_ΓD = x -> norm(x[2]) ≈ 0.0 || norm(x[2]) ≈ Lⱼₛ
     vals_topbot = (x, t) -> zero(Vec{1})
     num_dof_topbot = [2]
     label_topbot = "top&bottom"
-    topbot_ΓD = DirichletBC(dof_topbot, vals_topbot, num_dof_topbot, label_topbot);
+    topbot_ΓD = DirichletBC(dof_topbot, vals_topbot, num_dof_topbot, label_topbot)
 
     # -- Neumann boundary conditions -- #
     # tension at (x,y) = (Lᵢ,[0-Lⱼ])
     region_tensionΓN = x -> norm(x[1]) ≈ Lᵢₛ
-    pₓ = 0.2; # force
+    pₓ = 0.2 # force
     tensionΓN(t) = pₓ * t
     dir_tensionΓN = [1, 0] # x direction
     label_tensionΓN = "traction"
@@ -133,7 +133,7 @@ end
     mat = Dict{AbstractMaterial,Function}(svk => region_svk)
 
     # --- FEM data  ---
-    data_fem = FEMData(fgrid, dofs, bcs);
+    data_fem = FEMData(fgrid, dofs, bcs)
 
     # --- Forward problem  ---
     lep_fproblem = LinearElasticityProblem(data_fem, mat)
@@ -173,7 +173,7 @@ end
     mkdir(tdir)
     vtk_structured_write_sequence(vars, intensity_func, :intensity, tname, tdir)
     imgs = load_vtk_sequence_imgs(tdir)
-    rm(tdir, recursive = true, force = true)
+    rm(tdir, recursive=true, force=true)
     img_data = ImageData(imgs, roi_func, time_images)
     img_ref = reference_img(img_data)
     imgs_def = deformed_imgs(img_data)
@@ -188,14 +188,14 @@ end
     # check optical flow hypothesis with the loaded images
     @test img_ref([p]) ≈ [intensity_func(p..., 0)] rtol = 1e-3
     @test img_def([def_p]) ≈ [intensity_func(def_p..., 1)] rtol = 1e-2
-    @test img_def([def_p]) ≈  img_ref([p]) rtol = 1e-2
+    @test img_def([def_p]) ≈ img_ref([p]) rtol = 1e-2
 
     @testset "MSEOpticalFlow value 1D" begin
 
         # Test the functional values computed by hand with E = Eᵣ
         # ------------------------------------------------------
         params_to_set = Dict(E => Eᵣ)
-        gold_solution = solve(lep_fproblem, ferrite_fsolver, params_to_set);
+        gold_solution = solve(lep_fproblem, ferrite_fsolver, params_to_set)
 
         # get roi coordinates, intensity and displacements
         nodes_roi = roi_nodes(img_data)
@@ -262,7 +262,7 @@ end
 
         # test getter functions
         @test data_measured(invp) == img_data
-        @test feasible_region(invp) == Dict(E => feasible_region(E), ν=> feasible_region(ν))
+        @test feasible_region(invp) == Dict(E => feasible_region(E), ν => feasible_region(ν))
         @test search_region(invp) == Dict(E => range(E), ν => range(ν))
         @test forward_problem(invp) == lep_fproblem
         @test forward_solver(invp) == ferrite_fsolver
@@ -276,8 +276,8 @@ end
         num_params_to_bf = 3
         params_to_set_iters_nparams = _iterators_unknown_parameters(invp, num_params_to_bf)
         @test length(params_to_set_iters_nparams) == num_params_to_bf^2
-        @test params_to_set_iters[1] == Dict(E=> Eₘᵢₙ, ν=> νₘᵢₙ)
-        @test params_to_set_iters_nparams[1] == Dict(E=> Eₘᵢₙ, ν=> νₘᵢₙ)
+        @test params_to_set_iters[1] == Dict(E => Eₘᵢₙ, ν => νₘᵢₙ)
+        @test params_to_set_iters_nparams[1] == Dict(E => Eₘᵢₙ, ν => νₘᵢₙ)
 
         # test evaluate! and closure function
         setval!(ν, νᵣ)
@@ -287,7 +287,7 @@ end
         # once a parameter is set to a value then unknown parameters will become []
         setval!(E, missing)
         func_closure = _closure_function(invp)
-        @test func_closure([Eᵣ], [.2]) ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
+        @test func_closure([Eᵣ], [0.2]) ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
         @test eval_f_Eᵣ ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
 
         @testset "Brute-Force algorithm" begin
@@ -311,7 +311,7 @@ end
             @test materials(isol) == [svk]
             @test solver(isol) == bf_alg
             # test the value of E is now the reference
-            @test value(E) ≈ Eᵣ rtol =1e-2
+            @test value(E) ≈ Eᵣ rtol = 1e-2
         end
 
     end
