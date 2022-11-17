@@ -106,10 +106,10 @@ function evaluate!(
         int_def_roi = img_def_t(x_def)
 
         # intensity differences
-        f_value += reduce(+, (int_def_roi - int_ref_roi) .^ 2)
+        f_value += reduce(+, @. (int_def_roi - int_ref_roi)^2 * dΩ * dt)
     end
     f_val = f_value
-    # f_val = f_value * dΩ * dt
+    # f_val = f_value
 
     append_value!(oflow, f_val)
     append_trial!(oflow, candidate_params)
