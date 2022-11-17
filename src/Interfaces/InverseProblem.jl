@@ -14,8 +14,8 @@ import ..Images: roi
 
 export AbstractInverseProblem, AbstractFunctional, InverseProblemSolution
 export append_value!, append_trial!, data_measured, expression, evaluate!, gradient, hessian,
- optim_done, trials, forward_problem, forward_solver, functional, functional_values, functional_trials,
- identified_params, inverse_problem, reset!, search_region, set_search_region, trial_parameters
+    optim_done, trials, forward_problem, forward_solver, functional, functional_values, functional_trials,
+    identified_params, inverse_problem, reset!, search_region, set_search_region, trial_parameters
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
@@ -50,9 +50,9 @@ function append_trial!(f::AbstractFunctional, trial::Dict{<:AbstractParameter,<:
         mat_p_to_set = material(p_to_set)
         for p_already_tried in functional_params_trials
             if symbol_p_to_set == p_already_tried[1] &&
-                mat_p_to_set == p_already_tried[2]
-            # if symbol_p_to_set == label(p_already_tried) &&
-            #     mat_p_to_set == material(p_already_tried)
+               mat_p_to_set == p_already_tried[2]
+                # if symbol_p_to_set == label(p_already_tried) &&
+                #     mat_p_to_set == material(p_already_tried)
                 push!(functional_trials[p_already_tried], pvalue)
 
                 return trials(f)
@@ -167,7 +167,7 @@ The following methods are provided by the interface:
 abstract type AbstractInverseProblemSolver end
 
 "Returns `true` if the inverse problem has compleated the optimization task."
-optim_done(isolver::AbstractInverseProblemSolver)= isolver.optim_done
+optim_done(isolver::AbstractInverseProblemSolver) = isolver.optim_done
 
 "Sets the optimization boolean to true"
 _set_optim_done!(isolver::AbstractInverseProblemSolver) = isolver.optim_done.x = true
@@ -194,25 +194,25 @@ The following methods are provided by the interface:
 abstract type AbstractInverseProblemSolution end
 
 "Returns the functional employed to solve the inverse problem `isol`."
-functional(isol::AbstractInverseProblemSolution)= isol.f
+functional(isol::AbstractInverseProblemSolution) = isol.f
 
 "Returns the functional values during the construction of the inverse problem solution `isol`."
-functional_values(isol::AbstractInverseProblemSolution)= values(functional(isol))
+functional_values(isol::AbstractInverseProblemSolution) = values(functional(isol))
 
 "Returns the functional trials during the construction of the inverse problem solution `isol`."
-functional_trials(isol::AbstractInverseProblemSolution)= trails_aux(functional(isol))
+functional_trials(isol::AbstractInverseProblemSolution) = trials(functional(isol))
 
 "Returns the materials identified during the process of obtaining the inverse problem solution `isol`."
-parameters(isol::AbstractInverseProblemSolution)= parameters(inverse_problem(isol))
+parameters(isol::AbstractInverseProblemSolution) = parameters(inverse_problem(isol))
 
 "Returns the inverse problem solved in `isol`."
-inverse_problem(isol::AbstractInverseProblemSolution)= isol.invp
+inverse_problem(isol::AbstractInverseProblemSolution) = isol.invp
 
 "Returns the materials identified during the process of obtaining the inverse problem solution `isol`."
-materials(isol::AbstractInverseProblemSolution)= keys(materials(forward_problem(inverse_problem(isol)))) |> collect
+materials(isol::AbstractInverseProblemSolution) = keys(materials(forward_problem(inverse_problem(isol)))) |> collect
 
 "Returns the solver employed to solve the inverse problem `isol`."
-solver(isol::AbstractInverseProblemSolution)= isol.solver
+solver(isol::AbstractInverseProblemSolution) = isol.solver
 
 """ Inverse Problem solution struct
 ### Fields:
@@ -230,7 +230,7 @@ struct InverseProblemSolution{
     solver::ISOLVER
     f::F
     extra::Dict{Symbol,T} # Extra Dict to add specific variables and a linked symbol
-    function InverseProblemSolution(invp::IP, f::F, isolver::ISOL, extra::Dict)where {IP<:AbstractInverseProblem, F<:AbstractFunctional, ISOL<:AbstractInverseProblemSolver}
+    function InverseProblemSolution(invp::IP, f::F, isolver::ISOL, extra::Dict) where {IP<:AbstractInverseProblem,F<:AbstractFunctional,ISOL<:AbstractInverseProblemSolver}
 
         _set_optim_parameters!(invp, isolver)
 
@@ -243,7 +243,7 @@ function InverseProblemSolution(
     invp::INVP,
     f::F,
     isolver::ISOL
-    ) where{INVP<:AbstractInverseProblem, F<:AbstractFunctional, ISOL<:AbstractInverseProblemSolver}
+) where {INVP<:AbstractInverseProblem,F<:AbstractFunctional,ISOL<:AbstractInverseProblemSolver}
 
     extra_empty = Dict{Symbol,Nothing}()
 
@@ -256,7 +256,7 @@ function _set_optim_parameters!(invp::AbstractInverseProblem, isolver::AbstractI
 
     !(optim_done(isolver).x) && throw(
         ArgumentError("The inverse solver has not finish the optimization, check optim_done(isolver)")
-        )
+    )
 
     # functional minimum
     func = functional(invp)
@@ -273,7 +273,7 @@ function _set_optim_parameters!(invp::AbstractInverseProblem, isolver::AbstractI
         param = filter(x -> label(x) == pname && material(x) == matname, vec_all_params)
         length(param) != 1 && throw(
             ArgumentError("Two or materials has the same parameter name and symbol: $param ")
-            )
+        )
         setval!(param[1], pvalue[idx_min])
 
     end
@@ -306,8 +306,8 @@ function solve(
 end
 
 "Internal function that solves the inverse problem `invp` using the solver `isolver`"
-function _solve(invp::IP, isolver::ISOL, args...;kwargs...,
-    ) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
+function _solve(invp::IP, isolver::ISOL, args...; kwargs...
+) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
 
     # to solve an inverse problem consits of optimizing a functional
     f = functional(invp) # returns the enclosed function
@@ -328,12 +328,12 @@ include("../InverseProblem/AbstractInverseProblem/MaterialIdentificationProblem.
 #######################################
 
 "Evaluates the functional `f` for a given sequence of arguments."
-function evaluate!(f::AbstractFunctional, invp::AbstractInverseProblem, candidate_params::CP,args...) where {CP} end
+function evaluate!(f::AbstractFunctional, invp::AbstractInverseProblem, candidate_params::CP, args...) where {CP} end
 
 "Closure function to evaluate the functional given a vector of numerical parameters `vec_params`` "
 function _closure_function(
     invp::AbstractInverseProblem,
-    eval_func = evaluate!,
+    eval_func=evaluate!,
     args...)
 
     func = functional(invp)
@@ -341,7 +341,7 @@ function _closure_function(
 
     uparams == [] && @warn "There is any unknown parameter, please check parameters(forward_problem)"
 
-    closure_functional = (vec_params, constant_params) -> eval_func(func, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(uparams, vec_params)))
+    closure_functional = (vec_params, constant_params=[0]) -> eval_func(func, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(uparams, vec_params)))
 
     return closure_functional
 end
