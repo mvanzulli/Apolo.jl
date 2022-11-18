@@ -230,15 +230,15 @@ end
         @test int_def_roi_numeric ≈ int_def_roi_analytic rtol = 1e-1
 
         # test functional values
-        msf_analytic = sum((int_def_roi_analytic - int_ref_roi_analytic) .^ 2)
-        msf_numeric = sum((int_def_roi_numeric - int_ref_roi_numeric) .^ 2)
+        msf_analytic = sum((int_def_roi_analytic - int_ref_roi_analytic) .^ 2) * prod(spacing_roi)
+        msf_numeric = sum((int_def_roi_numeric - int_ref_roi_numeric) .^ 2) * prod(spacing_roi)
         # indexes of points that remain and not remain inside the roi
         not_in_roi = findall(x -> !roi_func([x, 0.5]), def_roi_analytic_x)
         in_roi = findall(x -> roi_func([x, 0.5]), def_roi_analytic_x)
 
-        not_in_roi_error_analytic = sum(int_ref_roi_analytic[not_in_roi] .^ 2)
+        not_in_roi_error_analytic = sum(int_ref_roi_analytic[not_in_roi] .^ 2) * prod(spacing_roi)
         msf_analytic_inroi = sum((int_def_roi_analytic[in_roi] - int_ref_roi_analytic[in_roi]) .^ 2)
-        not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi] .^ 2)
+        not_in_roi_error_numeric = sum(int_ref_roi_numeric[not_in_roi] .^ 2) * prod(spacing_roi)
 
         # optical flow functional for points that ∈ ROI
         @test msf_analytic_inroi ≈ 0 atol = 1e-8
@@ -247,6 +247,7 @@ end
         # functional penalty for points that ∉ ROI
         @test not_in_roi_error_analytic ≈ not_in_roi_error_numeric rtol = 1e-4
         @test msf_numeric ≈ not_in_roi_error_numeric atol = 1e-2
+
     end
     # Test the functional values computed  in APOLO.jl
     # ------------------------------------------------------
@@ -283,18 +284,18 @@ end
         setval!(ν, νᵣ)
         candidate_param = Dict{AbstractParameter,Float64}(E => Eᵣ)
         eval_f_Eᵣ = evaluate!(msd, invp, candidate_param)
-
         # once a parameter is set to a value then unknown parameters will become []
         setval!(E, missing)
         func_closure = _closure_function(invp)
-        @test func_closure([Eᵣ], [0.2]) ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
-        @test eval_f_Eᵣ ≈ 0.002549968982967601 rtol = 1e-4 # change for a global variable
+        # msf numeric value form the previous test set
+        @test func_closure([Eᵣ], [0.2]) ≈ 7.968653071773753e-5 rtol = 1e-4 # change for a global variable
+        @test eval_f_Eᵣ ≈ 7.968653071773753e-5 rtol = 1e-4 # change for a global variable
 
         @testset "Brute-Force algorithm" begin
             # set the brute force algortihm
             n_params = 100
-            bf_alg = BruteForce(n_params)
-            @test optim_done(bf_alg).x == false
+            bf_alg = BruteForceInverseSolver(n_params)
+            @test optim_done(bf_alg) == false
             @test nparams_foreach_param(bf_alg) == n_params
             # set the parameter to be unknown and reset
             # solve the inverse problem
@@ -303,7 +304,6 @@ end
             invp = MaterialIdentificationProblem(lep_fproblem, ferrite_fsolver, img_data, msd, roi_func)
             isol = solve(invp, bf_alg)
 
-            functional_values
             @test functional(isol) == msd
             @test functional_values(isol) == values(msd)
             @test parameters(isol) == parameters(lep_fproblem)
