@@ -112,6 +112,6 @@ function evaluate!(
     append_value!(oflow, f_value)
     append_trial!(oflow, candidate_params)
 
-    return f_val
+    return f_value
 
 end
