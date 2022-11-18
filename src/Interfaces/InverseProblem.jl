@@ -279,7 +279,7 @@ function _set_optim_parameters!(invp::AbstractInverseProblem, isolver::AbstractI
 end
 
 #################################
-# Generic functions to overlead #
+# Generic functions to overload #
 ##################################
 """ Solves the inverse problem.
 
@@ -311,17 +311,14 @@ include("../InverseProblem/AbstractInverseProblem/MaterialIdentificationProblem.
 function evaluate!(f::AbstractFunctional, invp::AbstractInverseProblem, candidate_params::CP, args...) where {CP} end
 
 "Closure function to evaluate the functional given a vector of numerical parameters `vec_params`` "
-function _closure_function(
-    invp::AbstractInverseProblem,
-    eval_func=evaluate!,
-    args...)
+function _closure_function(invp::AbstractInverseProblem, args...)
 
     func = functional(invp)
     uparams = unknown_parameters(invp)
 
     uparams == [] && @warn "There is any unknown parameter, please check parameters(forward_problem)"
 
-    closure_functional = (vec_params, constant_params=[0]) -> eval_func(func, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(uparams, vec_params)))
+    closure_functional = (vec_params, constant_params=[0]) -> evaluate!(func, invp, Dict(pᵢ => xᵢ for (pᵢ, xᵢ) in zip(uparams, vec_params)))
 
     return closure_functional
 end

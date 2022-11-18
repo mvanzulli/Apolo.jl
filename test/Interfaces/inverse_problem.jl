@@ -37,7 +37,7 @@ svk = SVK(E, ν, :material_to_test)
         param_msf = MSEOpticalFlow(param_search_region)
 
         # Getter functions
-        @test Float64[] == values(param_msf)
+        @test isempty(values(param_msf))
         trials_to_test = Dict(
             (label(E), material(E)) => [],
             (label(ν), material(ν)) => [],
