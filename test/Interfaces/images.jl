@@ -292,8 +292,8 @@ end
     # Build a VTK image with a given grid
     vtk_img_grid = grid(vtk_img)
     vtk_img = VTKImage(
-        intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
-        )
+        intensity_array, vtk_img_grid, spacing_img, start_img, path_img
+    )
     # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)
 
@@ -390,8 +390,8 @@ end
     # Build a VTK image with a given grid
     vtk_img_grid = grid(vtk_img)
     vtk_img = VTKImage(
-        intensity_array, vtk_img_grid,  spacing_img, start_img, path_img
-        )
+        intensity_array, vtk_img_grid, spacing_img, start_img, path_img
+    )
 
     # Read a VTK image
     vtk_img_red = load_vtk_img(path_img)

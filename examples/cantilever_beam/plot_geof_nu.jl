@@ -1,4 +1,4 @@
-# Plot min max and gold solutions 
+# Plot min max and gold solutions
 # ------------------------------
 # general plot params
 const LINE_WIDTH = 4
@@ -18,7 +18,7 @@ function plot_extremaΩ_sols(
     min_solution::ForwardProblemSolution,
     max_solution::ForwardProblemSolution,
     num_points_border = 20,
-    ) where νT<:Union{Vector,LinRange}  
+    ) where νT<:Union{Vector,LinRange}
 
         # Check Eᵥ contains only one value
         @assert length(Eᵥ) == 1 "In this method Eᵥ must contain only one value"
@@ -39,15 +39,15 @@ function plot_extremaΩ_sols(
             color = MAX_COLOR,
             markershape = MAX_MARKER,
             markersize = MARKER_SIZE)
-        
+
         # plot gold solution
         Ωgold = SolutionBoundary(gold_solution, num_points_border)
-        scatter!(Tuple.(get_elements(Ωgold)), 
+        scatter!(Tuple.(get_elements(Ωgold)),
         label = "gold sol (E,ν) = ($(Eᵣ),$(νᵣ))",
         color = GOLD_COLOR,
         markershape = GOLD_MARKER,
         markersize = MARKER_SIZE,)
-        
+
         # display plot
         display(scatter!(
             xlabel=L"x ~ \textrm{[m]}",
@@ -59,13 +59,13 @@ end
 #
 # plot them
 plot_extremaΩ_sols(Eᵥ, νᵥ, gold_solution, min_solution, max_solution)
-# Plot jaccard number 
+# Plot jaccard number
 # ------------------------------
 # plot params
 const JACCARD_COLOR = :deepskyblue3
 const JACCARD_MARKER = :circle
 "Plots jaccards number when ν is changing"
-function plot_jaccard_ν(νᵥ::νT, jaccards) where νT<:Union{Vector,LinRange}  
+function plot_jaccard_ν(νᵥ::νT, jaccards) where νT<:Union{Vector,LinRange}
     # Plot Jaccard's number
     plot(
         νᵥ,
@@ -100,12 +100,12 @@ function plot_jaccard_ν(νᵥ::νT, jaccards) where νT<:Union{Vector,LinRange}
 end
 #
 plot_jaccard_ν(νᵥ , jaccards)
-# Plot Hausdorff distance 
+# Plot Hausdorff distance
 # ------------------------------
 # plot params
 const HAUSDORFF_COLOR = :purple2
 const HAUSDORFF_MARKER = :circle
-function plot_hausdorff_ν(νᵥ::νT, hausdorffs) where νT<:Union{Vector,LinRange}  
+function plot_hausdorff_ν(νᵥ::νT, hausdorffs) where νT<:Union{Vector,LinRange}
     # Plot Jaccard's number
     plot(
         νᵥ,
@@ -140,12 +140,12 @@ function plot_hausdorff_ν(νᵥ::νT, hausdorffs) where νT<:Union{Vector,LinRa
 end
 #
 plot_hausdorff_ν(νᵥ, hausdorffs)
-# Plot geometric similarty function  
+# Plot geometric similarty function
 # -----------------------------------
 # plot params
 const GSF_COLOR = :seagreen
 const HAUSDORFF_MARKER = :circle
-function plot_gsf_ν(νᵥ::νT, gsfs) where νT<:Union{Vector,LinRange}  
+function plot_gsf_ν(νᵥ::νT, gsfs) where νT<:Union{Vector,LinRange}
     # Plot Jaccard's number
     plot(
         νᵥ,

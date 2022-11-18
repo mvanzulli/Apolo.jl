@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------------------
-# This is the Ferrite script of a one dimensional identification problem of Zerpa 2019 
+# This is the Ferrite script of a one dimensional identification problem of Zerpa 2019
 # -------------------------------------------------------------------------------------
 # u vals
 u = sol.valdofs

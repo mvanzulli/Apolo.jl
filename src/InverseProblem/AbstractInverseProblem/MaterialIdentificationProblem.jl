@@ -48,13 +48,13 @@ function MaterialIdentificationProblem(
 )
 
     uparams = unknown_parameters(fproblem)
-    search_default_region = Dict{AbstractParameter, AbstractVector}()
+    search_default_region = Dict{AbstractParameter,AbstractVector}()
     for uparam in uparams
         search_default_region[uparam] = range(uparam)
     end
 
     return MaterialIdentificationProblem(
         fproblem, fsolver, datam, func, roi, search_default_region
-        )
+    )
 
 end

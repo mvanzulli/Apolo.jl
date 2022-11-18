@@ -112,7 +112,7 @@ using LinearAlgebra: norm
     f_region_to_test = Dict(E => feasible_region(E), ν => feasible_region(ν))
     @test grid(fproblem) == fgrid
     @test materials(fproblem) == mats
-    @test all(p ∈ parameters(fproblem) for p in [E,ν])
+    @test all(p ∈ parameters(fproblem) for p in [E, ν])
     # test methods
     @test feasible_region(fproblem) == f_region_to_test
 
@@ -135,8 +135,8 @@ end
 @testset "Ferrite solver end-to-end 2D case" begin
 
     # --- Degrees of freedom ---
-    dimgrid = dimu = 2;
-    dimσₓ = 1;
+    dimgrid = dimu = 2
+    dimσₓ = 1
     dofu = Dof{dimu}(:u)
     dofσₓ = Dof{dimσₓ}(:σₓ)
     dfs = StressDispDofs(σ=dofσₓ, u=dofu)

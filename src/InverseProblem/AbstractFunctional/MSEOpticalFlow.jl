@@ -108,12 +108,10 @@ function evaluate!(
         # intensity differences
         f_value += reduce(+, @. (int_def_roi - int_ref_roi)^2 * dΩ * dt)
     end
-    f_val = f_value
-    # f_val = f_value
 
-    append_value!(oflow, f_val)
+    append_value!(oflow, f_value)
     append_trial!(oflow, candidate_params)
 
-    return f_val
+    return f_value
 
 end

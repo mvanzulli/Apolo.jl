@@ -1,4 +1,4 @@
-# Plot min max and gold solutions 
+# Plot min max and gold solutions
 # ------------------------------
 # general plot params
 const LINE_WIDTH = 4
@@ -18,7 +18,7 @@ function plot_extremaΩ_sols(
     min_solution::ForwardProblemSolution,
     max_solution::ForwardProblemSolution,
     num_points_border = 20,
-    ) where ET<:Union{Vector,LinRange}  
+    ) where ET<:Union{Vector,LinRange}
 
         # Check Eᵥ contains only one value
         @assert length(νᵥ) == 1 "In this method Eᵥ must contain only one value"
@@ -39,15 +39,15 @@ function plot_extremaΩ_sols(
             color = MAX_COLOR,
             markershape = MAX_MARKER,
             markersize = MARKER_SIZE)
-        
+
         # plot gold solution
         Ωgold = SolutionBoundary(gold_solution, num_points_border)
-        scatter!(Tuple.(get_elements(Ωgold)), 
+        scatter!(Tuple.(get_elements(Ωgold)),
         label = "gold sol (E,ν) = ($(Eᵣ),$(νᵣ))",
         color = GOLD_COLOR,
         markershape = GOLD_MARKER,
         markersize = MARKER_SIZE,)
-        
+
         # display plot
         # display plot
         display(scatter!(
@@ -60,13 +60,13 @@ end
 #
 # plot them
 plot_extremaΩ_sols(νᵥ, Eᵥ, gold_solution, min_solution, max_solution)
-# Plot jaccard number 
+# Plot jaccard number
 # ------------------------------
 # plot params
 const JACCARD_COLOR = :deepskyblue3
 const JACCARD_MARKER = :circle
 "Plots jaccards number when E is changing"
-function plot_jaccard_E(Eᵥ::ET, jaccards) where ET<:Union{Vector,LinRange}  
+function plot_jaccard_E(Eᵥ::ET, jaccards) where ET<:Union{Vector,LinRange}
     # Plot Jaccard's number
     plot(
         Eᵥ,
@@ -101,12 +101,12 @@ function plot_jaccard_E(Eᵥ::ET, jaccards) where ET<:Union{Vector,LinRange}
 end
 #
 plot_jaccard_E(Eᵥ , jaccards)
-# Plot Hausdorff distance 
+# Plot Hausdorff distance
 # ------------------------------
 # plot params
 const HAUSDORFF_COLOR = :purple2
 const HAUSDORFF_MARKER = :circle
-function plot_hausdorff_E(Eᵥ::ET, hausdorffs) where ET<:Union{Vector,LinRange}  
+function plot_hausdorff_E(Eᵥ::ET, hausdorffs) where ET<:Union{Vector,LinRange}
     # Plot Jaccard's number
     plot(
         Eᵥ,
@@ -141,12 +141,12 @@ function plot_hausdorff_E(Eᵥ::ET, hausdorffs) where ET<:Union{Vector,LinRange}
 end
 #
 plot_hausdorff_E(Eᵥ, hausdorffs)
-# Plot geometric similarty function  
+# Plot geometric similarty function
 # -----------------------------------
 # plot params
 const GSF_COLOR = :seagreen
 const HAUSDORFF_MARKER = :circle
-function plot_gsf_E(Eᵥ::ET, gsfs) where ET<:Union{Vector,LinRange}  
+function plot_gsf_E(Eᵥ::ET, gsfs) where ET<:Union{Vector,LinRange}
     # Plot Jaccard's number
     plot(
         Eᵥ,
