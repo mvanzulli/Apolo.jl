@@ -167,7 +167,7 @@ The following methods are provided by the interface:
 abstract type AbstractInverseProblemSolver end
 
 "Returns `true` if the inverse problem has compleated the optimization task."
-optim_done(isolver::AbstractInverseProblemSolver) = isolver.optim_done
+optim_done(isolver::AbstractInverseProblemSolver)::Bool = isolver.optim_done.x
 
 "Sets the optimization boolean to true"
 _set_optim_done!(isolver::AbstractInverseProblemSolver) = isolver.optim_done.x = true
@@ -241,20 +241,19 @@ end
 "Inverse problem solution constructor with an empty extra dict."
 function InverseProblemSolution(
     invp::INVP,
-    f::F,
     isolver::ISOL
-) where {INVP<:AbstractInverseProblem,F<:AbstractFunctional,ISOL<:AbstractInverseProblemSolver}
+) where {INVP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
 
     extra_empty = Dict{Symbol,Nothing}()
 
-    return InverseProblemSolution(invp, f, isolver, extra_empty)
+    return InverseProblemSolution(invp, functional(invp), isolver, extra_empty)
 end
 
 
 "Sets the optimized parameters to each parameter"
 function _set_optim_parameters!(invp::AbstractInverseProblem, isolver::AbstractInverseProblemSolver)
 
-    !(optim_done(isolver).x) && throw(
+    !(optim_done(isolver)) && throw(
         ArgumentError("The inverse solver has not finish the optimization, check optim_done(isolver)")
     )
 
@@ -264,8 +263,6 @@ function _set_optim_parameters!(invp::AbstractInverseProblem, isolver::AbstractI
 
     # replace parameters values with the identified ones
     vec_all_params = parameters(invp)
-    vec_param_names = label.(vec_all_params)
-    vec_param_mats = material.(vec_all_params)
 
     # sets the identified parameter values
     for ((pname, matname), pvalue) in trials(func)
@@ -298,24 +295,7 @@ function solve(
     isolver::ISOL,
     args...;
     kwargs...
-) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
-
-    _initialize!(invp, isolver, args...; kwargs...)
-
-    return _solve(invp, isolver, args...; kwargs...)
-end
-
-"Internal function that solves the inverse problem `invp` using the solver `isolver`"
-function _solve(invp::IP, isolver::ISOL, args...; kwargs...
-) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver}
-
-    # to solve an inverse problem consits of optimizing a functional
-    f = functional(invp) # returns the enclosed function
-
-    optimize!(f, isolver, args...; kwargs...)
-
-    return f
-end
+) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver} end
 
 ############################################
 # Abstract Inverse Problem implementations #
@@ -352,6 +332,7 @@ include("../InverseProblem/AbstractFunctional/MSEOpticalFlow.jl")
 # Abstract Inverse Solver implementations #
 #######################################
 
-include("../InverseProblem/AbstractInverseSolver/BruteForce.jl")
+include("../InverseProblem/AbstractInverseSolver/BruteForceInverseSolver.jl")
+include("../InverseProblem/AbstractInverseSolver/OptimizationJLInverseSolver.jl")
 
 end # end module

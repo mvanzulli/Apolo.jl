@@ -10,8 +10,10 @@
 # processing libraries
 using Apolo
 using Apolo.InverseProblem: _closure_function
+using Printf
 using LinearAlgebra: norm
 using Test: @test
+using OptimizationBBO: BBO_adaptive_de_rand_1_bin_radiuslimited, BBO_probabilistic_descent
 #
 # post processing libraries
 using Plots, LaTeXStrings
@@ -20,9 +22,10 @@ using Plots, LaTeXStrings
 # Manufactured and analytical solution
 #
 include("./manufactured_tests_Eᵣ.jl")
-const NUM_PARAMS_E = 41
-const NUM_PIX_X = 128
+const NUM_PARAMS_E = 51
+const NUM_PIX_X = 256
 const NUM_ELEMENTS_EACH_DIRECTION = 4
+const LINEAR_INTENSITY = false
 # ------------------------------
 # Define Dofs
 # ------------------------------
@@ -150,12 +153,15 @@ uₗ(x, t) = Cp(t) / Eᵣ * getindex.(x, 1)
 # --------------------------
 # intesnsity function
 ω = 100
-# intensity_func(x,y,t) = sin((ω * Eᵣ) / (Cp(t) + Eᵣ) * x)
-intensity_func(x, y, t) = Eᵣ / (Cp(t) + Eᵣ) * x / Lᵢₛ
+if LINEAR_INTENSITY
+    intensity_func(x, y, t) = Eᵣ / (Cp(t) + Eᵣ) * x / Lᵢₛ
+else
+    intensity_func(x, y, t) = sin((ω * Eᵣ) / (Cp(t) + Eᵣ) * x)
+end
 # image zone
 # -----------------------------------
-start_img = (Lᵢₛ, Lᵢₛ) ./ 4
-finish_img = (Lᵢₛ, Lᵢₛ) .* (3 / 4)
+start_img = (Lᵢₛ, Lᵢₛ) ./ 4 ./ 2
+finish_img = (Lᵢₛ, Lᵢₛ) .* (7 / 8)
 length_img = finish_img .- start_img
 npix_img = (NUM_PIX_X, 2)
 spacing_img = length_img ./ npix_img
@@ -171,16 +177,17 @@ vtk_structured_write_sequence(vars, intensity_func, :intensity, tname, tdir)
 # --------------------------
 # Inverse problem
 # --------------------------
+# region of intereset
+# -----------------------------------
+start_roi = @. (Lᵢₛ, Lᵢₛ) * 1 / 4
+finish_roi = @. (Lᵢₛ, Lᵢₛ) * 3 / 4
+length_roi = start_roi .- finish_roi
+in_roi_func(x) = all(@. start_roi ≤ (x[1], x[2]) ≤ finish_roi)
 # functional analytic expression extracted from (https://github.com/jorgepz/Materialis.jl/blob/main/examples/extension/extension.jl)
 # -----------------------------------
 Evec = range(E, NUM_PARAMS_E)
-analytic_f(E, t) = 1 / 4 * (Eᵣ / (Eᵣ + Cp(t)) * (E .+ Cp(t)) ./ E .- 1.0) .^ 2
+analytic_f(E, t) = prod(length_roi) * (Eᵣ / (Eᵣ + Cp(t)) * (E .+ Cp(t)) ./ E .- 1.0) .^ 2
 fvalues_analytic = [analytic_f(Ei, 1.0) for Ei in Evec]
-# region of intereset
-# -----------------------------------
-start_roi = @. (Lᵢₛ, Lᵢₛ) * 1 / 3
-finish_roi = @. (Lᵢₛ, Lᵢₛ) * 3 / 4 * 8 / 9
-in_roi_func(x) = all(@. start_roi ≤ (x[1], x[2]) ≤ finish_roi)
 # read the data
 # --------------------------
 imgs = load_vtk_sequence_imgs(tdir)
@@ -188,11 +195,13 @@ imgs = load_vtk_sequence_imgs(tdir)
 img_data = ImageData(imgs, in_roi_func, mtime)
 # test the functional value for E = Eᵣ and extract the analytic expresson of I
 # --------------------------
-numeric_f_Eᵣ = manufactured_tests_Eᵣ(
-    intensity_func, in_img_func, uₗ, img_data, gold_solution, analytic_f
-)
-# test the manufactured f(Eᵣ) value against APOLO output
-# -----------------------------------
+if LINEAR_INTENSITY
+    numeric_f_Eᵣ = manufactured_tests_Eᵣ(
+        intensity_func, in_img_func, uₗ, img_data, gold_solution, analytic_f
+    )
+end
+# test the manufactured f(Eᵣ) value against APOLO  brute -force
+# ---------------------------------------------------------------
 # reset E value to unknown
 setval!(E, missing)
 # select the functional
@@ -206,10 +215,12 @@ invp = MaterialIdentificationProblem(
 # evaluate the functional via a closure function
 # -----------------------------------
 functional_closured = _closure_function(invp)
-@test functional_closured([Eᵣ]) ≈ numeric_f_Eᵣ atol = eps()
+if LINEAR_INTENSITY
+    @test functional_closured([Eᵣ]) ≈ numeric_f_Eᵣ atol = eps()
+end
 fvalues_closured = [functional_closured([Eᵢ]) for Eᵢ in Evec]
-
-# solve the inverse problem via APOLO interface
+# ----------------------------
+# solve the inverse problem via APOLO interface brute force
 # ----------------------------
 # reset the functional and material parmaeters
 # ----------------------------
@@ -225,132 +236,74 @@ invp = MaterialIdentificationProblem(
 )
 # select the algorthim
 # ----------------------------
-bf_alg = BruteForce(NUM_PARAMS_E)
+bf_alg = BruteForceInverseSolver(NUM_PARAMS_E)
 # solve the inverse problem
 # ----------------------------
-isol = solve(invp, bf_alg)
+t_bf = @elapsed begin
+    isol_bf = solve(invp, bf_alg)
+end
 # extract results
 # ----------------------------
-fvalues_apolo = functional_values(isol)
-trials_apolo = functional_trials(isol)
+fvalues_apolo_bf = functional_values(isol_bf)
+trials_apolo_bf = functional_trials(isol_bf)
 # materials identified
-mats_iden = materials(isol)
+mats_iden = materials(isol_bf)
 # access to the value of the parameter E
 svk_iden = mats_iden[1]
 # test the value is the reference Eᵣ
+E_value_bf = value(svk_iden[:E])
 # ----------------------------
-@test value(svk_iden[:E]) ≈ Eᵣ rtol = 1e-2
+@test E_value_bf ≈ Eᵣ rtol = 1e-2
+# ----------------------------
+# solve the inverse problem via Optimzations.jl
+# ----------------------------
+# reset the functional and material parmaeters
+# ----------------------------
+# reset E value to unknown
+setval!(E, missing)
+# select the functional
+# ----------------------
+mse = MSEOpticalFlow()
+# inverse problem formulation
+# ----------------------------
+invp = MaterialIdentificationProblem(
+    lep_fproblem, ferrite_sovlver, img_data, mse, in_roi_func
+)
+# create an optimization function
+# --------------------------------
+# optimization solver
+# ----------------------
+inv_optim_solver = OptimizationJLInverseSolver(max_iter=3, max_time=10)
+# optimization algorithm
+# ----------------------
+grad_free_alg = BBO_adaptive_de_rand_1_bin_radiuslimited()
+grad_free_alg = BBO_probabilistic_descent()
+# solve the inverse problem
+# ----------------------------
+t_optim = @elapsed begin
+    isol_optim = solve(invp, inv_optim_solver, grad_free_alg)
+end
+# extract results
+# ----------------------------
+fvalues_optim = functional_values(isol_optim)
+trials_optim = functional_trials(isol_optim)
+# materials identified
+mats_iden = materials(isol_optim)
+# access to the value of the parameter E
+svk_iden = mats_iden[1]
+# test the value is the reference Eᵣ
+E_value_optim = value(svk_iden[:E])
+# test the value is the reference Eᵣ
+# ----------------------------
+@test E_value_optim ≈ Eᵣ rtol = 1e-1
 # --------------------------
 # Plot results
 # --------------------------
-# Set to zero values smaller than eps
-replace!(x -> x ≤ eps() ? 0 : x, fvalues_apolo)
-replace!(x -> x ≤ eps() ? 0 : x, fvalues_closured)
-replace!(x -> x ≤ eps() ? 0 : x, fvalues_analytic)
-# load backend
-# ------------
-gr()
-theme(:dracula)
-plot_font = "Computer Modern"
-default(
-    fontfamily=plot_font,
-    linewidth=2,
-    framestyle=:box,
-    label=nothing,
-    grid=true,
-)
-# style params
-# ------------
-colors = (analytic=:silver, apolo_bf=:green, closure=:blue, gold=:gold)
-markers = (analytic=:hexagon, apolo_bf=:none, bf=:uptriangle, closure=:circle, gold=:diamond)
-lw = 4
-linestyles = (analytic=:dot, apolo_bf=:solid, closure=:dash, gold=:solid)
-# plot internal apolo solution
-# ----------------------------
-plot(Evec, log10.(fvalues_apolo),
-    label="Brute-Force APOLO.jl",
-    linecolor=colors.apolo_bf,
-    linewidth=lw,
-    linestyle=linestyles.apolo_bf,
-    markershape=markers.apolo_bf,
-    markercolor=colors.apolo_bf,
-)
-# plot closure functional
-# ----------------------------
-plot!(Evec, log10.(fvalues_closured),
-    label="Brute-Force closure function ",
-    linecolor=colors.closure,
-    linewidth=lw,
-    linestyle=linestyles.closure,
-    markershape=markers.closure,
-    markercolor=colors.closure,
-)
-# plot analytic functionak
-# ----------------------------
-plot!(Evec, log10.(fvalues_analytic) .+ 2.25,
-    label="Analytic functional ",
-    linecolor=colors.analytic,
-    linewidth=lw,
-    linestyle=linestyles.analytic,
-    markershape=markers.analytic,
-    markercolor=colors.analytic,
-)
-
-# plot E values functionak
-# ----------------------------
-vline!([Eᵣ],
-    label="gold E = $Eᵣ MPa ",
-    linecolor=colors.gold)
-
-vline!([Eᵣ],
-    label="Apolo preduction E = $(value(svk_iden[:E])) MPa",
-    linecolor=:transparent)
-display(
-    plot!(
-        xlabel=L"\textrm{Elasticity ~ modulus} ~ E ~ \textrm{[Pa]}",
-        ylabel=L"\textrm{Optical-flow ~ functional ~ } F",
-        legend=:best,
-    )
-)
-
-
-
-#=
-
-
-# eavalutte the solution at a line
-x_points = [(x, Lⱼₛ / 2) for x in range(0, Lᵢₛ, length=30)]
-gold_solution(x_points)
-
-################
-# Optimization #
-################
-using Optimization, OptimizationBBO
-# ofunc = OptimizationFunction(f, Optimization.AutoForwardDiff())
-ofunc = OptimizationFunction(f)
-
-sregion = search_region(invp)
-lb = [Eₘᵢₙ]
-ub = [Eₘₐₓ]
-x0 = lb
-
-prob = OptimizationProblem(ofunc, x0, lb=lb, ub=ub)
-sol = Optimization.solve(
-    prob,
-    BBO_adaptive_de_rand_1_bin_radiuslimited(),
-    maxiters=100,
-    maxtime=60.0
-)
-Emin_optim = sol.u
-fmin_optim = sol.minimum
-
-###############
-# Plot results
-###############
-# Load plot pkgs
-using Plots, LaTeXStrings
-
-
-
-
-=#
+include("./plot_results.jl")
+println("This example is considering:")
+println("Number of pixles in x = $(NUM_PIX_X)")
+println("Number of elements = $(NUM_ELEMENTS_EACH_DIRECTION)")
+println("Using Optimizations takes t = $t_optim with nsteps = $(length(fvalues_optim))")
+println("The value of E_opitm = $E_value_optim ")
+println("Using Brute-Force takes t = $t_bf with nsteps = $(NUM_PARAMS_E)")
+println("The value of E_brute_force = $E_value_bf ")

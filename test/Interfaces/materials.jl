@@ -33,7 +33,7 @@ using Apolo.Materials
         @test value(ν) == νval
         @test feasible_region(E) == (Eₘᵢₙ, Eₘₐₓ)
         @test has_feasible_region(E)
-        set_feasible_region!(E, 2Eₘᵢₙ, 2Eₘₐₓ )
+        set_feasible_region!(E, 2Eₘᵢₙ, 2Eₘₐₓ)
         @test feasible_region(E) == 2 .* (Eₘᵢₙ, Eₘₐₓ) == extrema(range(E))
         @test !has_feasible_region(ν)
         @test 9Eₘᵢₙ ∉ E
