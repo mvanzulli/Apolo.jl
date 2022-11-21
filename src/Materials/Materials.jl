@@ -3,12 +3,13 @@
 #######################################################
 
 """
-Module defining the materials interface. Each material consists of a data type with one or more `Parameter` fields.
+Module defining the materials interface.
+Each material consists of a data type with one or more `Parameter` fields.
 """
 module Materials
 
+using Reexport: @reexport
 using AutoHashEquals: @auto_hash_equals
-
 
 export AbstractMaterial, AbstractParameter, ConstitutiveParameter, SVK
 export material, setmaterial!, has_material, label, value, setval!, feasible_region,
@@ -160,14 +161,15 @@ The following methods are provided by the interface:
 """
 abstract type AbstractMaterial end
 
+"Returns the material model of a `T`` material type. "
 model(::Type{T}) where {T<:AbstractMaterial} = string(T)
 
 function parameters(m::T) where {T<:AbstractMaterial}
     Tuple([getfield(f, n) for n in fieldlabels(T) if fieldtype(T, n) isa Parameter])
 end
 
-"Returns label."
-label(m::AbstractMaterial) = ""
+"Returns material `m` label."
+label(m::AbstractMaterial) = "no label is implemented, please overload this method."
 
 "Returns the index of the parameter with label `plabel` into the list of material `m` parameters."
 function parameter_index(m::AbstractMaterial, plabel::Symbol)
@@ -209,62 +211,11 @@ end
 "Returns [`true`](@ref) if the parameter with label `plabel` is [`missing`](@ref) into material `m`."
 Base.ismissing(m::AbstractMaterial, plabel::Symbol) = ismissing(m[plabel])
 
-# ==============================
-# Concrete implementations
-# ==============================
-
-""" SVK material struct.
-
-### Fields:
-
-`E` -- Elasticity modulus.
-`ν` -- Poisson's ratio.
-`label` -- Label to recognize material
-
-"""
-@auto_hash_equals mutable struct SVK <: AbstractMaterial
-    E::ConstitutiveParameter
-    ν::ConstitutiveParameter
-    label::Symbol
-    function SVK(E, ν, label=:no_assigned)
-
-        setmaterial!(E, label)
-        setmaterial!(ν, label)
-
-        return new(E, ν, label)
-    end
-end
-"Constructor with a string label for SVK amaterial."
-function SVK(E, ν, label::String)
-
-    label = Symbol(label)
-    setmaterial!(E, label)
-    setmaterial!(ν, label)
-
-    return SVK(E, ν, label)
-end
-
-"Returns SVK material model label."
-model(::SVK) = "SVK"
-
-"Returns SVK parameters tuple."
-parameters(m::SVK) = (m.E, m.ν)
-
-"Returns SVK label"
-label(m::SVK) = string(m.label)
-
-" Extract svk material parameters to use with ferrite nomenclature"
-function lamé_params(svk::SVK)
-
-    E = value(svk[:E])
-    ν = value(svk[:ν])
-
-    # Compute Lamé parameters λ and μ (μ = G)
-    μ = E / 2(1 + ν)
-    λ = E * ν / ((1 + ν) * (1 - 2ν))
-
-    return μ, λ
-end
+# =========================
+# Material implementations
+# =========================
+include("./LinearElastic.jl")
+@reexport using .LinearElastic
 
 
 end # end module

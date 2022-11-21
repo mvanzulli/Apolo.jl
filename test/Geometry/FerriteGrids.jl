@@ -1,10 +1,11 @@
 ##############
 # Grid tests #
 ##############
-using Test
+using Test: @testset, @test
 using Apolo.Geometry
-using Apolo.Geometry: _convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid,
-    _which_border, _corners, _borders, _boundary_indexes, _interpolate, _closest_point, _extrapolate
+using Apolo.Geometry.FerriteGrids
+using Apolo.Geometry: _closest_point, _extrapolate, _interpolate, _which_border
+using Apolo.Geometry.FerriteGrids: _boundary_indexes, _borders, _corners, _convert_to_ferrite_nomenclature, _create_ferrite_rectangular_grid
 
 using Ferrite: Quadrilateral, Hexahedron, Grid, Set, FaceIndex, Vec
 
@@ -13,7 +14,7 @@ const INTERVAL_LENGTH = LinRange(1.0, 10.0, 20)
 const INTERVAL_ELEMLENGTH = LinRange(0.1, 10.0, 20)
 const TOLERANCE = 1e-3
 
-@testset "Quadrilateral 2D Ferrite grids unitary tests" begin
+@testset "Quadrilateral 2D" begin
 
     # Define a random grid
     start_point = (rand(INTERVAL_START), rand(INTERVAL_START))
@@ -152,7 +153,7 @@ const TOLERANCE = 1e-3
     @test extrapolation_to_test ≈ extrapolation_hand atol = TOLERANCE
 end
 
-@testset "Hexahedron 3D Ferrite grids unitary tests" begin
+@testset "Hexahedron 3D" begin
 
     start_point = (rand(INTERVAL_START), rand(INTERVAL_START), rand(INTERVAL_START))
     elements_size_grid = (rand(INTERVAL_ELEMLENGTH), rand(INTERVAL_ELEMLENGTH), rand(INTERVAL_ELEMLENGTH))

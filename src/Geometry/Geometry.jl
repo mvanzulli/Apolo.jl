@@ -3,6 +3,8 @@ Module defining geometric entities interface.
 """
 module Geometry
 
+using Reexport: @reexport
+
 import .Base: extrema, maximum, minimum
 
 # Structured grid methods
@@ -103,8 +105,19 @@ function Base.:∈(p::NTuple{D,T}, grid::AbstractStructuredGrid{D,T}) where {D,T
     return true
 end
 
-"Interpolates a generic function inside a grid "
+"Interpolates a generic `magnitude` inside a `grid` in a vector of points `vec_points`. "
 function _interpolate(
+    vec_points::Vector{NTuple{D,T}},
+    magnitude::M,
+    mag_symbol::Symbol,
+    grid::AbstractStructuredGrid{D},
+) where {D,T,M}
+
+    return ERROR_GRID
+end
+
+"Extrapolates a generic `magnitude` inside a `grid` in a vector of points `vec_points`. "
+function _extrapolate(
     vec_points::Vector{NTuple{D,T}},
     magnitude::M,
     mag_symbol::Symbol,
@@ -313,11 +326,10 @@ function _closest_point(
 
 end
 
-
 # ====================
 # Grids implementations
 # ====================
-
-include("../Geometry/ferrite_grids.jl")
+include("./FerriteGrids.jl")
+@reexport using .FerriteGrids
 
 end

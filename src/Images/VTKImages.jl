@@ -1,10 +1,12 @@
-#######################################################
-# Main types and functions to handle with .VTK images #
-#######################################################
+"""
+Module defining vtk images (an image implemented reed from a .VTK file).
+"""
+module VTKImages
 
-using ..Geometry: AbstractStructuredGrid, FerriteStructuredGrid
-using ..Images: AbstractImage, AbstractIntensity
-using ..Images: create_ferrite_img_fgrid
+using Apolo.Geometry: AbstractStructuredGrid
+using Apolo.Geometry.FerriteGrids: FerriteStructuredGrid
+using ..Images: AbstractImage, AbstractIntensity, FerriteIntensity
+using ..Images: create_ferrite_img_fgrid, finish
 
 export VTKImage
 
@@ -27,7 +29,8 @@ struct VTKImage{D,T,I<:AbstractIntensity,G<:AbstractStructuredGrid} <: AbstractI
     path::String
 end
 
-"VTKImage constructor given an intensity array."
+"VTKImage constructor given an `intensity_array`, an spacing vector between pixels `spacing_img`,
+start point `start_img`, vtk image path `path_img` and a given `ferrite_grid` boolean ."
 function VTKImage(
     intensity_array::Array{T,D},
     spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
@@ -57,7 +60,8 @@ function VTKImage(
 end
 
 
-"VTKImage constructor given an intensity array and a grid."
+"VTKImage constructor given an `intensity_array`, an spacing vector between pixels `spacing_img`,
+start point `start_img`, vtk image path `path_img` and a given ferrite grid `fgrid`."
 function VTKImage(
     intensity_array::Array{T,D},
     fgrid::FerriteStructuredGrid,
@@ -72,7 +76,11 @@ function VTKImage(
     # convert intensity to ferrite nomenclature
     fintensity = FerriteIntensity(intensity_array, fgrid)
 
+    # TODO: Check grid dimensions matches start and spacing
+
     # instantiate generic grid
     return VTKImage(fintensity, num_pixels, start_img, spacing_img, fgrid, path_img)
 
 end
+
+end #endmodule

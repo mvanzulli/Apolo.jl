@@ -1,40 +1,45 @@
-##########################################################
-# Main types and functions to handle with ferrite images #
-##########################################################
+"""
+Module defining ferrte image (an image implemented with a ferrite grid).
+"""
+module FerriteImages
 
-using ..Geometry: FerriteStructuredGrid
-using ..Geometry: _convert_to_ferrite_nomenclature
-using ..Images: finish_grid, finish, start_grid, start
-using ..Images: _grid_num_elements
+using Apolo.Geometry.FerriteGrids: FerriteStructuredGrid
+using Apolo.Geometry.FerriteGrids: _convert_to_ferrite_nomenclature
+using ..Images: AbstractIntensity, AbstractImage
+using ..Images: finish_grid, finish, num_pixels, _grid_num_elements, start_grid, start
 
 using Ferrite: Quadrilateral, Hexahedron, DofHandler, PointEvalHandler, Lagrange, RefCube, Vec
 using Ferrite: get_point_values, close!
 
 import ..Images: intensity, value
 
-const FSG = FerriteStructuredGrid
-
 export FerriteImage, FerriteIntensity, create_ferrite_img_fgrid
+
+const FSG = FerriteStructuredGrid
 
 
 """ Ferrite intensity struct.
 
 ### Fields:
 
-- `intensity`   -- Intensity array with ferrite nomenclature
-- `indexes`-- Vector of cartesian indexes that maps ferrite intensity value
+- `intensity`   -- Intensity array with ferrite nomenclature.
+- `indexes`     -- Vector of cartesian indexes that maps ferrite intensity value.
 """
 struct FerriteIntensity{D,T} <: AbstractIntensity{T}
     intensity_vec::Vector{T}
     indexes::Vector{CartesianIndex{D}}
 end
 
+"Returns the intensity values of Ferrite Intensity struct `fint`."
 value(fint::FerriteIntensity) = fint.intensity_vec
+
+"Returns the indexes of Ferrite Intensity struct `fint`."
 _indexes(fint::FerriteIntensity) = fint.indexes
 
+"Returns of a Ferrite Intensity type with an array `intensity_array` and a grid `grid`. "
 function FerriteIntensity(
     intensity_array::Array{T,D},
-    fgrid::FerriteStructuredGrid{D}
+    fgrid::FSG{D}
 ) where {T,D}
 
     # convert intensity to ferrite nomenclature
@@ -61,7 +66,7 @@ struct FerriteImage{D,T,G<:FSG} <: AbstractImage{D,T,G}
     grid::G
 end
 
-# Cash the Ferrite.Grid into grid field of MedicalImage
+"Ferrite image constructor given an intensity array `spacing` between pixels and an `start_point`."
 function FerriteImage(
     intensity_array::Array{T,D},
     spacing_img::NTuple{D,T}=Tuple(ones(T, D)),
@@ -81,9 +86,10 @@ function FerriteImage(
     intensity = FerriteIntensity(intensity_array, fgrid)
 
     # instantiate generic grid
-    FerriteImage{D,T,FerriteStructuredGrid}(intensity, num_pixels, start_img, spacing_img, fgrid)
+    FerriteImage{D,T,FSG}(intensity, num_pixels, start_img, spacing_img, fgrid)
 end
 
+"Ferrite image constructor given an intensity array `spacing` between pixels and an `start_point`."
 function FerriteImage(
     intensity_array::Array{T,D},
     fgrid::G,
@@ -100,12 +106,15 @@ function FerriteImage(
     # convert intensity to ferrite nomenclature
     intensity = FerriteIntensity(intensity_array, fgrid)
 
+    #TODO: Check grid dimensions are compatible with start_img and spacing
+
     # instantiate generic grid
-    FerriteImage{D,T,FerriteStructuredGrid}(intensity, num_pixels, start_img, spacing_img, fgrid)
+    FerriteImage{D,T,FSG}(intensity, num_pixels, start_img, spacing_img, fgrid)
 end
 
 
-"Creates a FerriteStructuredGrid inside a 2D image frame"
+"Creates a 2D FSG inside given a start point, `start_img`, spacing beteween pixels
+`spacing_img`, length `length_img` and a number of pixels `num_pixels` in each direction."
 function create_ferrite_img_fgrid(
     start_img::NTuple{2,<:Real},
     spacing_img::NTuple{2,<:Real},
@@ -123,12 +132,13 @@ function create_ferrite_img_fgrid(
     element = Quadrilateral
 
     # generate grid
-    fgrid = FerriteStructuredGrid(start_grid_point, finish_grid_point, num_elements, element)
+    fgrid = FSG(start_grid_point, finish_grid_point, num_elements, element)
 
     return fgrid
 end
 
-"Creates a FerriteStructuredGrid inside a 3D image frame"
+"Creates a 3D FSG inside given a start point, `start_img`, spacing beteween pixels
+`spacing_img`, length `length_img` and a number of pixels `num_pixels` in each direction."
 function create_ferrite_img_fgrid(
     start_img::NTuple{3,<:Real},
     spacing_img::NTuple{3,<:Real},
@@ -146,14 +156,14 @@ function create_ferrite_img_fgrid(
     element = Hexahedron
 
     # generate grid
-    fgrid = FerriteStructuredGrid(start_grid_point, finish_grid_point, num_elements, element)
+    fgrid = FSG(start_grid_point, finish_grid_point, num_elements, element)
 
     return fgrid
 end
 
-"Gets the image intensity that contains a FerriteGrid"
-function intensity(img::AbstractImage{D,T,<:FerriteStructuredGrid}) where {D,T}
-
+"Returns an image intensity array of `img` in a ferrite grid.
+A cooridnates transformation is done back to cartesian coordinates."
+function intensity(img::AbstractImage{D,T,<:FSG}) where {D,T}
 
     intensity = img.intensity
     @assert typeof(intensity) <: FerriteIntensity
@@ -167,10 +177,10 @@ function intensity(img::AbstractImage{D,T,<:FerriteStructuredGrid}) where {D,T}
     return intensity_array
 end
 
-"Interpolates the image intensity in a vector of points for Ferrite Grids "
+"Interpolates the image `img` intensity in a vector of points `vec_points`."
 function _interpolate(
     vec_points::Vector{NTuple{D,T}},
-    img::AbstractImage{D,T,<:FerriteStructuredGrid},
+    img::AbstractImage{D,T,<:FSG},
 ) where {D,T}
 
     fgrid = grid(img).grid # ferrite grid
@@ -198,3 +208,5 @@ function _interpolate(
     return i_points
 
 end
+
+end# endmodule

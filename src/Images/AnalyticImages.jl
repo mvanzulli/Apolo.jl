@@ -1,7 +1,11 @@
-###########################################################
-# Main types and functions to handle with analytic images #
-###########################################################
-import Apolo.Images: finish
+"""
+Module defining analytic images (an image with analytical intensity function).
+"""
+module AnalyticImages
+
+using ..Images: AbstractImage
+
+import ..Images: finish, _eval_intensity, intensity, start
 
 export AnalyticImage
 
@@ -35,13 +39,13 @@ struct AnalyticImage{D,T,G<:Nothing} <: AbstractImage{D,T,G}
 
 end
 
-"Returns the final point of an analytic"
+"Returns the final point of an analytic `a_img`."
 finish(a_img::AnalyticImage) = a_img.finish
 
-"Returns the length of an analytic image"
+"Returns the length of an analytic image `a_img`."
 Base.length(a_img::AnalyticImage) = finish(a_img) .- start(a_img)
 
-"Internal function to evaluate the image intensity at a generic point"
+"Internal function to evaluate the image intensity at a generic point `p` with an `offset`."
 function _eval_intensity(
     p::NTuple{D,T},
     a_img::AnalyticImage{D};
@@ -59,7 +63,7 @@ function _eval_intensity(
     return intensity_p
 end
 
-"Internal function to evaluate the image intensity at a vector of points"
+"Internal function to evaluate the image intensity at a vector of point `vec_points` with an `offset`."
 function _eval_intensity(
     vec_points::Vector{NTuple{D,T}},
     a_img::AnalyticImage{D};
@@ -84,3 +88,5 @@ function _eval_intensity(
     return intensity_vec
 
 end
+
+end #endmodule

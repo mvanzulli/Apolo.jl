@@ -1,15 +1,17 @@
 
-##########################################################
-# Main types and functions to handle with ferrite grids #
-##########################################################
+"""
+Module Ferrite.jl grids implementations.
+"""
+module FerriteGrids
 
 # TODO: Fix coordinates function overlead
 import Apolo.Geometry: corners, coordinates, cartesian_index, dimension, extrema,
     element_type, element_size, finish, maximum, minimum, node_type, num_nodes, num_elements,
     start
-import Apolo.Geometry: _interpolate
+import Apolo.Geometry: _extrapolate, _interpolate
 
-using Apolo.Geometry: AbstractStructuredGrid
+using ..Geometry: AbstractStructuredGrid
+using ..Geometry: _closest_point
 using Ferrite: generate_grid, getcoordinates, getfaceset, getnodes, get_point_values, close!
 using Ferrite: AbstractCell, CellIterator, DofHandler, FaceIndex, Grid, Lagrange,
     PointEvalHandler, Set, RefCube, Vec, Quadrilateral, Hexahedron
@@ -364,3 +366,5 @@ function _extrapolate(
     return m_points
 
 end
+
+end # endmodule

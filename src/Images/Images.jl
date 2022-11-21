@@ -3,13 +3,14 @@ Module defining image properties and features.
 """
 module Images
 
-using ..Geometry: AbstractStructuredGrid
+using Apolo.Geometry: AbstractStructuredGrid
 using Reexport: @reexport
 
 @reexport import ..Materials: value
 @reexport import ..Geometry: coordinates, cartesian_index, dimension, extrema, finish,
     grid, start
-import ..Geometry: _interpolate, _extrapolate
+
+import Apolo.Geometry: _interpolate, _extrapolate
 
 export AbstractImage, AbstractDataMeasured, ImageData
 export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing, path, value,
@@ -289,32 +290,19 @@ end
 # ====================
 # Images implementations
 # ====================
-include("../Images/ferrite_img.jl")
-include("../Images/analytic_img.jl")
-include("../Images/vtk_img.jl")
-include("../Images/medical_img.jl")
+include("./FerriteImages.jl")
+@reexport using .FerriteImages
 
+include("./AnalyticImages.jl")
+@reexport using .AnalyticImages
 
-##########################
-# Abstract data measured #
-##########################
+include("./VTKImages.jl")
+@reexport using .VTKImages
 
-abstract type AbstractDataMeasured{T} end
+include("./MedicalImages.jl")
+@reexport using .MedicalImages
 
-"Gets the grid where the data is measured"
-grid(datam::AbstractDataMeasured) = datam.grid
-
-"Gets the region where the data is measured"
-roi(datam::AbstractDataMeasured) = datam.roi
-
-"Gets the time where the data is measured"
-time_measured(datam::AbstractDataMeasured) = datam.mtime
-
-
-################################
-# measured data implementation #
-################################
-include("../Images/data_imgs.jl")
+# include("../Images/medical_img.jl")
 
 
 end

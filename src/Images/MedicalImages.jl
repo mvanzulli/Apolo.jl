@@ -1,14 +1,19 @@
-##########################################################
-# Main types and functions to handle with medical images #
-##########################################################
+"""
+Module defining medical images.
+"""
+module MedicalImages
 
-import ..Geometry: _interpolate, _extrapolate
-import Statistics: mean, std
+using Apolo.Geometry: AbstractStructuredGrid
+using Apolo.Geometry.FerriteGrids: _create_ferrite_rectangular_grid
+using ..Images: AbstractImage, AbstractIntensity
+using ..Images.FerriteImages: FerriteIntensity
+using ..Images.FerriteImages: create_ferrite_img_fgrid
+using ..Images: finish
 
-using ..Geometry: AbstractStructuredGrid
-using ..Geometry: _create_ferrite_rectangular_grid
-using ..Images: AbstractIntensity
 using DICOM: DICOMData, dcmdir_parse, @tag_str
+
+import Apolo.Geometry: _interpolate, _extrapolate
+import Statistics: mean, std
 
 export MedicalImage, hyper_parameters, orientation, patient_name, load_medical_img
 
@@ -265,3 +270,5 @@ std(med_seg::MedicalSegment) = std(intensity(med_seg))
 varcoef(med_seg::MedicalSegment) = getstd(med_seg) / getmean(med_seg)
 
 =#
+
+end #endmodule

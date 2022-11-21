@@ -184,14 +184,14 @@ end
 
 
 
-"Function to write a medical image with structured grid into a .vtk file"
-function vtk_write(med_img::MedicalImage, filename=get_patient_name(med_img))
-    # Get image coordinates.
-    x, y, z = build_coordinates(med_img)
-    # Get image intensity.
-    intensity = getintensity(med_img)
-    # Plot VTK.
-    vtk_grid(filename, x, y, z) do vtk
-        vtk["Intensity", VTKPointData()] = intensity
-    end
-end
+# "Function to write a medical image with structured grid into a .vtk file"
+# function vtk_write(med_img::MedicalImage, filename=get_patient_name(med_img))
+#     # Get image coordinates.
+#     x, y, z = build_coordinates(med_img)
+#     # Get image intensity.
+#     intensity = getintensity(med_img)
+#     # Plot VTK.
+#     vtk_grid(filename, x, y, z) do vtk
+#         vtk["Intensity", VTKPointData()] = intensity
+#     end
+# end
