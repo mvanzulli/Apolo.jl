@@ -29,11 +29,11 @@ include("Images/Images.jl")
 @reexport using .Images.FerriteImages
 
 
-# # ==============
-# # Forward Problem
-# # ==============
-# include("ForwardProblem/ForwardProblem.jl")
-# @reexport using .ForwardProblem
+# ==============
+# Forward Problem
+# ==============
+include("ForwardProblem/ForwardProblem.jl")
+@reexport using .ForwardProblem
 
 # # ==============
 # # Inverse Problem

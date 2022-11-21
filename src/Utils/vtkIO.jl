@@ -182,6 +182,22 @@ function load_vtk_sequence_imgs(folder_path::String)
     return imgs
 end
 
+# "Generates the vtk of a forward problem solution."
+# function write_vtk_fsol(
+#     sol::ForwardProblemSolution{S},
+#     dir::String,
+#     filename::String,
+# ) where {S<:FerriteForwardSolver,D,T}
+
+#     # Create and eval the dof handler
+#     dh = dofhandler(sol)
+
+#     vtk_grid(dir * filename, dh) do vtkfile
+#         vtk_point_data(vtkfile, dh, dofsvals(sol))
+#     end
+
+#     return "VTK generated at :$dir"
+# end
 
 
 # "Function to write a medical image with structured grid into a .vtk file"

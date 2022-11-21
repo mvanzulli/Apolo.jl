@@ -1,14 +1,15 @@
 
-#####################################
-# Main types for Ferrite.jl solver #
-####################################
+"""
+Module to interact with Ferrite.jl forward problem solver.
+"""
+module FerriteSolver
 
 import Ferrite.DofHandler
 
-using Apolo.Materials: SVK, value, lamé_params
-using Apolo.ForwardProblem: AbstractForwardProblemSolver, ForwardProblemSolution
-using Apolo.ForwardProblem: femdata, materials, dofsvals, label
-import Apolo.ForwardProblem: _solve, _initialize!
+using Apolo.Materials: AbstractMaterial, SVK, value, lamé_params
+using Apolo.Geometry: FerriteStructuredGrid
+using Apolo.ForwardProblem
+import Apolo.ForwardProblem: _eval_displacements, _initialize!, _solve
 
 using Reexport: @reexport
 using Ferrite
@@ -17,13 +18,10 @@ using BlockArrays: BlockIndex, PseudoBlockArray
 using SparseArrays: SparseMatrixCSC
 using LinearAlgebra: Symmetric, norm
 
-export FerriteForwardSolver, write_vtk_fsol
-
+export FerriteForwardSolver, label_solid_grid!
 
 """ Struct with the interpolations for stress and displacements.
-
-## Fields
-
+### Fields:
 - `itp_u` -- interpolation for displacement field u.
 - `itp_σ` -- interpolation for stress σ field σ.
 """
@@ -40,15 +38,12 @@ _u_itp(int::InterStressDisp) = int.itp_u
 " Returns σ interpolation. "
 _σ_itp(int::InterStressDisp) = int.itp_σ
 
-" Struct with the quadrature rules for stress and displacements.
-
-## Fields
-
+""" Struct with the quadrature rules for stress and displacements.
+### Fields:
 - `face_u` -- quadrature rule for displacement field u across each face.
 - `cell_u` -- quadrature rule for displacement field u inside each cell.
 - `cell_σ` -- quadrature rule for stress field σ inside each cell.
-
-"
+"""
 struct QuadratureRulesStressDisp
     face_u::QuadratureRule
     cell_u::QuadratureRule
@@ -268,12 +263,30 @@ function _initialize!(
     return nothing
 end
 
-""" Struct that contains the cell and face vals of a dof
-### Fields:
-- `u` -- cell and face values for displacements u
-- `p` -- cell and face values for displacements u
-"""
+"Adds boundary condition `bcs` labels to the grid `grid`."
+function label_solid_grid!(fgrid::FerriteStructuredGrid, bcs::Dict{AbstractBoundaryCondition,Function})
 
+    ferrite_grid = grid(fgrid)
+
+    for (bc, region) in bcs
+        :label ∉ fieldnames(typeof(bc)) && throw(ArgumentError("$bc has no label field"))
+        addfaceset!(ferrite_grid, string(label(bc)), region)
+    end
+
+    return nothing
+end
+
+" Add materials `mats` labels to the grid `grid`."
+function label_solid_grid!(fgrid::FerriteStructuredGrid, mats::Dict{AbstractMaterial,R}) where {R}
+
+    ferrite_grid = grid(fgrid)
+
+    for (mat, region) in mats
+        addcellset!(ferrite_grid, label(mat), region)
+    end
+
+    return nothing
+end
 
 " Create Ferrite Dirichlet boundary conditions. "
 function create_dirichlet_bc(
@@ -576,19 +589,5 @@ function _eval_displacements(
 
 end
 
-"Generates the vtk of a forward problem solution."
-function write_vtk_fsol(
-    sol::ForwardProblemSolution{S},
-    dir::String,
-    filename::String,
-) where {S<:FerriteForwardSolver,D,T}
 
-    # Create and eval the dof handler
-    dh = dofhandler(sol)
-
-    vtk_grid(dir * filename, dh) do vtkfile
-        vtk_point_data(vtkfile, dh, dofsvals(sol))
-    end
-
-    return "VTK generated at :$dir"
-end
+end #endmodule

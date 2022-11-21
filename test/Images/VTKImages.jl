@@ -285,7 +285,7 @@ end
 #     imgs_def = deformed_imgs(img_data)
 #     rand_img_def = imgs_def[rand_t_idx-1]
 #     @test roi_func == roi(img_data)
-#     @test mtime == time_measured(img_data)
+#     @test mtime == elapsed_time(img_data)
 #     @test grid(img_data) === grid(img_ref) === grid(rand_img_def)
 
 #     # Get roi coorindates

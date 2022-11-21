@@ -12,7 +12,7 @@ end
 # Material tests #
 ##################
 
-@safetestset "Apolo.Materials" begin
+@safetestset "Apolo.Materials Interface" begin
     include("Materials/Materials.jl")
 end
 
@@ -40,12 +40,21 @@ end
     include("Images/MedicalImages.jl")
 end
 
-
-
-#=
-@safetestset "Apolo.ForwardProblem" begin
-    include("Interfaces/forward_problem.jl")
+#########################
+# Forward Problem tests #
+#########################
+@safetestset "Apolo.ForwardProblem Interface" begin
+    include("FrowardProblem/ForwardProblem.jl")
 end
+
+@safetestset "Apolo.LinearElasticityProblems" begin
+    include("ForwardProblem/LinearElasticityProblems.jl")
+end
+
+@safetestset "Apolo.FerriteSolver" begin
+    include("ForwardProblem/FerriteSolver.jl")
+end
+#=
 
 @safetestset "Apolo.Images" begin
     include("Interfaces/images.jl")

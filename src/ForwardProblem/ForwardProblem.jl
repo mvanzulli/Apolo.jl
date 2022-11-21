@@ -1,21 +1,23 @@
-########################################################
-# Main types and functions to solve the ForwardProblem #
-########################################################
+"""
+Module defining the forward problem interface.
+"""
 module ForwardProblem
-
-import ..Geometry: dimension, grid
-import ..Materials: label, feasible_region, parameters
 
 using ..Materials: AbstractParameter
 using ..Materials: has_material, setval!
 using ..Geometry: AbstractGrid
 
+using Reexport: @reexport
+
+@reexport import ..Geometry: dimension, grid
+@reexport import ..Materials: label, feasible_region, parameters
+
 export Dof, StressDispDofs, AbstractBoundaryCondition, DirichletBC, NeumannLoadBC, FEMData,
     AbstractForwardProblem, AbstractForwardProblemSolver, AbstractForwardProblemSolution,
     ForwardProblemSolution
 
-export boundary_conditions, component, dofs, dofsvals, direction, has_parameter, materials,
-    values_function, solver, solve, _solve, symbol, set_material_params!, unknown_parameters
+export boundary_conditions, component, dofs, dofsvals, direction, femdata, has_parameter,
+    materials, values_function, solver, solve, _solve, symbol, set_material_params!, unknown_parameters
 
 ######################
 # Degrees of freedom #
@@ -256,13 +258,8 @@ function set_material_params!(fp::AbstractForwardProblem, params_to_set::Dict)
 
 end
 
-############################################
-# Abstract Forward Problem implementations #
-############################################
-
-include("../ForwardProblem/AbstractForwardProblem/LinearElasticityProblem.jl")
-
-""" Abstract supertype for all Forward problem solvers. """
+""" Abstract supertype for all Forward problem solvers.
+No methdos are provided by the interface."""
 abstract type AbstractForwardProblemSolver end
 
 " Abstract supertype for all Forward problem solution.
@@ -366,9 +363,17 @@ function solve(
 
 end
 
+############################################
+# Abstract Forward Problem implementations #
+############################################
+include("./LinearElasticityProblems.jl")
+@reexport using .LinearElasticityProblems
+
 ###################################################
 # Abstract Forward Problem Solver implementations #
 ###################################################
-include("../ForwardProblem/AbstractForwardSolver/FerriteForwardSolver.jl")
+include("./FerriteSolver.jl")
+@reexport using .FerriteSolver
+
 
 end #end module

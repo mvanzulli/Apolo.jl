@@ -4,7 +4,7 @@
 using Test: @testset, @test
 using Apolo.Materials
 
-@testset "Materials unitary tests" begin
+@testset "Apolo.Materials Interface" begin
 
     E = ConstitutiveParameter(:E)
     Eₘᵢₙ = 12

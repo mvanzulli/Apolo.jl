@@ -5,7 +5,7 @@
 
 using ..Materials: AbstractParameter, label, material
 using ..Images: AbstractDataMeasured, AbstractImage
-using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, time_measured
+using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, elapsed_time
 using ..ForwardProblem: LinearElasticityProblem
 using ..InverseProblem: AbstractFunctional
 using ..InverseProblem: data_measured, forward_problem, forward_solver, parameters
@@ -69,7 +69,7 @@ function evaluate!(
     roi_coords = roi_nodes_coords(img_data)
     pix_dims = spacing(img_ref)
     img_defs = deformed_imgs(img_data)
-    t = time_measured(img_data)
+    t = elapsed_time(img_data)
 
     # Checks candidate parameters belong to search region
     #=

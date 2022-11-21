@@ -1,12 +1,37 @@
-########################################################################
-# Main types and functions to handle with a squence of measured images #
-########################################################################
+"""
+Module defining different type of data measured. The model parameters will be computed
+to match the measured data.
+"""
+module DataMeasured
 
-using ..Geometry: AbstractStructuredGrid, dimension, node_type
+using Apolo.Geometry: AbstractStructuredGrid
+using Apolo.Geometry: dimension, grid, node_type
 using ..Images: AbstractDataMeasured, AbstractImage
+
 using Ferrite: addnodeset!, getnodeset, getcoordinates
 
+
+export AbstractDataMeasured, AbstractDataMeasured
 export reference_img, deformed_imgs, roi_nodes, roi_nodes_coords
+
+
+""" Abstract supertype for data measured.
+
+The following methods are provided by the interface:
+
+- `grid(datam)`       -- returns the grid where the data is measured.
+- elapsed_time(datam) -- returns the elapsed time where the data was measured.
+"""
+abstract type AbstractDataMeasured{T} end
+
+"Gets the grid where the data is measured"
+grid(datam::AbstractDataMeasured) = datam.grid
+
+"Gets the region where the data is measured"
+roi(datam::AbstractDataMeasured) = datam.roi
+
+"Gets the time where the data is measured"
+elapsed_time(datam::AbstractDataMeasured) = datam.mtime
 
 """ Image data struct.
 ### Fields:
@@ -22,7 +47,7 @@ struct ImageData{G<:AbstractStructuredGrid,Img<:AbstractImage,R,T<:AbstractVecto
     mtime::T
 end
 
-""
+"Image data constructor wth a vector of images and a region of interest `roi`."
 function ImageData(vec_img::Vector{I}, roi::R, t) where {R,I<:AbstractImage}
 
     fgrid = grid(vec_img[1])
@@ -61,3 +86,5 @@ function roi_nodes_coords(img_data::ImageData{FG}) where {FG<:FerriteStructuredG
 
     return roi_coords
 end
+
+end #endmodule

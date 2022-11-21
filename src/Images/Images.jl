@@ -12,9 +12,8 @@ using Reexport: @reexport
 
 import Apolo.Geometry: _interpolate, _extrapolate
 
-export AbstractImage, AbstractDataMeasured, ImageData
-export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing, path, value,
-    roi, time_measured
+export AbstractImage, AbstractIntensity
+export finish_grid, intensity, intensity_type, num_pixels, start_grid, spacing, path, value
 
 
 #################
@@ -287,9 +286,9 @@ struct ScalarIntensity{T} <: AbstractIntensity{T}
     value::Array{T}
 end
 
-# ====================
-# Images implementations
-# ====================
+# ===============================
+# Abstract Image implementations
+# ===============================
 include("./FerriteImages.jl")
 @reexport using .FerriteImages
 
@@ -301,8 +300,5 @@ include("./VTKImages.jl")
 
 include("./MedicalImages.jl")
 @reexport using .MedicalImages
-
-# include("../Images/medical_img.jl")
-
 
 end
