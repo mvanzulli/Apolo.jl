@@ -3,6 +3,7 @@
 ###################################
 using Test: @testset, @test
 using Apolo.Materials
+using Apolo.Geometry.FerriteGrids: FerriteStructuredGrid
 using Apolo.ForwardProblem
 
 using Ferrite: Triangle

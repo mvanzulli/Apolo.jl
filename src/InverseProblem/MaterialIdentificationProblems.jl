@@ -1,12 +1,12 @@
+"""
+Module to define material identification problems.
+"""
+module MaterialIdentificationProblems
 
-##################################################
-# Material Identification Problem implementation #
-##################################################
-
-using ..Materials: AbstractParameter
-using ..ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver
-using ..Images: AbstractDataMeasured
-using ..InverseProblem: AbstractInverseProblem, AbstractFunctional
+using Apolo.Materials: AbstractParameter
+using Apolo.ForwardProblem: AbstractForwardProblem, AbstractForwardProblemSolver, unknown_parameters
+using Apolo.ForwardProblem: unknown_parameters
+using ..InverseProblem: AbstractInverseProblem, AbstractFunctional, AbstractDataMeasured
 
 export MaterialIdentificationProblem
 
@@ -58,3 +58,5 @@ function MaterialIdentificationProblem(
     )
 
 end
+
+end#endmodule

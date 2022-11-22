@@ -136,10 +136,27 @@ end
     val::Union{Number,Missing}
     fregion::Union{NTuple{2,Number},Missing}
     material::Symbol
-    function ConstitutiveParameter(label, val=missing, fregion=REALS, mat=:no_assigned)
-        new(Symbol(label), val, fregion, Symbol(mat))
-    end
 end
+
+"Constitutive Parameter constructor with only `label`"
+function ConstitutiveParameter(
+    label::Union{String,Symbol},
+    val=missing,
+    fregion::NTuple=REALS,
+    mat::Union{String,Symbol}=:no_assigned,
+)
+    return ConstitutiveParameter(Symbol(label), val, fregion, Symbol(mat))
+end
+
+"Constitutive Parameter constructor with only `label` and feasible region `fregion`."
+function ConstitutiveParameter(
+    label::Union{String,Symbol},
+    fregion::NTuple{2},
+    mat::Union{String,Symbol}=:no_assigned,
+)
+    return ConstitutiveParameter(Symbol(label), missing, fregion, mat)
+end
+
 
 """ Abstract supertype for a material.
 

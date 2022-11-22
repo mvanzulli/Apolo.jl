@@ -6,12 +6,15 @@ module DataMeasured
 
 using Apolo.Geometry: AbstractStructuredGrid
 using Apolo.Geometry: dimension, grid, node_type
-using ..Images: AbstractDataMeasured, AbstractImage
+using Apolo.Geometry.FerriteGrids: FerriteStructuredGrid
+using Apolo.Images: AbstractImage
 
 using Ferrite: addnodeset!, getnodeset, getcoordinates
 
+import Apolo.Geometry: grid
+import Apolo.InverseProblem: roi
 
-export AbstractDataMeasured, AbstractDataMeasured
+export AbstractDataMeasured, ImageData
 export reference_img, deformed_imgs, roi_nodes, roi_nodes_coords
 
 

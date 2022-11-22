@@ -38,8 +38,11 @@ include("ForwardProblem/ForwardProblem.jl")
 # # ==============
 # # Inverse Problem
 # # ==============
-# include("InverseProblem/InverseProblem.jl")
-# @reexport using .InverseProblem
+include("InverseProblem/InverseProblem.jl")
+@reexport using .InverseProblem
+@reexport using .InverseProblem.DataMeasured
+@reexport using .InverseProblem.MaterialIdentificationProblems
+@reexport using .InverseProblem.OpticalFlowFunctionals
 
 # # ==============
 # # VTK

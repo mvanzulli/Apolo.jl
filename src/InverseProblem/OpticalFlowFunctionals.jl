@@ -1,19 +1,23 @@
+"""
+Module that implements a Mean Square Error based on Optical Flow Hypothesis (Zerpa, 2019).
+"""
+module OpticalFlowFunctionals
 
-##########################################
-# Main types for optical flow functional #
-##########################################
-
-using ..Materials: AbstractParameter, label, material
-using ..Images: AbstractDataMeasured, AbstractImage
-using ..Images: reference_img, deformed_imgs, roi_nodes_coords, roi, spacing, elapsed_time
-using ..ForwardProblem: LinearElasticityProblem
-using ..InverseProblem: AbstractFunctional
-using ..InverseProblem: data_measured, forward_problem, forward_solver, parameters
-using ..Utils: ScalarWrapper
+using Apolo.Materials: AbstractParameter, label, material
+using Apolo.Images: AbstractImage
+using Apolo.Images: spacing
+using Apolo.ForwardProblem.LinearElasticityProblems: LinearElasticityProblem
+using Apolo.ForwardProblem: solve
+using Apolo.InverseProblem: AbstractFunctional
+using Apolo.InverseProblem.MaterialIdentificationProblems: MaterialIdentificationProblem
+using Apolo.InverseProblem.DataMeasured: AbstractDataMeasured
+using Apolo.InverseProblem.DataMeasured: elapsed_time, deformed_imgs, reference_img, roi_nodes_coords, roi
+using Apolo.InverseProblem: append_value!, append_trial!, data_measured, forward_problem, forward_solver, parameters
+using Apolo.Utils: ScalarWrapper
 
 import ..InverseProblem: evaluate!
 
-export MSEOpticalFlow, optimize
+export MSEOpticalFlow
 
 "Returns the functional maximum value"
 
@@ -115,3 +119,5 @@ function evaluate!(
     return f_value
 
 end
+
+end #endmodule

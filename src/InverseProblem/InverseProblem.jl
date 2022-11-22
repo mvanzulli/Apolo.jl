@@ -1,21 +1,19 @@
-#######################################################
-# Main types and functions to solve Inverse Problems  #
-#######################################################
 """
-Module defining image properties and features.
+Module defining structs and functions to handle inverse problems.
 """
 module InverseProblem
 
-using ..Materials: AbstractParameter
-using ..Materials: label, material, setval!
-import ..Materials: parameters, feasible_region
-import ..ForwardProblem: materials, solver, solve, _solve, unknown_parameters
-import ..Images: roi
+using Apolo.Materials: AbstractParameter
+using Apolo.Materials: label, material, setval!
+import Apolo.Materials: parameters, feasible_region
+import Apolo.ForwardProblem: materials, solver, solve, _solve, unknown_parameters
+
+using Reexport: @reexport
 
 export AbstractInverseProblem, AbstractFunctional, InverseProblemSolution
 export append_value!, append_trial!, data_measured, expression, evaluate!, gradient, hessian,
     optim_done, trials, forward_problem, forward_solver, functional, functional_values, functional_trials,
-    identified_params, inverse_problem, reset!, search_region, set_search_region, trial_parameters
+    identified_params, inverse_problem, reset!, roi, search_region, set_search_region, trial_parameters
 
 """ Abstract supertype for all functionals (or loss functions) to be optimized.
 
@@ -297,16 +295,6 @@ function solve(
     kwargs...
 ) where {IP<:AbstractInverseProblem,ISOL<:AbstractInverseProblemSolver} end
 
-############################################
-# Abstract Inverse Problem implementations #
-############################################
-
-include("../InverseProblem/AbstractInverseProblem/MaterialIdentificationProblem.jl")
-
-#######################################
-# Abstract Functional implementations #
-#######################################
-
 "Evaluates the functional `f` for a given sequence of arguments."
 function evaluate!(f::AbstractFunctional, invp::AbstractInverseProblem, candidate_params::CP, args...) where {CP} end
 
@@ -326,13 +314,29 @@ function _closure_function(
     return closure_functional
 end
 
-include("../InverseProblem/AbstractFunctional/MSEOpticalFlow.jl")
+##########################
+# Abstract Data Measured #
+##########################
+include("DataMeasured.jl")
+@reexport using .DataMeasured
+
+############################################
+# Abstract Inverse Problem implementations #
+############################################
+include("MaterialIdentificationProblems.jl")
+@reexport using .MaterialIdentificationProblems
+
+#######################################
+# Abstract Functional implementations #
+#######################################
+include("OpticalFlowFunctionals.jl")
+@reexport using .OpticalFlowFunctionals
 
 #######################################
 # Abstract Inverse Solver implementations #
 #######################################
 
-include("../InverseProblem/AbstractInverseSolver/BruteForceInverseSolver.jl")
-include("../InverseProblem/AbstractInverseSolver/OptimizationJLInverseSolver.jl")
+# include("../InverseProblem/AbstractInverseSolver/BruteForceInverseSolver.jl")
+# include("../InverseProblem/AbstractInverseSolver/OptimizationJLInverseSolver.jl")
 
 end # end module

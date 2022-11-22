@@ -44,7 +44,7 @@ end
 # Forward Problem tests #
 #########################
 @safetestset "Apolo.ForwardProblem Interface" begin
-    include("FrowardProblem/ForwardProblem.jl")
+    include("ForwardProblem/ForwardProblem.jl")
 end
 
 @safetestset "Apolo.LinearElasticityProblems" begin
@@ -54,12 +54,25 @@ end
 @safetestset "Apolo.FerriteSolver" begin
     include("ForwardProblem/FerriteSolver.jl")
 end
-#=
 
-@safetestset "Apolo.Images" begin
-    include("Interfaces/images.jl")
+#########################
+# Inverse Problem tests #
+#########################
+
+# @safetestset "Apolo.InverseProblem Interface" begin
+#     include("InverseProblem/InverseProblem.jl")
+# end
+
+@safetestset "Apolo.InverseProblem.MSEOpticalFlow" begin
+    include("InverseProblem/OpticalFlowFunctionals.jl")
 end
 
+@safetestset "Apolo.InverseProblem.MaterialIdentificationProblems" begin
+    include("InverseProblem/MaterialIdentificationProblems.jl")
+end
+
+
+#=
 @safetestset "Apolo.InverseProblem" begin
     include("Interfaces/inverse_problem.jl")
 end
