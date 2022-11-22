@@ -2,12 +2,13 @@
 # Functions to read and plot vtk files #
 ########################################
 
+using Apolo.ForwardProblem.FerriteSolver: dofhandler
 using Apolo.Images
 using NaturalSort: natural
-using WriteVTK: VTKPointData, vtk_grid
+using WriteVTK: VTKPointData, vtk_grid, vtk_point_data
 using ReadVTK: VTKFile, get_whole_extent, get_origin, get_spacing, get_point_data, get_data
 
-export vtk_structured_write, vtk_structured_write_sequence, load_vtk_img, load_vtk_sequence_imgs
+export write_vtk_fsol, vtk_structured_write, vtk_structured_write_sequence, load_vtk_img, load_vtk_sequence_imgs
 
 ###############
 # .VTI format #
