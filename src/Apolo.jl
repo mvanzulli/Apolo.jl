@@ -1,46 +1,56 @@
 module Apolo
 
-using Reexport
+using Reexport: @reexport
 
 # ==============
 # Utilities
 # ==============
-include("Utils.jl")
+include("Utils/Utils.jl")
 
 # ==============
 # Geometry
 # ==============
-include("Interfaces/Geometry.jl")
-# include("geometry.jl") # TODO: Fix Volumetric Functionals
+include("Geometry/Geometry.jl")
 @reexport using .Geometry
+@reexport using .Geometry.FerriteGrids
 
 # ==============
 # Materials
 # ==============
-include("Interfaces/Materials.jl")
+include("Materials/Materials.jl")
 @reexport using .Materials
-
-# ==============
-# Forward Problem
-# ==============
-include("Interfaces/ForwardProblem.jl")
-@reexport using .ForwardProblem
+@reexport using .Materials.LinearElastic
 
 # ==============
 # Images
 # ==============
-include("Interfaces/Images.jl")
+include("Images/Images.jl")
 @reexport using .Images
+@reexport using .Images.FerriteImages
+@reexport using .Images.AnalyticImages
+@reexport using .Images.MedicalImages
+@reexport using .Images.VTKImages
+
+
+# ==============
+# Forward Problem
+# ==============
+include("ForwardProblem/ForwardProblem.jl")
+@reexport using .ForwardProblem
 
 # ==============
 # Inverse Problem
 # ==============
-include("Interfaces/InverseProblem.jl")
+include("InverseProblem/InverseProblem.jl")
 @reexport using .InverseProblem
+@reexport using .InverseProblem.DataMeasured
+@reexport using .InverseProblem.MaterialIdentificationProblems
+@reexport using .InverseProblem.OpticalFlowFunctionals
+@reexport using .InverseProblem.BruteForceSolver
 
-# ==============
-# VTK
-# ==============
-include("vtkIO.jl")
+# # ==============
+# # VTK
+# # ==============
+include("Utils/vtkIO.jl")
 
 end # module Apolo
