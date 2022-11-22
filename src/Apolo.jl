@@ -27,6 +27,9 @@ include("Materials/Materials.jl")
 include("Images/Images.jl")
 @reexport using .Images
 @reexport using .Images.FerriteImages
+@reexport using .Images.AnalyticImages
+@reexport using .Images.MedicalImages
+@reexport using .Images.VTKImages
 
 
 # ==============
@@ -35,14 +38,15 @@ include("Images/Images.jl")
 include("ForwardProblem/ForwardProblem.jl")
 @reexport using .ForwardProblem
 
-# # ==============
-# # Inverse Problem
-# # ==============
+# ==============
+# Inverse Problem
+# ==============
 include("InverseProblem/InverseProblem.jl")
 @reexport using .InverseProblem
 @reexport using .InverseProblem.DataMeasured
 @reexport using .InverseProblem.MaterialIdentificationProblems
 @reexport using .InverseProblem.OpticalFlowFunctionals
+@reexport using .InverseProblem.BruteForceSolver
 
 # # ==============
 # # VTK

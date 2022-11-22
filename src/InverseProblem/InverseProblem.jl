@@ -332,11 +332,14 @@ include("MaterialIdentificationProblems.jl")
 include("OpticalFlowFunctionals.jl")
 @reexport using .OpticalFlowFunctionals
 
-#######################################
+###########################################
 # Abstract Inverse Solver implementations #
-#######################################
+###########################################
 
-# include("../InverseProblem/AbstractInverseSolver/BruteForceInverseSolver.jl")
-# include("../InverseProblem/AbstractInverseSolver/OptimizationJLInverseSolver.jl")
+include("BruteForceSolver.jl")
+@reexport using .BruteForceSolver
+
+include("OptimizationJLInverseSolver.jl")
+@reexport using .OptimizationJLSolver
 
 end # end module

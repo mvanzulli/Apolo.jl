@@ -1,13 +1,18 @@
-####################################
-# Brute force resolution algorithm #
-####################################
+"""
+Module defining a brute-force algorithm to solve an inverse problem.
+"""
+module BruteForceSolver
 
-using ..InverseProblem: InverseProblemSolution
-using ..InverseProblem: functional, values, trials, evaluate!, _set_optim_done!
-using ..Utils: ScalarWrapper
+using Apolo.Materials: AbstractParameter
+using ..InverseProblem: AbstractInverseProblem, AbstractInverseProblemSolver, InverseProblemSolution
+using ..InverseProblem.MaterialIdentificationProblems: MaterialIdentificationProblem
+using ..InverseProblem: functional, values, trials,
+    evaluate!, unknown_parameters, search_region, _set_optim_done!
+using Apolo.Utils: ScalarWrapper
 import ..InverseProblem: solve
 
-export BruteForceInverseSolver, nparams_foreach_param
+export BruteForceInverseSolver
+export nparams_foreach_param
 
 "Returns the unknown parameters iterators of a given inverse problem `iproblem`."
 function _iterators_unknown_parameters(iproblem::AbstractInverseProblem)
@@ -60,7 +65,6 @@ function _iterators_unknown_parameters(iproblem::AbstractInverseProblem, num_par
 
 end
 
-
 """
 Brute-force struct algorthim
 ### Fields:
@@ -91,3 +95,5 @@ end
 
 "Returns the number of paramaters that are tried for each unknown parameter."
 nparams_foreach_param(bfs::BruteForceInverseSolver) = bfs.nparam
+
+end #endmodule

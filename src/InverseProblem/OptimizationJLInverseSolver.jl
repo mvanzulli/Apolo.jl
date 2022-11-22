@@ -1,12 +1,15 @@
-#############################
-# Optimization.jl interface #
-#############################
+"""
+Module defining structs and functions to use Optimizations.jl inverse problem solver.
+"""
+module OptimizationJLSolver
 
-using ..InverseProblem: AbstractFunctional, AbstractInverseProblem
-using ..InverseProblem: _closure_function
-using Reexport: @reexport
+using ..InverseProblem: AbstractFunctional, AbstractInverseProblem, AbstractInverseProblemSolver,
+    InverseProblemSolution
+using ..InverseProblem.MaterialIdentificationProblems: MaterialIdentificationProblem
+using ..InverseProblem: search_region, unknown_parameters, _closure_function, _set_optim_done!
+using Apolo.Utils: ScalarWrapper
 
-import ..ForwardProblem: solve
+import Apolo.ForwardProblem: solve
 import Optimization: OptimizationFunction, OptimizationProblem
 using Optimization: solve as optim_solve
 
@@ -106,3 +109,5 @@ function solve(
     return InverseProblemSolution(invp, isolver)
 
 end
+
+end #endmodule

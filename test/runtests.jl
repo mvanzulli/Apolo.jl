@@ -71,6 +71,18 @@ end
     include("InverseProblem/MaterialIdentificationProblems.jl")
 end
 
+@safetestset "Apolo.InverseProblem.OpticalFlowFunctionals" begin
+    include("InverseProblem/OpticalFlowFunctionals.jl")
+end
+
+@safetestset "Apolo.InverseProblem.BruteForceInverseSolver" begin
+    include("InverseProblem/BruteForceSolver.jl")
+end
+
+@safetestset "Apolo.InverseProblem.OptimizationJLSolver" begin
+    include("InverseProblem/OptimizationJLSolver.jl")
+end
+
 
 #=
 @safetestset "Apolo.InverseProblem" begin
