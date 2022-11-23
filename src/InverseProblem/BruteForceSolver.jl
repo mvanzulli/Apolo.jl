@@ -14,28 +14,6 @@ import ..InverseProblem: solve
 export BruteForceInverseSolver
 export nparams_foreach_param
 
-"Returns the unknown parameters iterators of a given inverse problem `iproblem`."
-function _iterators_unknown_parameters(iproblem::AbstractInverseProblem)
-
-    uparams = unknown_parameters(iproblem)
-    sregion = search_region(iproblem)
-    sregion_uparams = [sregion[u] for u in uparams]
-
-    # combine them into a single vector
-    iters = vec([p_combination for p_combination in Iterators.product(sregion_uparams...)])
-    # set parameters dicts iterators
-    set_params_iters = Vector{Dict}()
-    for iter_p in iters
-        d = Dict{AbstractParameter,eltype(eltype(iters))}()
-        for (ip, p) in enumerate(uparams)
-            d[p] = iter_p[ip]
-        end
-        push!(set_params_iters, d)
-    end
-
-    return set_params_iters
-end
-
 "Returns the unknown parameters iterators of a given inverse problem `iproblem` and a number of parameters."
 function _iterators_unknown_parameters(iproblem::AbstractInverseProblem, num_params::Int)
 

@@ -70,7 +70,7 @@ end
     @test intensity_func(p..., 0) ≈ intensity_func(def_p..., 1) atol = 1e-6
     @test img_ref([p]) ≈ [intensity_func(p..., 0)] rtol = 1e-3
     @test img_def([def_p]) ≈ [intensity_func(def_p..., 1)] rtol = 5e-2
-    @test img_def([def_p]) ≈ img_ref([p]) rtol = 1e-2
+    @test img_def([def_p]) ≈ img_ref([p]) rtol = 5e-2
 
     params_to_set = Dict(E => Eᵣ)
     gold_solution = solve(lep_fproblem, ferrite_fsolver, params_to_set)

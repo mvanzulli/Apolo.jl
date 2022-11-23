@@ -30,3 +30,6 @@ Manifest.toml
 
 # VSCode files
 *.vscode
+
+# Old files stored 
+old/
