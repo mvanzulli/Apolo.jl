@@ -83,9 +83,6 @@ end
     include("InverseProblem/OptimizationJLSolver.jl")
 end
 
-
-#=
-@safetestset "Apolo.InverseProblem" begin
-    include("Interfaces/inverse_problem.jl")
+@safetestset "End to end identification examples" begin
+    include("examples.jl")
 end
-=#

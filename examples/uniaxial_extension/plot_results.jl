@@ -1,7 +1,10 @@
 ####################################
 #  Plot uniaxial extension results #
 ####################################
-
+#
+# post processing libraries
+using Plots, LaTeXStrings
+#
 # Set to zero values smaller than eps
 replace!(x -> x ≤ eps() ? 0 : x, fvalues_apolo_bf)
 replace!(x -> x ≤ eps() ? 0 : x, fvalues_closured)

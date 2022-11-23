@@ -15,15 +15,12 @@ using LinearAlgebra: norm
 using Test: @test
 using OptimizationBBO: BBO_adaptive_de_rand_1_bin_radiuslimited, BBO_probabilistic_descent
 #
-# post processing libraries
-using Plots, LaTeXStrings
-#
 #
 # Manufactured and analytical solution
 #
 include("./manufactured_tests_Eᵣ.jl")
-const NUM_PARAMS_E = 51
-const NUM_PIX_X = 256
+const NUM_PARAMS_E = 15
+const NUM_PIX_X = 32
 const NUM_ELEMENTS_EACH_DIRECTION = 4
 const LINEAR_INTENSITY = false
 # ------------------------------
@@ -273,7 +270,7 @@ invp = MaterialIdentificationProblem(
 # --------------------------------
 # optimization solver
 # ----------------------
-inv_optim_solver = OptimizationJLInverseSolver(max_iter=3, max_time=10)
+inv_optim_solver = OptimizationJLInverseSolver(max_iter=3, max_time=0.4)
 # optimization algorithm
 # ----------------------
 grad_free_alg = BBO_adaptive_de_rand_1_bin_radiuslimited()
