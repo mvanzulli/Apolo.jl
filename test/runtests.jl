@@ -83,6 +83,6 @@ end
     include("InverseProblem/OptimizationJLSolver.jl")
 end
 
-@safetestset "End to end identification examples" begin
-    include("examples.jl")
-end
+# @safetestset "End to end identification examples" begin
+#     include("examples.jl")
+# end

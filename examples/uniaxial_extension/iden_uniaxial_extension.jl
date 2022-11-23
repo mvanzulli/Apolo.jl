@@ -10,7 +10,7 @@
 # processing libraries
 using Apolo
 using Apolo.InverseProblem: _closure_function
-using Printf
+# using Printf
 using LinearAlgebra: norm
 using Test: @test
 using OptimizationBBO: BBO_adaptive_de_rand_1_bin_radiuslimited, BBO_probabilistic_descent
@@ -23,6 +23,7 @@ const NUM_PARAMS_E = 15
 const NUM_PIX_X = 32
 const NUM_ELEMENTS_EACH_DIRECTION = 4
 const LINEAR_INTENSITY = false
+const PLOT_RESULTS = false
 # ------------------------------
 # Define Dofs
 # ------------------------------
@@ -138,7 +139,7 @@ gold_solution = solve(lep_fproblem, ferrite_sovlver);
 # generate vtk solution
 tname = "gold_sol"
 tdir = "./examples/uniaxial_extension/imgs/"
-write_vtk_fsol(gold_solution, tdir, tname)
+PLOT_RESULTS && write_vtk_fsol(gold_solution, tdir, tname)
 # Analytic gold solution considering (Eᵣ, νᵣ)
 # -----------------------------------
 C(t) = tensionΓN(t) * (1 - νᵣ - 2νᵣ^2) / (1 - νᵣ)
@@ -169,7 +170,7 @@ vars = [coords..., mtime]
 # intensity_func(x,y,t) =  uₗ(x,t)
 # plot image sequence
 tname = "uniaxial"
-tdir = "./examples/uniaxial_extension/imgs/"
+tdir = "examples/uniaxial_extension/imgs/"
 vtk_structured_write_sequence(vars, intensity_func, :intensity, tname, tdir)
 # --------------------------
 # Inverse problem
@@ -296,11 +297,13 @@ E_value_optim = value(svk_iden[:E])
 # --------------------------
 # Plot results
 # --------------------------
-include("./plot_results.jl")
-println("This example is considering:")
-println("Number of pixles in x = $(NUM_PIX_X)")
-println("Number of elements = $(NUM_ELEMENTS_EACH_DIRECTION)")
-println("Using Optimizations takes t = $t_optim with nsteps = $(length(fvalues_optim))")
-println("The value of E_opitm = $E_value_optim ")
-println("Using Brute-Force takes t = $t_bf with nsteps = $(NUM_PARAMS_E)")
-println("The value of E_brute_force = $E_value_bf ")
+if PLOT_RESULTS
+    include("./plot_results.jl")
+    println("This example is considering:")
+    println("Number of pixles in x = $(NUM_PIX_X)")
+    println("Number of elements = $(NUM_ELEMENTS_EACH_DIRECTION)")
+    println("Using Optimizations takes t = $t_optim with nsteps = $(length(fvalues_optim))")
+    println("The value of E_opitm = $E_value_optim ")
+    println("Using Brute-Force takes t = $t_bf with nsteps = $(NUM_PARAMS_E)")
+    println("The value of E_brute_force = $E_value_bf ")
+end
