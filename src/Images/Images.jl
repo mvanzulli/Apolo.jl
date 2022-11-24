@@ -29,7 +29,6 @@ The following methods are provided by the interface:
                             in the general case this should return
                             ((xₘᵢₙ, xₘₐₓ), (yₘᵢₙ, yₘₐₓ), (zₘᵢₙ, zₘₐₓ))
 - `finish(img)`            -- returns the final point coordinates.
-- `finish(img)`            -- returns the final point coordinates.
 - `finish_grid(img)`       -- returns the final point of the image grid.
 - `grid(img)`              -- returns the image grid.
 - `intensity(img)`         -- returns the intensity array of the image.
