@@ -32,7 +32,7 @@ The following methods are provided by the interface:
 - `feasible_region(p)`              -- returns the feasible region for the parameter `p`.
 - `setval!(p, val)`                 -- sets the value `val` to the parameter `p`.
 - `set_feasible_region!(p, range)`  -- sets the limits (`p₁`, `p₂`) to the parameter `p`.
-- `setmaterial!(p, mlabel)`         -- sets a material label for a the paretmer.
+- `setmaterial!(p, mlabel)`         -- sets the material label `mlabel` to the parameter `p`.
 """
 abstract type AbstractParameter end
 
