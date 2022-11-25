@@ -17916,7 +17916,7 @@ div.jp-OutputPrompt {
     init_mathjax();
     </script>
     <!-- End of mathjax configuration --><!-- Reveal Theme -->
-<link rel="stylesheet" href="https://unpkg.com/reveal.js@4.0.2/dist/theme/simple.css" id="theme">
+<link rel="stylesheet" href="https://unpkg.com/reveal.js@4.0.2/dist/theme/white.css" id="theme">
 
 </head>
 
@@ -17930,11 +17930,11 @@ div.jp-OutputPrompt {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p><img src="https://user-images.githubusercontent.com/50339940/203682225-f5cc1c8e-8e33-4715-b3b1-a9123bb8b301.svg" alt="LOGO" /></p>
 <h2><span style="color:black">  Apolo.jl: An end to end Package for sOlving materiaL identification prOblems.</h2>
 <h4><span style="color:black"> Mauricio Vanzulli -  IIMPI - Facultad de Ingeniería UdelaR</h4>
 <h4><span style="color:black"> Marcelo Forets -  DMA - Centro Universitario Regional del Este</h4>
 <h4><span style="color:black"> Jorge Pérez Zerpa -  IET - Facultad de Ingeniería UdelaR</h4>
-<p><img src="https://user-images.githubusercontent.com/50339940/203682225-f5cc1c8e-8e33-4715-b3b1-a9123bb8b301.svg" alt="LOGO" /></p>
 
 </div>
 </div>
@@ -17950,6 +17950,9 @@ div.jp-OutputPrompt {
 <p>to generate ppt</p>
 <pre><code>jupyter nbconvert Apolo_CCJ.ipynb --to slides --post serve
 </code></pre>
+<p>to change the theme add</p>
+<div class="highlight"><pre><span></span>jupyter nbconvert Apolo_CCJ.ipynb --to slides --post serve --SlidesExporter.reveal_theme<span class="o">=</span>league
+</pre></div>
 
 </div>
 </div>
@@ -17964,14 +17967,11 @@ div.jp-OutputPrompt {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <p><img src="https://user-images.githubusercontent.com/50339940/203682225-f5cc1c8e-8e33-4715-b3b1-a9123bb8b301.svg" alt="LOGO" /></p>
 <h3 id="Outline:">Outline:<a class="anchor-link" href="#Outline:">&#182;</a></h3><ol>
-<li>Introduction:<ul>
-<li>Motivation</li>
-<li>Problem statement</li>
-</ul>
-</li>
+<li>Motivation:</li>
+<li>Problem statement:</li>
 <li>Implementation</li>
-<li>Usage</li>
-<li>Preliminary conclussions and future work</li>
+<li>Usage(uniaxial extension)</li>
+<li>Preliminary conclusions and future work</li>
 <li>Questions</li>
 </ol>
 
@@ -18045,7 +18045,7 @@ $$ 	p^* = \text{arg min } I(p),
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="Apolo.jl-design">Apolo.jl design<a class="anchor-link" href="#Apolo.jl-design">&#182;</a></h2><img src="https://user-images.githubusercontent.com/50339940/203689930-4778b792-7d55-49f4-9c41-c5e365d242d9.svg" alt="drawing" width="1000"/>
+<h2 id="Apolo.jl-design">Apolo.jl design<a class="anchor-link" href="#Apolo.jl-design">&#182;</a></h2><img src="https://user-images.githubusercontent.com/50339940/203880941-79b91f8f-e587-497c-b850-02cf007bcab3.svg" alt="drawing" width="1000"/>
 
 </div>
 </div>
@@ -18089,9 +18089,8 @@ $$ 	p^* = \text{arg min } I(p),
 <li><code>num_nodes(grid)</code>   -- returns the number of <code>grid</code> nodes.</li>
 <li><code>start(grid)</code>       -- returns the <code>grid</code> start point.</li>
 </ul>
-<h3 id="Grids-implemented:">Grids implemented:<a class="anchor-link" href="#Grids-implemented:">&#182;</a></h3><div class="highlight"><pre><span></span><span class="kt">FerriteStructuredGrid</span><span class="p">{</span><span class="kt">D</span><span class="p">,</span><span class="kt">E</span><span class="p">,</span><span class="kt">T</span><span class="p">,</span><span class="kt">V</span><span class="o">&lt;:</span><span class="kt">AbstractVector</span><span class="p">}</span><span class="w"> </span><span class="o">&lt;:</span><span class="w"> </span><span class="kt">AbstractStructuredGrid</span><span class="p">{</span><span class="kt">D</span><span class="p">,</span><span class="kt">T</span><span class="p">}</span><span class="w"></span>
+<div class="highlight"><pre><span></span><span class="kt">FerriteStructuredGrid</span><span class="p">{</span><span class="kt">D</span><span class="p">,</span><span class="kt">E</span><span class="p">,</span><span class="kt">T</span><span class="p">,</span><span class="kt">V</span><span class="o">&lt;:</span><span class="kt">AbstractVector</span><span class="p">}</span><span class="w"> </span><span class="o">&lt;:</span><span class="w"> </span><span class="kt">AbstractStructuredGrid</span><span class="p">{</span><span class="kt">D</span><span class="p">,</span><span class="kt">T</span><span class="p">}</span><span class="w"></span>
 </pre></div>
-<p>Some useful methods:</p>
 <div class="highlight"><pre><span></span><span class="k">function</span><span class="w"> </span><span class="n">_convert_to_ferrite_nomenclature</span><span class="p">(</span><span class="n">mag</span><span class="o">::</span><span class="kt">Array</span><span class="p">{</span><span class="kt">T</span><span class="p">,</span><span class="kt">D</span><span class="p">},</span><span class="w"> </span><span class="n">fgrid</span><span class="o">::</span><span class="kt">FerriteStructuredGrid</span><span class="p">{</span><span class="kt">D</span><span class="p">})</span><span class="w"> </span><span class="k">where</span><span class="w"> </span><span class="p">{</span><span class="kt">D</span><span class="p">,</span><span class="kt">T</span><span class="o">&lt;:</span><span class="kt">Real</span><span class="p">}</span><span class="w"></span>
 <span class="k">function</span><span class="w"> </span><span class="n">_interpolate</span><span class="p">(</span><span class="n">vec_points</span><span class="o">::</span><span class="kt">Vector</span><span class="p">{</span><span class="kt">NTuple</span><span class="p">{</span><span class="kt">DG</span><span class="p">,</span><span class="kt">T</span><span class="p">}},</span><span class="w"> </span><span class="n">mag</span><span class="o">::</span><span class="kt">Array</span><span class="p">{</span><span class="kt">T</span><span class="p">,</span><span class="kt">DM</span><span class="p">},</span><span class="w"> </span><span class="n">mag_symbol</span><span class="o">::</span><span class="kt">Symbol</span><span class="p">,</span><span class="w"> </span><span class="n">fgrid</span><span class="o">::</span><span class="kt">FerriteStructuredGrid</span><span class="p">{</span><span class="kt">DG</span><span class="p">})</span><span class="w"> </span><span class="k">where</span><span class="w"> </span><span class="p">{</span><span class="kt">DG</span><span class="p">,</span><span class="kt">T</span><span class="p">,</span><span class="kt">DM</span><span class="p">}</span><span class="w"></span>
 </pre></div>
@@ -18341,18 +18340,17 @@ $$ 	p^* = \text{arg min } I(p),
 </pre></div>
 <div class="highlight"><pre><span></span><span class="kt">MaterialIdentificationProblem</span><span class="p">{</span><span class="o">...</span><span class="p">}</span><span class="w"> </span><span class="k">end</span><span class="w"></span>
 </pre></div>
+<div class="highlight"><pre><span></span><span class="k">function</span><span class="w"> </span><span class="n">evaluate!</span><span class="p">(</span><span class="n">f</span><span class="o">::</span><span class="kt">AbstractFunctional</span><span class="p">,</span><span class="w"> </span><span class="n">invp</span><span class="o">::</span><span class="kt">AbstractInverseProblem</span><span class="p">,</span><span class="w"> </span><span class="n">candidate_params</span><span class="o">::</span><span class="kt">CP</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="k">where</span><span class="w"> </span><span class="p">{</span><span class="kt">CP</span><span class="p">}</span><span class="w"> </span><span class="k">end</span><span class="w"></span>
+</pre></div>
 <hr />
 <div class="highlight"><pre><span></span><span class="k">abstract</span><span class="w"> </span><span class="k">type</span> <span class="kt">AbstractInverseProblemSolver</span><span class="w"> </span><span class="k">end</span><span class="w"></span>
 </pre></div>
 <div class="highlight"><pre><span></span><span class="kt">BruteForceInverseSolver</span><span class="w"> </span><span class="o">&lt;:</span><span class="w"> </span><span class="kt">AbstractInverseProblemSolver</span><span class="w"></span>
 </pre></div>
-<p>Gradient free algos via <code>Optimization.jl</code>:</p>
 <div class="highlight"><pre><span></span><span class="kt">OptimizationJLInverseSolver</span><span class="p">{</span><span class="kt">DIF</span><span class="p">}</span><span class="w"> </span><span class="o">&lt;:</span><span class="w"> </span><span class="kt">AbstractInverseProblemSolver</span><span class="w"></span>
 </pre></div>
 <hr />
 <div class="highlight"><pre><span></span><span class="k">abstract</span><span class="w"> </span><span class="k">type</span> <span class="kt">AbstractInverseProblemSolution</span><span class="w"> </span><span class="k">end</span><span class="w"></span>
-</pre></div>
-<div class="highlight"><pre><span></span><span class="k">function</span><span class="w"> </span><span class="n">evaluate!</span><span class="p">(</span><span class="n">f</span><span class="o">::</span><span class="kt">AbstractFunctional</span><span class="p">,</span><span class="w"> </span><span class="n">invp</span><span class="o">::</span><span class="kt">AbstractInverseProblem</span><span class="p">,</span><span class="w"> </span><span class="n">candidate_params</span><span class="o">::</span><span class="kt">CP</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="k">where</span><span class="w"> </span><span class="p">{</span><span class="kt">CP</span><span class="p">}</span><span class="w"> </span><span class="k">end</span><span class="w"></span>
 </pre></div>
 
 </div>
@@ -18365,7 +18363,20 @@ $$ 	p^* = \text{arg min } I(p),
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="Uniaxial-extension-problem">Uniaxial extension problem<a class="anchor-link" href="#Uniaxial-extension-problem">&#182;</a></h3><ul>
+<h2 id="Uniaxial-extension-problem">Uniaxial extension problem<a class="anchor-link" href="#Uniaxial-extension-problem">&#182;</a></h2><img src="https://user-images.githubusercontent.com/50339940/202585140-404e1d78-4196-4107-9e2a-34d680f26574.png" alt="drawing" width="500"/>
+<img src="https://user-images.githubusercontent.com/50339940/202584960-511cc610-b8b7-4344-a578-03f943f88326.png" alt="drawing" width="500"/>
+
+</div>
+</div>
+</div>
+</div></section><section >
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<h2 id="Mean-square-error-Optical-Flow">Mean square error Optical Flow<a class="anchor-link" href="#Mean-square-error-Optical-Flow">&#182;</a></h2><ul>
 <li>Unknown parameter $p = E$</li>
 <li>Analytic solution for the displacements field (Plan stress state) $\phi(x_0) = f(x_0,t, p)$</li>
 <li>Synthetic images sequence generated considering Optical flow $I^{ref}(x_0,t_0) = I^{def}(\phi(x_0),t)$ and $p = E_r = 2$ MPa</li>
@@ -18379,19 +18390,6 @@ $$
     I(x_0,t) \right ] ^2 
     ~d\Omega dt.
 $$
-</div>
-</div>
-</div>
-</div></section><section >
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="Reference-and-deformed-configurations:">Reference and deformed configurations:<a class="anchor-link" href="#Reference-and-deformed-configurations:">&#182;</a></h2><img src="https://user-images.githubusercontent.com/50339940/202585140-404e1d78-4196-4107-9e2a-34d680f26574.png" alt="drawing" width="500"/>
-<img src="https://user-images.githubusercontent.com/50339940/202584960-511cc610-b8b7-4344-a578-03f943f88326.png" alt="drawing" width="500"/>
-
 </div>
 </div>
 </div>
@@ -18419,7 +18417,7 @@ $$
 <span class="n">E_value_bf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="p">(</span><span class="n">svk_iden</span><span class="p">[</span><span class="ss">:E</span><span class="p">])</span><span class="w"></span>
 </pre></div>
 <hr />
-<div class="highlight"><pre><span></span><span class="nd">@test</span><span class="w"> </span><span class="n">E_value_optim</span><span class="w"> </span><span class="o">≈</span><span class="w"> </span><span class="n">Eᵣ</span><span class="w"> </span><span class="n">rtol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1e-1</span><span class="w"></span>
+<div class="highlight"><pre><span></span><span class="nd">@test</span><span class="w"> </span><span class="n">E_value_optim</span><span class="w"> </span><span class="o">≈</span><span class="w"> </span><span class="n">Eᵣ</span><span class="w"> </span><span class="n">rtol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1e-2</span><span class="w"></span>
 </pre></div>
 
 </div>
@@ -18450,7 +18448,7 @@ $$
 <span class="n">E_value_optim</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="p">(</span><span class="n">svk_iden</span><span class="p">[</span><span class="ss">:E</span><span class="p">])</span><span class="w"></span>
 </pre></div>
 <hr />
-<div class="highlight"><pre><span></span><span class="nd">@test</span><span class="w"> </span><span class="n">E_value_optim</span><span class="w"> </span><span class="o">≈</span><span class="w"> </span><span class="n">Eᵣ</span><span class="w"> </span><span class="n">rtol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1e-1</span><span class="w"></span>
+<div class="highlight"><pre><span></span><span class="nd">@test</span><span class="w"> </span><span class="n">E_value_optim</span><span class="w"> </span><span class="o">≈</span><span class="w"> </span><span class="n">Eᵣ</span><span class="w"> </span><span class="n">rtol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1e-2</span><span class="w"></span>
 </pre></div>
 
 </div>
@@ -18476,17 +18474,16 @@ $$
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h2 id="Preliminary-conclusions">Preliminary conclusions<a class="anchor-link" href="#Preliminary-conclusions">&#182;</a></h2><ul>
-<li>A first implementation of an open-source package for solving inverse problems has been released.</li>
-<li>Generic interfaces with grids, images forward and inverse problem solvers are provided by Apolo.jl.</li>
-<li>A very simple material identification problem, considering a linear elastic element and material was solved.</li>
+<li>A first implementation of an <strong>open-source</strong> package for solving inverse problems has been implemented.</li>
+<li><strong>Generic interfaces</strong> using grids, images forward and inverse problem solvers are provided by Apolo.jl.</li>
+<li>A very simple material identification problem, considering a linear elastic material was <strong>validated</strong>.</li>
 </ul>
 <hr />
 <h2 id="Future-work">Future work<a class="anchor-link" href="#Future-work">&#182;</a></h2><ul>
 <li>Include generic regions as a set of elements (to model ROI).</li>
-<li>Improve image interpolation performance.</li>
+<li>Performance analysis. Improve image interpolation <strong>performance</strong>.</li>
 <li>Add a GMSH interface to define geometries.</li>
 <li>Include a non-linear hyperelastic element to model biological tissues.</li>
-<li>Performance analysis</li>
 </ul>
 
 </div>
