@@ -33,3 +33,6 @@ Manifest.toml
 
 # Old files stored 
 old/
+
+# Talk temp files 
+talk/*.html
