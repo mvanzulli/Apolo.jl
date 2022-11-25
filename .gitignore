@@ -36,3 +36,6 @@ old/
 
 # Talk temp files 
 talk/*.html
+
+# Jupyter notebook files 
+.ipynb_checkpoints
